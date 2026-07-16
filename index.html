@@ -5,6 +5,15 @@
 <meta name="color-scheme" content="light"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1"/>
 <title>HavenKept Studio</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#3D2A4A"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Command Center"/>
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png"/>
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -57,6 +66,9 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 
 /* ===== NAV ===== */
 .sidebar{width:var(--sidebar-w);background:var(--plum);color:var(--ivory);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;}
+body.is-offline .sidebar{top:36px;}
+body.is-offline .main{margin-top:36px;}
+body.is-offline .bottom-nav{bottom:80px;}
 .sidebar-logo{padding:26px 20px 18px;text-align:center;border-bottom:1px solid rgba(185,141,122,0.25);}
 .sidebar-brand{font-family:var(--font-serif);font-size:21px;font-weight:500;color:var(--ivory);}
 .sidebar-subtitle{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);margin-top:2px;}
@@ -251,6 +263,10 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     </div>
     <button class="setup-btn" onclick="saveSetup()">Enter Studio ✦</button>
   </div>
+</div>
+
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:#B05A5A;color:#FFFFFF;text-align:center;padding:9px 14px;font-family:'Jost',sans-serif;font-size:12.5px;font-weight:500;z-index:2000;">
+  ⚠ No internet connection — you can look around, but changes won't sync until you're back online
 </div>
 
 <nav class="sidebar">
@@ -595,6 +611,15 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   </div>
 </div>
 
+<div id="page-competitors" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Competitor Tracker</div><div class="page-sub">Screenshot the thumbnail, log the numbers, keep tabs on the field per niche</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openAddCompetitorModal()">+ Add Listing</button>
+  </div>
+  <div id="competitor-filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+  <div id="competitor-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;"></div>
+</div>
+
 </main>
 
 <!-- FOOTER DATA BAR -->
@@ -680,6 +705,43 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   </div>
 </div>
 
+<div class="modal-overlay" id="add-competitor-modal">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-title" id="competitor-modal-title">Add Listing</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-field"><label>Niche / Planner</label>
+        <select id="nc-niche">
+          <option>Wedding</option><option>BTS Family</option><option>Homeschool</option>
+          <option>Admissions</option><option>Teacher</option><option>Engagement</option>
+          <option>Maid of Honor</option><option>Milestone Birthday</option><option>Quinceañera</option>
+          <option>Multi-Pet</option><option>ADHD/Neurodivergent</option><option>Elderly Caretaker</option>
+          <option>Freelancer/Solopreneur</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-field"><label>Seller / Shop Name</label><input type="text" id="nc-seller" placeholder="e.g. PlannerCoStudio"/></div>
+      <div class="form-field" style="grid-column:1/-1;"><label>Listing URL</label><input type="text" id="nc-url" placeholder="https://etsy.com/listing/..."/></div>
+      <div class="form-field"><label>Price</label><input type="text" id="nc-price" placeholder="e.g. $12.00"/></div>
+      <div class="form-field"><label>Date Checked</label><input type="date" id="nc-date"/></div>
+      <div class="form-field"><label>Listing Reviews</label><input type="number" id="nc-listing-reviews" placeholder="e.g. 340"/></div>
+      <div class="form-field"><label>Seller Total Sales</label><input type="number" id="nc-seller-sales" placeholder="e.g. 12000"/></div>
+      <div class="form-field" style="grid-column:1/-1;"><label>Seller Total Reviews</label><input type="number" id="nc-seller-reviews" placeholder="e.g. 8900"/></div>
+      <div class="form-field" style="grid-column:1/-1;">
+        <label>Thumbnail Screenshot</label>
+        <div style="border:2px dashed var(--border);border-radius:8px;padding:12px;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;" onclick="document.getElementById('nc-image').click()">
+          <span id="nc-image-text">Click to upload screenshot</span>
+          <input type="file" id="nc-image" accept="image/*" style="display:none;" onchange="handleCompetitorImage(event)"/>
+          <img id="nc-image-preview" style="display:none;max-width:100%;max-height:100px;border-radius:6px;margin-top:6px;"/>
+        </div>
+      </div>
+      <div class="form-field" style="grid-column:1/-1;"><label>Notes</label><textarea id="nc-notes" placeholder="e.g. Reskin, low feature depth, undercutting on price..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('add-competitor-modal')">Cancel</button>
+      <button class="btn-add" onclick="saveCompetitor()" id="competitor-save-btn">Save Listing</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -706,6 +768,7 @@ var ICONS={
   penTool:'<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>',
   uploadCloud:'<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>',
   kanban:'<rect x="3" y="3" width="6" height="18" rx="1"/><rect x="10.5" y="3" width="6" height="12" rx="1"/><rect x="18" y="3" width="3" height="8" rx="1"/>',
+  search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   handoff:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>',
   flagShield:'<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/>',
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'
@@ -728,7 +791,8 @@ var NAV_ITEMS=[
   {id:'handoffs',icon:'handoff',label:'Pending Handoffs'},
   {id:'knownissues',icon:'flagShield',label:'Known Issues'},
   {id:'colors',icon:'droplet',label:'Colors'},
-  {id:'sync',icon:'refresh',label:'Airtable Sync'}
+  {id:'sync',icon:'refresh',label:'Airtable Sync'},
+  {id:'competitors',icon:'search',label:'Competitors'}
 ];
 var DEFAULT_WEBSITES=[
   {label:'Etsy Shop Manager',url:'https://www.etsy.com/your/shops/me/dashboard',category:'Selling'},
@@ -757,11 +821,8 @@ function loadState(){
   try{var s=localStorage.getItem('havenKeptStudio');state=s?JSON.parse(s):{};}catch(e){state={};}
   if(!state.products)state.products=[];
   if(!state.customOrders)state.customOrders=[];
-  if(!state.calendarEvents)state.calendarEvents=[];
-  if(!state.notes)state.notes=[];
-  if(!state.websites)state.websites=DEFAULT_WEBSITES.slice();
-  if(!state.testingPrompts)state.testingPrompts=DEFAULT_TESTING.map(function(t){return {text:t,done:false};});
   if(!state.testingPasses)state.testingPasses=[];
+  if(!state.competitors)state.competitors=[];
   if(!state.features)state.features=DEFAULT_FEATURES.map(function(f){return {id:uid(),name:f,description:''};});
   if(!state.workflowSteps)state.workflowSteps=DEFAULT_WORKFLOW_STEPS.map(function(label,i){return {id:'wf'+i,label:label};});
   if(!state.colorPalettes){
@@ -1197,9 +1258,10 @@ function showPage(id,el){
   if(id==='upload')renderUploadZone();
   if(id==='handoffs')renderHandoffs();
   if(id==='knownissues')renderKnownIssues();
+  if(id==='competitors')renderCompetitors();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderCompetitors();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -1571,6 +1633,23 @@ async function airtableCreateTestingItem(passAirtableId,productAirtableId,item){
 }
 async function airtableUpdateTestingItem(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_TESTING_ITEMS_TABLE,{records:[{id:airtableId,fields:fields}]});}
 
+var AIRTABLE_COMPETITORS_TABLE='tblgLaJmQrmI0unw2';
+async function airtableCreateCompetitor(c){
+  var fields={
+    'Seller':c.seller||'','Niche':c.niche||'','URL':c.url||'','Price':c.price||'',
+    'Date':c.date||'',
+    'Listing Reviews':c.listingReviews!==''&&c.listingReviews!=null?Number(c.listingReviews):null,
+    'Seller Sales':c.sellerSales!==''&&c.sellerSales!=null?Number(c.sellerSales):null,
+    'Seller Reviews':c.sellerReviews!==''&&c.sellerReviews!=null?Number(c.sellerReviews):null,
+    'Notes':c.notes||''
+  };
+  var res=await airtableRequest('POST','/'+AIRTABLE_COMPETITORS_TABLE,{records:[{fields:fields}]});
+  if(res&&res.records&&res.records[0]){c.airtableId=res.records[0].id;saveState();}
+  return c.airtableId;
+}
+async function airtableUpdateCompetitor(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_COMPETITORS_TABLE,{records:[{id:airtableId,fields:fields}]});}
+async function airtableDeleteCompetitor(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_COMPETITORS_TABLE+'?records[]='+airtableId,null);}
+
 // One-time (and re-runnable) reconciliation: matches existing local products/bugs to
 // their Airtable counterparts by Name/Text, so pre-existing local data (like the initial
 // import) links up correctly instead of creating duplicates. Anything with no match gets
@@ -1805,6 +1884,33 @@ async function reconcileWithAirtable(manual){
     if(!state.websites[wi].airtableId)await airtableCreateWebsite(state.websites[wi]);
   }
 
+  var competitorsRes=await airtableRequest('GET','/'+AIRTABLE_COMPETITORS_TABLE,null);
+  var remoteCompetitors=(competitorsRes&&competitorsRes.records)||[];
+  if(!state.competitors)state.competitors=[];
+  state.competitors.forEach(function(c){
+    if(!c.airtableId){
+      var m=remoteCompetitors.find(function(r){return r.fields&&r.fields['URL']&&c.url&&r.fields['URL']===c.url;})
+        ||remoteCompetitors.find(function(r){return r.fields&&r.fields['Seller']===c.seller&&r.fields['Niche']===c.niche;});
+      c.airtableId=m?m.id:null;
+    }
+  });
+  var localCompetitorIds=state.competitors.map(function(c){return c.airtableId;}).filter(Boolean);
+  remoteCompetitors.forEach(function(r){
+    if(localCompetitorIds.indexOf(r.id)===-1){
+      var f=r.fields||{};
+      var shot=f['Screenshot'];
+      state.competitors.push({
+        id:uid(),seller:f['Seller']||'',niche:f['Niche']||'Other',url:f['URL']||'',price:f['Price']||'',
+        date:f['Date']||'',listingReviews:f['Listing Reviews']||'',sellerSales:f['Seller Sales']||'',
+        sellerReviews:f['Seller Reviews']||'',notes:f['Notes']||'',
+        image:(shot&&shot[0])?shot[0].url:'',airtableId:r.id
+      });
+    }
+  });
+  for(var ci=0;ci<state.competitors.length;ci++){
+    if(!state.competitors[ci].airtableId)await airtableCreateCompetitor(state.competitors[ci]);
+  }
+
   var passesRes=await airtableRequest('GET','/'+AIRTABLE_PASSES_TABLE,null);
   var remotePasses=(passesRes&&passesRes.records)||[];
   var itemsRes=await airtableRequest('GET','/'+AIRTABLE_TESTING_ITEMS_TABLE,null);
@@ -1848,6 +1954,7 @@ async function reconcileWithAirtable(manual){
   if(typeof renderCalendar==='function')renderCalendar();
   if(typeof renderNotes==='function')renderNotes();
   if(typeof renderWebsites==='function')renderWebsites();
+  if(typeof renderCompetitors==='function')renderCompetitors();
   if(typeof renderTesting==='function')renderTesting();
 
   saveState();
@@ -3018,6 +3125,152 @@ function renderKnownIssues(){
   }).join('');
 }
 
+// ===== COMPETITOR TRACKER =====
+var _competitorEditIndex=null;
+var _competitorPendingImage='';
+var _competitorFilter='all';
+function openAddCompetitorModal(){
+  _competitorEditIndex=null;_competitorPendingImage='';
+  document.getElementById('competitor-modal-title').textContent='Add Listing';
+  document.getElementById('nc-niche').value='Wedding';
+  ['nc-seller','nc-url','nc-price','nc-listing-reviews','nc-seller-sales','nc-seller-reviews','nc-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('nc-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('nc-image-preview').style.display='none';
+  document.getElementById('nc-image-text').style.display='inline';
+  document.getElementById('add-competitor-modal').classList.add('open');
+}
+function editCompetitor(i){
+  var c=state.competitors[i];if(!c)return;
+  _competitorEditIndex=i;_competitorPendingImage=c.image||'';
+  document.getElementById('competitor-modal-title').textContent='Edit Listing';
+  document.getElementById('nc-niche').value=c.niche||'Wedding';
+  document.getElementById('nc-seller').value=c.seller||'';
+  document.getElementById('nc-url').value=c.url||'';
+  document.getElementById('nc-price').value=c.price||'';
+  document.getElementById('nc-date').value=c.date||'';
+  document.getElementById('nc-listing-reviews').value=c.listingReviews||'';
+  document.getElementById('nc-seller-sales').value=c.sellerSales||'';
+  document.getElementById('nc-seller-reviews').value=c.sellerReviews||'';
+  document.getElementById('nc-notes').value=c.notes||'';
+  if(c.image){
+    document.getElementById('nc-image-preview').src=c.image;
+    document.getElementById('nc-image-preview').style.display='block';
+    document.getElementById('nc-image-text').style.display='none';
+  }else{
+    document.getElementById('nc-image-preview').style.display='none';
+    document.getElementById('nc-image-text').style.display='inline';
+  }
+  document.getElementById('add-competitor-modal').classList.add('open');
+}
+function handleCompetitorImage(event){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    _competitorPendingImage=e.target.result;
+    document.getElementById('nc-image-preview').src=_competitorPendingImage;
+    document.getElementById('nc-image-preview').style.display='block';
+    document.getElementById('nc-image-text').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+async function saveCompetitor(){
+  var entry={
+    niche:document.getElementById('nc-niche').value,
+    seller:document.getElementById('nc-seller').value.trim(),
+    url:document.getElementById('nc-url').value.trim(),
+    price:document.getElementById('nc-price').value.trim(),
+    date:document.getElementById('nc-date').value,
+    listingReviews:document.getElementById('nc-listing-reviews').value,
+    sellerSales:document.getElementById('nc-seller-sales').value,
+    sellerReviews:document.getElementById('nc-seller-reviews').value,
+    notes:document.getElementById('nc-notes').value.trim(),
+    image:_competitorPendingImage,
+    airtableId:_competitorEditIndex!==null?(state.competitors[_competitorEditIndex]&&state.competitors[_competitorEditIndex].airtableId):null
+  };
+  if(!entry.seller){toast('Please enter a seller name');return;}
+  var isNewImage=_competitorPendingImage&&_competitorPendingImage.indexOf('data:')===0;
+  var saveBtn=document.getElementById('competitor-save-btn');
+  saveBtn.textContent='Saving…';saveBtn.disabled=true;
+  try{
+    var idx;
+    if(_competitorEditIndex!==null){state.competitors[_competitorEditIndex]=entry;idx=_competitorEditIndex;}
+    else{state.competitors.push(entry);idx=state.competitors.length-1;}
+    saveState();closeModal('add-competitor-modal');renderCompetitors();toast('Listing saved ✓');
+
+    if(airtableEnabled()){
+      var c=state.competitors[idx];
+      if(!c.airtableId){
+        await airtableCreateCompetitor(c);
+      } else {
+        await airtableUpdateCompetitor(c.airtableId,{
+          'Seller':c.seller,'Niche':c.niche,'URL':c.url,'Price':c.price,'Date':c.date,
+          'Listing Reviews':c.listingReviews!==''?Number(c.listingReviews):null,
+          'Seller Sales':c.sellerSales!==''?Number(c.sellerSales):null,
+          'Seller Reviews':c.sellerReviews!==''?Number(c.sellerReviews):null,
+          'Notes':c.notes
+        });
+      }
+      if(isNewImage&&c.airtableId){
+        var base64Only=_competitorPendingImage.split(',')[1];
+        var contentType=_competitorPendingImage.split(';')[0].split(':')[1];
+        var att=await airtableUploadAttachment(c.airtableId,'screenshot.png',contentType,base64Only,'Screenshot');
+        if(att){
+          await airtableReplaceAttachment(c.airtableId,'Screenshot',att);
+          c.image=att.url;saveState();renderCompetitors();
+        }
+      }
+    }
+  }catch(e){
+    toast('Saved locally, but sync had an issue');
+  }
+  saveBtn.textContent='Save Listing';saveBtn.disabled=false;
+}
+async function deleteCompetitor(i){
+  var c=state.competitors[i];if(!c)return;
+  if(!await styledConfirm('Remove Listing','Remove this competitor listing? This can\'t be undone.'))return;
+  if(airtableEnabled()&&c.airtableId)await airtableDeleteCompetitor(c.airtableId);
+  state.competitors.splice(i,1);saveState();renderCompetitors();toast('Listing removed ✓');
+}
+function setCompetitorFilter(n){_competitorFilter=n;renderCompetitors();}
+function renderCompetitors(){
+  var grid=document.getElementById('competitor-grid');
+  if(!grid)return;
+  var list=state.competitors||[];
+  var niches=['all'];
+  list.forEach(function(c){if(niches.indexOf(c.niche)===-1)niches.push(c.niche);});
+  var filterWrap=document.getElementById('competitor-filters');
+  filterWrap.innerHTML=niches.map(function(n){
+    var active=n===_competitorFilter?' style="background:var(--plum);color:var(--ivory);border-color:var(--plum);"':'';
+    return '<button class="btn-ghost" onclick="setCompetitorFilter(\''+n.replace(/'/g,"\\'")+'\')"'+active+'>'+(n==='all'?'All':n)+'</button>';
+  }).join('');
+
+  var filtered=list.map(function(c,i){return {c:c,i:i};}).filter(function(x){return _competitorFilter==='all'||x.c.niche===_competitorFilter;});
+  if(!filtered.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-style:italic;padding:32px;">No listings tracked yet.</div>';return;}
+  grid.innerHTML=filtered.map(function(x){
+    var c=x.c,i=x.i;
+    return '<div class="card" style="padding:0;overflow:hidden;">'+
+      '<div style="width:100%;height:140px;background:var(--ivory-dark);display:flex;align-items:center;justify-content:center;color:var(--muted-light);font-size:11px;overflow:hidden;">'+
+        (c.image?'<img src="'+c.image+'" style="width:100%;height:100%;object-fit:cover;">':'No screenshot')+
+      '</div>'+
+      '<div style="padding:12px 14px;">'+
+        '<div class="brand-chip" style="margin-bottom:6px;">'+(c.niche||'Other')+'</div>'+
+        '<div style="font-family:var(--font-serif);font-size:15px;margin-bottom:2px;">'+(c.seller||'Unnamed Seller')+'</div>'+
+        '<div style="font-size:13px;color:var(--sage-dark);font-weight:600;margin-bottom:8px;">'+(c.price||'—')+'</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;border-top:1px solid var(--border-light);"><span>Listing Reviews</span><strong style="color:var(--charcoal);">'+(c.listingReviews||'—')+'</strong></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;border-top:1px solid var(--border-light);"><span>Seller Sales</span><strong style="color:var(--charcoal);">'+(c.sellerSales||'—')+'</strong></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;border-top:1px solid var(--border-light);"><span>Seller Reviews</span><strong style="color:var(--charcoal);">'+(c.sellerReviews||'—')+'</strong></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:4px 0;border-top:1px solid var(--border-light);"><span>Checked</span><strong style="color:var(--charcoal);">'+(c.date||'—')+'</strong></div>'+
+        (c.url?'<a href="'+c.url+'" target="_blank" rel="noopener" style="display:block;font-size:11px;color:var(--rose-dark);margin-top:8px;word-break:break-all;">'+c.url+'</a>':'')+
+        (c.notes?'<div style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);white-space:pre-wrap;">'+c.notes.replace(/</g,'&lt;')+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:8px;padding:0 14px 12px;">'+
+        '<button class="btn-ghost" style="flex:1;" onclick="editCompetitor('+i+')">Edit</button>'+
+        '<button class="btn-ghost" style="flex:1;color:#b05a5a;" onclick="deleteCompetitor('+i+')">Delete</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
 // ===== BOOTSTRAP =====
 loadState();
 buildNav();
@@ -3028,5 +3281,37 @@ if(state.ownerName){
 if(airtableEnabled()){
   reconcileWithAirtable(false);
 }
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+function setOfflineUI(offline){
+  var banner=document.getElementById('offline-banner');
+  banner.style.display=offline?'block':'none';
+  document.body.classList.toggle('is-offline',offline);
+  if(!offline&&window._wasOffline&&airtableEnabled()){
+    reconcileWithAirtable(false);
+    toast('Back online — syncing ✓');
+  }
+  window._wasOffline=offline;
+}
+function probeConnectivity(){
+  var controller=new AbortController();
+  var timeoutId=setTimeout(function(){controller.abort();},4000);
+  fetch('manifest.json?_t='+Date.now(),{cache:'no-store',signal:controller.signal})
+    .then(function(res){
+      clearTimeout(timeoutId);
+      setOfflineUI(!res.ok);
+    })
+    .catch(function(){
+      clearTimeout(timeoutId);
+      setOfflineUI(true);
+    });
+}
+probeConnectivity();
+setInterval(probeConnectivity,5000);
+window.addEventListener('online',probeConnectivity);
+window.addEventListener('offline',function(){setOfflineUI(true);});
 </script>
 </body></html>
