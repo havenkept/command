@@ -3133,20 +3133,34 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(function(){});
   });
 }
-function updateOfflineBanner(){
+// iOS standalone/home-screen apps don't reliably fire online/offline events, so this
+// actively probes connectivity on an interval instead of waiting to be told.
+function setOfflineUI(offline){
   var banner=document.getElementById('offline-banner');
-  var offline=!navigator.onLine;
   banner.style.display=offline?'block':'none';
   document.body.classList.toggle('is-offline',offline);
   if(!offline&&window._wasOffline&&airtableEnabled()){
-    // Back online after being offline — catch up any Airtable changes automatically
     reconcileWithAirtable(false);
     toast('Back online — syncing ✓');
   }
   window._wasOffline=offline;
 }
-window.addEventListener('online',updateOfflineBanner);
-window.addEventListener('offline',updateOfflineBanner);
-updateOfflineBanner();
+function probeConnectivity(){
+  var controller=new AbortController();
+  var timeoutId=setTimeout(function(){controller.abort();},4000);
+  fetch('manifest.json?_t='+Date.now(),{cache:'no-store',signal:controller.signal})
+    .then(function(res){
+      clearTimeout(timeoutId);
+      setOfflineUI(!res.ok);
+    })
+    .catch(function(){
+      clearTimeout(timeoutId);
+      setOfflineUI(true);
+    });
+}
+probeConnectivity();
+setInterval(probeConnectivity,5000);
+window.addEventListener('online',probeConnectivity);
+window.addEventListener('offline',function(){setOfflineUI(true);});
 </script>
 </body></html>
