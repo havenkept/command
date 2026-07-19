@@ -76,6 +76,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--plum) !i
 .sidebar-footer{margin-top:auto;padding:16px 12px 4px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);}
 .sidebar-footer a{color:var(--plum);text-decoration:none;font-weight:500;}
 .sidebar-footer a:hover{text-decoration:underline;}
+.toggle-switch{position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:99px;transition:background .18s ease;}
+.toggle-slider::before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:var(--white);border-radius:50%;transition:transform .18s ease;box-shadow:var(--shadow-sm);}
+.toggle-switch input:checked + .toggle-slider{background:var(--plum);}
+.toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);}
+.welcome-modal-backdrop{position:fixed;inset:0;background:rgba(20,18,14,0.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;}
+.welcome-modal{background:var(--white);border-radius:20px;max-width:360px;width:100%;padding:34px 28px;text-align:center;box-shadow:var(--shadow-lg);max-height:85vh;overflow-y:auto;}
+.welcome-modal .wm-divider{width:32px;height:2px;background:var(--terracotta);margin:0 auto 18px;}
+.welcome-modal h2{font-size:34px;font-style:italic;color:var(--plum);margin-bottom:6px;}
+.welcome-modal .wm-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:22px;}
+.welcome-modal .wm-note{font-size:14px;line-height:1.7;color:var(--charcoal);white-space:pre-wrap;margin-bottom:20px;text-align:left;}
+.welcome-modal .wm-signoff{font-size:13px;font-style:italic;color:var(--text-muted);margin-bottom:24px;}
+.welcome-modal button{background:var(--plum);color:var(--on-color);padding:12px 30px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--shadow-sm);}
+.welcome-modal button:hover{background:#223c3c;}
 
 .field-group{margin-bottom:18px;}
 .field-group label{display:block;font-size:12px;color:#5c574d;margin-bottom:6px;font-weight:500;}
@@ -343,6 +358,21 @@ html[data-theme="dark"] .phone{border-color:#000;}
         <div id="photo-preview-wrap" class="hidden" style="margin-bottom:18px;">
           <img id="photo-preview" src="" alt="Property photo preview" style="width:100%;max-width:320px;height:160px;object-fit:cover;border-radius:12px;border:1px solid var(--border);">
         </div>
+
+        <div class="card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:2px;">Welcome note</div>
+            <div style="font-size:12px;color:var(--text-muted);">Shows in a popup the moment a guest opens the guide</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="in-welcome-enabled" checked onchange="updateField('property.welcomeEnabled', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="field-group">
+          <label>Note to guests</label>
+          <textarea id="in-welcome-note" oninput="updateField('property.welcomeNote', this.value)" placeholder="Welcome! We're so glad you're here. Make yourself at home, and reach out anytime if you need anything during your stay." style="min-height:100px;"></textarea>
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-wifi">
@@ -481,6 +511,16 @@ html[data-theme="dark"] .phone{border-color:#000;}
 
   <!-- GUEST VIEW -->
   <div id="guest-view" class="hidden">
+    <div class="welcome-modal-backdrop hidden" id="welcome-modal-backdrop">
+      <div class="welcome-modal">
+        <div class="wm-divider"></div>
+        <h2>Welcome</h2>
+        <div class="wm-sub">We're so happy to have you</div>
+        <div class="wm-note" id="welcome-modal-text"></div>
+        <div class="wm-signoff" id="welcome-modal-signoff"></div>
+        <button onclick="closeWelcomeModal()">Continue</button>
+      </div>
+    </div>
     <div class="guest-topbar">
       <button onclick="setAppMode('setup')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Back to Setup</button>
     </div>
@@ -3449,7 +3489,7 @@ const PALETTES = {
 };
 
 let state = {
-  property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'' },
+  property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -3460,7 +3500,7 @@ let state = {
 
 function defaultState(){
   return {
-    property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'' },
+    property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -3501,10 +3541,27 @@ function updateField(path, value){
   renderAll();
 }
 
+function maybeShowWelcomeModal(){
+  const backdrop = document.getElementById('welcome-modal-backdrop');
+  const note = (state.property.welcomeNote || '').trim();
+  if(state.property.welcomeEnabled && note){
+    document.getElementById('welcome-modal-text').textContent = note;
+    document.getElementById('welcome-modal-signoff').textContent = state.property.hostName ? '\u2014 ' + state.property.hostName : '';
+    backdrop.classList.remove('hidden');
+  } else {
+    backdrop.classList.add('hidden');
+  }
+}
+
+function closeWelcomeModal(){
+  document.getElementById('welcome-modal-backdrop').classList.add('hidden');
+}
+
 function setAppMode(mode){
   document.getElementById('setup-view').classList.toggle('hidden', mode!=='setup');
   document.getElementById('guest-view').classList.toggle('hidden', mode!=='guest');
   document.title = mode === 'setup' ? 'HavenKept Stay Guide' : 'Stay Guide';
+  if(mode === 'guest'){ maybeShowWelcomeModal(); }
 }
 
 const PAGE_TITLES = {
@@ -4111,6 +4168,8 @@ function renderAll(){
   document.getElementById('in-host-phone').value = state.property.hostPhone;
   document.getElementById('in-address').value = state.property.address;
   document.getElementById('in-photo-url').value = state.property.photoUrl;
+  document.getElementById('in-welcome-enabled').checked = state.property.welcomeEnabled;
+  document.getElementById('in-welcome-note').value = state.property.welcomeNote;
   const preview = document.getElementById('photo-preview');
   const previewWrap = document.getElementById('photo-preview-wrap');
   if(state.property.photoUrl){
@@ -4278,6 +4337,7 @@ function initGuestOnlyModeIfLinked(){
   document.getElementById('setup-view').classList.add('hidden');
   document.getElementById('guest-view').classList.remove('hidden');
   document.title = 'Stay Guide';
+  maybeShowWelcomeModal();
   return true;
 }
 
