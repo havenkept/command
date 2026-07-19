@@ -287,6 +287,8 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .tips-card .tips-title{font-size:12px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .tips-card ul{margin:0;padding-left:18px;}
 .tips-card li{font-size:12px;color:var(--text-muted);line-height:1.7;}
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:600;margin:18px 0 8px;}
+.section-label:first-child{margin-top:0;}
 </style>
 </head>
 <body>
@@ -456,7 +458,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
         <h2>Help</h2>
         <p class="sub">Emergency and contact info, always one tap away for guests.</p>
         <div class="card">
-          <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">host contact (from Basics)</div>
+          <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Host contact (from Basics)</div>
           <div style="font-size:14px;" id="help-host-preview">Not set yet</div>
         </div>
         <div class="field-group" style="margin-top:16px;">
@@ -645,7 +647,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
             <button class="copy-btn" onclick="copyToClipboard('door-code', this)">copy</button>
           </div>
           <div class="card" style="margin-top:4px;">
-            <div class="label" style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">parking</div>
+            <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Parking</div>
             <div style="font-size:13px;" id="guest-parking">—</div>
           </div>
           <div class="tips-card">
@@ -674,9 +676,9 @@ html[data-theme="dark"] .phone{border-color:#000;}
               <div class="tc-value" id="guest-checkout-time">—</div>
             </div>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Arrival</p>
+          <p class="section-label">Arrival</p>
           <div class="card" id="guest-arrival-list"></div>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Before you go</p>
+          <p class="section-label">Before you go</p>
           <div class="card" id="guest-checkout-list"></div>
         </div>
       </div>
@@ -702,11 +704,11 @@ html[data-theme="dark"] .phone{border-color:#000;}
           </div>
           <div id="guest-help-numbers"></div>
           <div class="card" style="margin-top:4px;">
-            <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">nearest hospital</div>
+            <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Nearest hospital</div>
             <div style="font-size:13px;" id="guest-help-hospital">—</div>
           </div>
           <div class="card" id="guest-help-notes-card" style="display:none;">
-            <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">notes</div>
+            <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Notes</div>
             <div style="font-size:13px;" id="guest-help-notes">—</div>
           </div>
         </div>
