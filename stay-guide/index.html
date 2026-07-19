@@ -580,9 +580,9 @@ html[data-theme="dark"] .phone{border-color:#000;}
           </div>
         </div>
         <div class="guest-body" style="padding-top:0;">
-          <div class="info-row floating-card">
+          <div class="info-row floating-card" onclick="showGuestTab('guest-wifi')" style="cursor:pointer;">
             <div><div class="label">wifi network</div><div class="value" id="guest-wifi-network-preview">—</div></div>
-            <button class="copy-btn" onclick="copyToClipboard('wifi-network', this)">copy</button>
+            <span style="font-size:11px;color:var(--text-muted);">tap for password</span>
           </div>
           <div class="launcher-grid">
             <div class="launcher-tile" onclick="showGuestTab('guest-wifi')">
