@@ -422,6 +422,25 @@ html[data-theme="dark"] .phone{border-color:#000;}
         </div>
         <p class="sub" style="margin-bottom:12px;">Palette</p>
         <div class="palette-grid" id="palette-grid"></div>
+        <div id="custom-color-picker-wrap" class="hidden" style="margin-top:16px;">
+          <div class="field-row">
+            <div class="field-group">
+              <label>Primary color</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="color" id="in-custom-primary" oninput="updateCustomColor('customPrimary', this.value)" style="width:44px;height:38px;padding:2px;border-radius:8px;">
+                <input type="text" id="in-custom-primary-hex" oninput="updateCustomColorHex('customPrimary', this.value)" placeholder="#2B4A4A" style="flex:1;">
+              </div>
+            </div>
+            <div class="field-group">
+              <label>Accent color</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="color" id="in-custom-accent" oninput="updateCustomColor('customAccent', this.value)" style="width:44px;height:38px;padding:2px;border-radius:8px;">
+                <input type="text" id="in-custom-accent-hex" oninput="updateCustomColorHex('customAccent', this.value)" placeholder="#D98E5C" style="flex:1;">
+              </div>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted);line-height:1.5;">Pick any two colors. Everything else, like text contrast in dark mode, adjusts automatically.</p>
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-help">
@@ -3518,7 +3537,7 @@ const PALETTES = {
 let state = {
   property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
-  design: { palette: 'coastal' },
+  design: { palette: 'coastal', customPrimary:'#2B4A4A', customAccent:'#D98E5C' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
   checkin: { checkinTime:'', checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
   localRecs: [],
@@ -3529,7 +3548,7 @@ function defaultState(){
   return {
     property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
-    design: { palette: 'coastal' },
+    design: { palette: 'coastal', customPrimary:'#2B4A4A', customAccent:'#D98E5C' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
     checkin: { checkinTime:'', checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
     localRecs: [],
@@ -3628,6 +3647,21 @@ function copyToClipboard(field, btn){
   }
 }
 
+function updateCustomColor(field, value){
+  state.design[field] = value;
+  saveState();
+  renderAll();
+}
+
+function updateCustomColorHex(field, value){
+  const v = value.trim();
+  if(/^#[0-9A-Fa-f]{6}$/.test(v)){
+    state.design[field] = v;
+    saveState();
+    renderAll();
+  }
+}
+
 function renderPaletteGrid(){
   const grid = document.getElementById('palette-grid');
   grid.innerHTML = '';
@@ -3650,6 +3684,30 @@ function renderPaletteGrid(){
     div.appendChild(label);
     grid.appendChild(div);
   });
+
+  const customDiv = document.createElement('div');
+  customDiv.className = 'palette-option' + (state.design.palette==='custom' ? ' selected' : '');
+  customDiv.onclick = () => { updateField('design.palette', 'custom'); };
+  const customSwatchRow = document.createElement('div');
+  customSwatchRow.className = 'swatch-row';
+  const customColors = [state.design.customPrimary, blendHex(state.design.customPrimary, state.design.customAccent, 0.5), state.design.customAccent, '#FAF8F4'];
+  customColors.forEach(c=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = c;
+    customSwatchRow.appendChild(sw);
+  });
+  const customLabel = document.createElement('p');
+  customLabel.textContent = 'Custom';
+  customDiv.appendChild(customSwatchRow);
+  customDiv.appendChild(customLabel);
+  grid.appendChild(customDiv);
+
+  document.getElementById('custom-color-picker-wrap').classList.toggle('hidden', state.design.palette !== 'custom');
+  document.getElementById('in-custom-primary').value = state.design.customPrimary;
+  document.getElementById('in-custom-primary-hex').value = state.design.customPrimary;
+  document.getElementById('in-custom-accent').value = state.design.customAccent;
+  document.getElementById('in-custom-accent-hex').value = state.design.customAccent;
 }
 
 function hexToRgba(hex, alpha){
@@ -3672,20 +3730,37 @@ function lightenHex(hex, amount){
   return '#' + toHex(nr) + toHex(ng) + toHex(nb);
 }
 
+function blendHex(hex1, hex2, ratio){
+  const h1 = hex1.replace('#',''), h2 = hex2.replace('#','');
+  const r1=parseInt(h1.substring(0,2),16), g1=parseInt(h1.substring(2,4),16), b1=parseInt(h1.substring(4,6),16);
+  const r2=parseInt(h2.substring(0,2),16), g2=parseInt(h2.substring(2,4),16), b2=parseInt(h2.substring(4,6),16);
+  const toHex = (x) => Math.round(x).toString(16).padStart(2,'0');
+  return '#' + toHex(r1+(r2-r1)*ratio) + toHex(g1+(g2-g1)*ratio) + toHex(b1+(b2-b1)*ratio);
+}
+
+function getActivePaletteColors(){
+  if(state.design.palette === 'custom'){
+    const primary = state.design.customPrimary || '#2B4A4A';
+    const accent = state.design.customAccent || '#D98E5C';
+    return [primary, blendHex(primary, accent, 0.5), accent, '#FAF8F4'];
+  }
+  return PALETTES[state.design.palette].colors;
+}
+
 function applyPaletteToGuestView(){
-  const p = PALETTES[state.design.palette];
-  document.documentElement.style.setProperty('--plum', p.colors[0]);
-  document.documentElement.style.setProperty('--teal', p.colors[1]);
-  document.documentElement.style.setProperty('--terracotta', p.colors[2]);
-  document.documentElement.style.setProperty('--plum-tint', hexToRgba(p.colors[0], 0.12));
-  document.documentElement.style.setProperty('--teal-tint', hexToRgba(p.colors[1], 0.16));
-  document.documentElement.style.setProperty('--terracotta-tint', hexToRgba(p.colors[2], 0.18));
+  const colors = getActivePaletteColors();
+  document.documentElement.style.setProperty('--plum', colors[0]);
+  document.documentElement.style.setProperty('--teal', colors[1]);
+  document.documentElement.style.setProperty('--terracotta', colors[2]);
+  document.documentElement.style.setProperty('--plum-tint', hexToRgba(colors[0], 0.12));
+  document.documentElement.style.setProperty('--teal-tint', hexToRgba(colors[1], 0.16));
+  document.documentElement.style.setProperty('--terracotta-tint', hexToRgba(colors[2], 0.18));
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   if(isDark){
     document.documentElement.style.removeProperty('--sand');
-    document.documentElement.style.setProperty('--plum-text', lightenHex(p.colors[0], 0.62));
+    document.documentElement.style.setProperty('--plum-text', lightenHex(colors[0], 0.62));
   } else {
-    document.documentElement.style.setProperty('--sand', p.colors[3]);
+    document.documentElement.style.setProperty('--sand', colors[3]);
     document.documentElement.style.removeProperty('--plum-text');
   }
 }
