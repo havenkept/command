@@ -163,11 +163,17 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .guest-hero .eyebrow{font-size:11px;color:rgba(255,255,255,0.72);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em;}
 .guest-hero h2{font-size:25px;color:var(--on-color);line-height:1.15;}
 .floating-card{margin:-24px 22px 4px !important;box-shadow:var(--shadow-md);position:relative;z-index:2;}
-.wifi-quick-card{display:flex;gap:14px;}
-.wqc-col{flex:1;min-width:0;}
-.wqc-pw-row{display:flex;align-items:center;gap:8px;margin-top:3px;}
-.wqc-pw-row .value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wqc-pw-row .copy-btn{flex-shrink:0;}
+.wifi-quick-card-v2{display:flex;flex-direction:column;gap:2px;}
+.wqr-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;}
+.wqr-row:first-child{border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:4px;}
+.wqr-label{font-size:11px;color:var(--text-muted);font-weight:500;}
+.wqr-value{font-size:14px;font-weight:600;color:var(--charcoal);}
+.wqr-value-group{display:flex;align-items:center;gap:10px;}
+.copy-icon-btn{width:28px;height:28px;border-radius:8px;background:var(--sand);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .16s ease;}
+.copy-icon-btn:hover{background:var(--border);}
+.copy-icon-btn svg{width:14px;height:14px;stroke:var(--charcoal);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.copy-icon-btn.copied{background:var(--success);}
+.copy-icon-btn.copied svg{stroke:var(--on-color);}
 .icon-circle.c-plum{background:var(--plum-tint);color:var(--plum-text);}
 .icon-circle.c-teal{background:var(--teal-tint);color:var(--teal);}
 .icon-circle.c-terracotta{background:var(--terracotta-tint);color:var(--terracotta);}
@@ -599,17 +605,19 @@ html[data-theme="dark"] .phone{border-color:#000;}
           </div>
         </div>
         <div class="guest-body" style="padding-top:0;">
-          <div class="card floating-card wifi-quick-card">
-            <div class="wqc-col">
-              <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">Wifi network</div>
-              <div class="value" id="guest-wifi-network-preview" style="font-size:14px;font-weight:500;margin-top:3px;">—</div>
+          <div class="card floating-card wifi-quick-card-v2">
+            <div class="wqr-row">
+              <span class="wqr-label">Network</span>
+              <span class="wqr-value" id="guest-wifi-network-preview">—</span>
             </div>
-            <div class="wqc-col">
-              <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">Password</div>
-              <div class="wqc-pw-row">
-                <div class="value" id="guest-wifi-password-preview" style="font-size:14px;font-weight:500;">—</div>
-                <button class="copy-btn" onclick="copyToClipboard('wifi-password', this)">copy</button>
-              </div>
+            <div class="wqr-row">
+              <span class="wqr-label">Password</span>
+              <span class="wqr-value-group">
+                <span class="wqr-value" id="guest-wifi-password-preview">—</span>
+                <button class="copy-icon-btn" onclick="copyToClipboard('wifi-password', this)" aria-label="Copy password">
+                  <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                </button>
+              </span>
             </div>
           </div>
           <div class="launcher-grid">
@@ -4047,10 +4055,15 @@ function copyToClipboard(field, btn){
   const val = map[field] || '';
   if(navigator.clipboard && val){
     navigator.clipboard.writeText(val).then(()=>{
-      const original = btn.textContent;
-      btn.textContent = 'copied';
+      const isIconOnly = btn.querySelector('svg') !== null;
       btn.classList.add('copied');
-      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+      if(isIconOnly){
+        setTimeout(()=>{ btn.classList.remove('copied'); }, 1500);
+      } else {
+        const original = btn.textContent;
+        btn.textContent = 'copied';
+        setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+      }
     });
   }
 }
@@ -4729,8 +4742,8 @@ function renderAll(){
   document.getElementById('guest-wifi-password').textContent = state.wifi.password || 'Not set yet';
   document.getElementById('guest-door-code').textContent = state.wifi.doorCode || 'Not set yet';
   document.getElementById('guest-parking').textContent = state.wifi.parkingNotes || 'Not set yet';
-  document.getElementById('guest-checkin-note').textContent = state.checkin.checkinTime ? ('Check-in is ' + state.checkin.checkinTime) : 'Add check-in time in Setup';
-  document.getElementById('guest-checkout-note').textContent = state.checkin.checkoutTime ? ('Checkout is ' + state.checkin.checkoutTime) : 'Add checkout time in Setup';
+  document.getElementById('guest-checkin-note').textContent = state.checkin.checkinTime || 'Add check-in time in Setup';
+  document.getElementById('guest-checkout-note').textContent = state.checkin.checkoutTime || 'Add checkout time in Setup';
 
   const basicsDone = !!(state.property.name && state.property.hostName);
   const wifiDone = !!(state.wifi.network && state.wifi.password);
