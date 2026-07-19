@@ -16,12 +16,28 @@
   --heather:#A895B0;--heather-light:#EAE3ED;
   --rose:#B98D7A;--rose-light:#F5EBE5;--rose-dark:#8C6350;
   --sage:#7D9B76;--sage-light:#DCE6D8;--sage-dark:#4A6645;
+  --amber:#C08A3E;--amber-light:#F5EBDA;
   --font-serif:'Cormorant Garamond',Georgia,serif;
   --font-sans:'Jost',system-ui,sans-serif;
   --sidebar-w:220px;
 }
+body.dark-mode{
+  color-scheme:dark;
+  --plum:#C9A8DE;--plum-dark:#B98BD6;--plum-light:#2B2233;
+  --ivory:#1C151F;--ivory-dark:#150F17;--warm-white:#251C29;
+  --charcoal:#F2EAEE;--muted:#A8969E;--muted-light:#726270;
+  --border:#3A2E3F;--border-light:#2E242F;
+  --heather:#BBA5C6;--heather-light:#2E2438;
+  --rose:#D9AB98;--rose-light:#39281F;--rose-dark:#E8B8A2;
+  --sage:#9BBC93;--sage-light:#233024;--sage-dark:#A9CFA1;
+  --amber:#D9A855;--amber-light:#3A2E17;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--font-sans);background:var(--ivory);color:var(--charcoal);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-text-size-adjust:100%;}
+body{font-family:var(--font-sans);background:var(--ivory);color:var(--charcoal);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-text-size-adjust:100%;transition:background-color 0.25s ease,color 0.25s ease;}
+body,.card,.stat-card,input,select,textarea,.sidebar,.bottom-nav{transition:background-color 0.2s ease,border-color 0.2s ease,color 0.2s ease;}
+.theme-toggle{display:flex;align-items:center;gap:8px;padding:9px 12px;margin:4px 10px 10px;border-radius:8px;border:1px solid var(--border);background:var(--warm-white);cursor:pointer;font-family:var(--font-sans);font-size:11.5px;color:var(--muted);}
+.theme-toggle:hover{border-color:var(--rose);color:var(--rose-dark);}
+.theme-toggle svg{flex-shrink:0;}
 a{color:inherit;}
 .page{display:none;}
 .page.active{display:block;}
@@ -259,6 +275,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     <div class="sidebar-subtitle">Command Center</div>
   </div>
   <div class="sidebar-nav" id="sidebar-nav"></div>
+  <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleDarkMode()"></button>
 </nav>
 <nav class="bottom-nav"><div class="bottom-nav-inner" id="bottom-nav-inner"></div></nav>
 
@@ -708,7 +725,9 @@ var ICONS={
   kanban:'<rect x="3" y="3" width="6" height="18" rx="1"/><rect x="10.5" y="3" width="6" height="12" rx="1"/><rect x="18" y="3" width="3" height="8" rx="1"/>',
   handoff:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>',
   flagShield:'<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/>',
-  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>'
 };
 function svgIcon(key,size){
   size=size||17;
@@ -1199,7 +1218,7 @@ function showPage(id,el){
   if(id==='knownissues')renderKnownIssues();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();applyDarkMode();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -1433,23 +1452,6 @@ async function airtableRequest(method,path,body){
     return null;
   }
 }
-// Airtable's List Records API caps each response at 100 records and returns an
-// "offset" token when more exist. Plain airtableRequest('GET',...) ignores that
-// token and silently truncates any table over 100 records — this follows it until
-// exhausted so large tables (like Testing Items, which grows fast) fully sync.
-async function airtableRequestAll(path){
-  var allRecords=[];
-  var offset=null;
-  var sep=path.indexOf('?')===-1?'?':'&';
-  do{
-    var pagePath=path+(offset?(sep+'offset='+encodeURIComponent(offset)):'');
-    var res=await airtableRequest('GET',pagePath,null);
-    if(!res)break;
-    if(res.records)allRecords=allRecords.concat(res.records);
-    offset=res.offset||null;
-  }while(offset);
-  return {records:allRecords};
-}
 
 async function airtableCreateProduct(p){
   var fields={};
@@ -1600,15 +1602,15 @@ async function reconcileWithAirtable(manual){
   var statusEl=document.getElementById('airtable-sync-status');
   if(statusEl)statusEl.textContent='Syncing…';
 
-  var productsRes=await airtableRequestAll('/'+AIRTABLE_PRODUCTS_TABLE);
+  var productsRes=await airtableRequest('GET','/'+AIRTABLE_PRODUCTS_TABLE,null);
   var remoteProducts=(productsRes&&productsRes.records)||[];
   var getError=_airtableLastError;
 
-  var bugsRes=await airtableRequestAll('/'+AIRTABLE_BUGS_TABLE);
+  var bugsRes=await airtableRequest('GET','/'+AIRTABLE_BUGS_TABLE,null);
   var remoteBugs=(bugsRes&&bugsRes.records)||[];
   if(!getError)getError=_airtableLastError;
 
-  var featuresRes=await airtableRequestAll('/'+AIRTABLE_FEATURES_TABLE);
+  var featuresRes=await airtableRequest('GET','/'+AIRTABLE_FEATURES_TABLE,null);
   var remoteFeatures=(featuresRes&&featuresRes.records)||[];
   if(!getError)getError=_airtableLastError;
 
@@ -1727,7 +1729,7 @@ async function reconcileWithAirtable(manual){
   // ===== FULL TWO-WAY RECONCILE: Custom Orders, Calendar Events, Notes, Websites, Testing =====
   var stageMapRev={'Inquiry':'inquiry','Intake':'deposit paid','In Progress':'building','Delivered':'delivered'};
 
-  var ordersRes=await airtableRequestAll('/'+AIRTABLE_ORDERS_TABLE);
+  var ordersRes=await airtableRequest('GET','/'+AIRTABLE_ORDERS_TABLE,null);
   var remoteOrders=(ordersRes&&ordersRes.records)||[];
   if(!state.customOrders)state.customOrders=[];
   state.customOrders.forEach(function(o){
@@ -1753,7 +1755,7 @@ async function reconcileWithAirtable(manual){
     if(!state.customOrders[oi].airtableId)await airtableCreateOrder(state.customOrders[oi]);
   }
 
-  var eventsRes=await airtableRequestAll('/'+AIRTABLE_EVENTS_TABLE);
+  var eventsRes=await airtableRequest('GET','/'+AIRTABLE_EVENTS_TABLE,null);
   var remoteEvents=(eventsRes&&eventsRes.records)||[];
   if(!state.calendarEvents)state.calendarEvents=[];
   state.calendarEvents.forEach(function(e){
@@ -1773,7 +1775,7 @@ async function reconcileWithAirtable(manual){
     if(!state.calendarEvents[ei].airtableId)await airtableCreateEvent(state.calendarEvents[ei]);
   }
 
-  var notesRes=await airtableRequestAll('/'+AIRTABLE_NOTES_TABLE);
+  var notesRes=await airtableRequest('GET','/'+AIRTABLE_NOTES_TABLE,null);
   var remoteNotes=(notesRes&&notesRes.records)||[];
   if(!state.notes)state.notes=[];
   state.notes.forEach(function(n){
@@ -1802,7 +1804,7 @@ async function reconcileWithAirtable(manual){
     if(!state.notes[ni].airtableId)await airtableCreateNote(state.notes[ni]);
   }
 
-  var websitesRes=await airtableRequestAll('/'+AIRTABLE_WEBSITES_TABLE);
+  var websitesRes=await airtableRequest('GET','/'+AIRTABLE_WEBSITES_TABLE,null);
   var remoteWebsites=(websitesRes&&websitesRes.records)||[];
   if(!state.websites)state.websites=[];
   state.websites.forEach(function(w){
@@ -1822,9 +1824,9 @@ async function reconcileWithAirtable(manual){
     if(!state.websites[wi].airtableId)await airtableCreateWebsite(state.websites[wi]);
   }
 
-  var passesRes=await airtableRequestAll('/'+AIRTABLE_PASSES_TABLE);
+  var passesRes=await airtableRequest('GET','/'+AIRTABLE_PASSES_TABLE,null);
   var remotePasses=(passesRes&&passesRes.records)||[];
-  var itemsRes=await airtableRequestAll('/'+AIRTABLE_TESTING_ITEMS_TABLE);
+  var itemsRes=await airtableRequest('GET','/'+AIRTABLE_TESTING_ITEMS_TABLE,null);
   var remoteItems=(itemsRes&&itemsRes.records)||[];
   if(!state.testingPasses)state.testingPasses=[];
   state.testingPasses.forEach(function(pass){
@@ -1839,30 +1841,6 @@ async function reconcileWithAirtable(manual){
         var im=thisPassItems.find(function(r){return r.fields&&r.fields['Item Text']===item.text;});
         item.airtableId=im?im.id:null;
       }
-    });
-    // Pull in any remote items for this pass that aren't represented locally yet —
-    // matched by airtableId first, falling back to exact text match to avoid duplicates.
-    // Without this, items added to an already-synced pass in Airtable would never
-    // appear locally no matter how many times Sync Now was clicked.
-    var localAirtableItemIds=pass.items.map(function(i){return i.airtableId;}).filter(Boolean);
-    var localItemTexts=pass.items.map(function(i){return i.text;});
-    thisPassItems.forEach(function(ri){
-      if(localAirtableItemIds.indexOf(ri.id)!==-1)return;
-      var rf=ri.fields||{};
-      var text=rf['Item Text']||'';
-      if(localItemTexts.indexOf(text)!==-1)return;
-      pass.items.push({id:uid(),section:rf['Section']||'General',text:text,priority:!!rf['Priority'],done:!!rf['Done'],note:rf['Note']||'',knownIssue:!!rf['Known Issue'],airtableId:ri.id});
-    });
-    // Also pick up remote Done/Note/Priority edits on items we already know about,
-    // so changes made directly in Airtable (or by Claude) are reflected here too.
-    pass.items.forEach(function(item){
-      if(!item.airtableId)return;
-      var ri=thisPassItems.find(function(r){return r.id===item.airtableId;});
-      if(!ri||!ri.fields)return;
-      item.done=!!ri.fields['Done'];
-      item.note=ri.fields['Note']||item.note||'';
-      item.priority=!!ri.fields['Priority'];
-      item.knownIssue=!!ri.fields['Known Issue'];
     });
   });
   var localPassIds=state.testingPasses.map(function(p){return p.airtableId;}).filter(Boolean);
@@ -3071,6 +3049,19 @@ function renderKnownIssues(){
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'+(chips||'<span style="font-size:11.5px;color:var(--muted);font-style:italic;">Add products to check them against this issue.</span>')+'</div>'
     +'</div>';
   }).join('');
+}
+
+// ===== DARK MODE =====
+function applyDarkMode(){
+  var on=!!state.darkMode;
+  document.body.classList.toggle('dark-mode',on);
+  var btn=document.getElementById('theme-toggle-btn');
+  if(btn)btn.innerHTML=svgIcon(on?'sun':'moon',15)+'<span>'+(on?'Light Mode':'Dark Mode')+'</span>';
+}
+function toggleDarkMode(){
+  state.darkMode=!state.darkMode;
+  saveState();
+  applyDarkMode();
 }
 
 // ===== BOOTSTRAP =====
