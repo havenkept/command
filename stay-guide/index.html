@@ -177,6 +177,7 @@ input,select,textarea{font-family:'Jost',sans-serif;}
       <div class="nav-item" data-page="checkin" onclick="showSetupPage('checkin')">Check-in / out</div>
       <div class="nav-item" data-page="houseguide" onclick="showSetupPage('houseguide')">House guide</div>
       <div class="nav-item" data-page="localrecs" onclick="showSetupPage('localrecs')">Local recs</div>
+      <div class="nav-item" data-page="help" onclick="showSetupPage('help')">Help</div>
       <div class="nav-item" data-page="design" onclick="showSetupPage('design')">Design</div>
     </div>
     <div class="setup-main">
@@ -185,12 +186,13 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <h2>Setup progress</h2>
         <p class="sub" id="progress-sub">0 of 3 sections complete</p>
         <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-        <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);">
+        <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);row-gap:10px;">
           <div class="stat-card"><div class="label">basics</div><div class="status pending" id="stat-basics">not started</div></div>
           <div class="stat-card"><div class="label">wifi & access</div><div class="status pending" id="stat-wifi">not started</div></div>
           <div class="stat-card"><div class="label">check-in / out</div><div class="status pending" id="stat-checkin">not started</div></div>
           <div class="stat-card"><div class="label">house guide</div><div class="status pending" id="stat-houseguide">not started</div></div>
           <div class="stat-card"><div class="label">local recs</div><div class="status pending" id="stat-localrecs">not started</div></div>
+          <div class="stat-card"><div class="label">help</div><div class="status pending" id="stat-help">not started</div></div>
         </div>
         <div class="action-row">
           <button class="btn primary" onclick="setAppMode('guest')">Preview guest view</button>
@@ -255,6 +257,33 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <h2>Design</h2>
         <p class="sub">Pick a palette. This changes what guests see, not the setup screens.</p>
         <div class="palette-grid" id="palette-grid"></div>
+      </div>
+
+      <div class="setup-page hidden" id="page-help">
+        <h2>Help</h2>
+        <p class="sub">Emergency and contact info, always one tap away for guests.</p>
+        <div class="card">
+          <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">host contact (from Basics)</div>
+          <div style="font-size:14px;" id="help-host-preview">Not set yet</div>
+        </div>
+        <div class="field-group" style="margin-top:16px;">
+          <label>Nearest hospital / urgent care</label>
+          <input type="text" id="in-nearest-hospital" oninput="updateField('helpInfo.nearestHospital', this.value)" placeholder="Boone Medical Center, 10 min drive">
+        </div>
+        <div class="field-group">
+          <label>Additional notes</label>
+          <textarea id="in-help-notes" oninput="updateField('helpInfo.notes', this.value)" placeholder="Anything else guests should know in an emergency"></textarea>
+        </div>
+        <p class="sub" style="margin:20px 0 8px;">Emergency numbers</p>
+        <div class="card" id="help-numbers-list"></div>
+        <div class="add-form">
+          <div class="field-row">
+            <div class="field-group"><label>Label</label><input type="text" id="help-new-label" placeholder="e.g. Local police (non-emergency)"></div>
+            <div class="field-group"><label>Number</label><input type="text" id="help-new-number" placeholder="(555) 123-4567"></div>
+          </div>
+          <button class="btn primary" id="help-save-btn" onclick="addHelpNumber()">Add number</button>
+          <button class="btn" id="help-cancel-btn" style="display:none;margin-left:8px;" onclick="cancelHelpEdit()">Cancel</button>
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-localrecs">
@@ -376,12 +405,12 @@ input,select,textarea{font-family:'Jost',sans-serif;}
               <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.3"/></svg></div>
               <span>Local recs</span>
             </div>
-            <div class="launcher-tile soon">
+            <div class="launcher-tile" onclick="showGuestTab('guest-help')">
               <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M5 4c0-1 1-2 2-2l2 1c1 2.5 0 3.5-1 4.3 1 2.5 2.7 4.2 5.2 5.2 0.8-1 1.8-2 4.3-1l1 2c0 1-1 2-2 2C10 15.5 5 10.5 5 4z"/></svg></div>
               <span>Help</span>
             </div>
           </div>
-          <p class="empty-note" id="home-empty-note">A couple of tiles are still coming in the next checkpoint.</p>
+          <p class="empty-note hidden" id="home-empty-note"></p>
         </div>
       </div>
 
@@ -432,12 +461,31 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <div class="guest-body" id="rec-list"></div>
       </div>
 
+      <div class="guest-screen" id="guest-help">
+        <div class="guest-header"><h2>Help</h2></div>
+        <div class="guest-body">
+          <div class="info-row">
+            <div><div class="label">host</div><div class="value" id="guest-help-host">—</div></div>
+            <a class="copy-btn" id="guest-help-call" href="#" style="text-decoration:none;">call</a>
+          </div>
+          <div id="guest-help-numbers"></div>
+          <div class="card" style="margin-top:4px;">
+            <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">nearest hospital</div>
+            <div style="font-size:13px;" id="guest-help-hospital">—</div>
+          </div>
+          <div class="card" id="guest-help-notes-card" style="display:none;">
+            <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">notes</div>
+            <div style="font-size:13px;" id="guest-help-notes">—</div>
+          </div>
+        </div>
+      </div>
+
       <div class="tabbar">
         <div class="tab active" data-tab="guest-home" onclick="showGuestTab('guest-home')">Home</div>
         <div class="tab" data-tab="guest-wifi" onclick="showGuestTab('guest-wifi')">Wifi</div>
         <div class="tab" data-tab="guest-guide" onclick="showGuestTab('guest-guide')">Guide</div>
         <div class="tab" data-tab="guest-nearby" onclick="showGuestTab('guest-nearby')">Nearby</div>
-        <div class="tab" style="opacity:.4;">Help</div>
+        <div class="tab" data-tab="guest-help" onclick="showGuestTab('guest-help')">Help</div>
       </div>
 
     </div>
@@ -2760,7 +2808,8 @@ let state = {
   design: { palette: 'coastal' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
   checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
-  localRecs: []
+  localRecs: [],
+  helpInfo: { nearestHospital:'', notes:'', emergencyNumbers:[] }
 };
 
 function defaultState(){
@@ -2770,7 +2819,8 @@ function defaultState(){
     design: { palette: 'coastal' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
     checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
-    localRecs: []
+    localRecs: [],
+    helpInfo: { nearestHospital:'', notes:'', emergencyNumbers:[] }
   };
 }
 
@@ -2790,6 +2840,8 @@ function loadState(){
       state.houseGuide = Object.assign(defaultState().houseGuide, parsed.houseGuide||{});
       state.checkin = Object.assign(defaultState().checkin, parsed.checkin||{});
       state.localRecs = Array.isArray(parsed.localRecs) ? parsed.localRecs : [];
+      state.helpInfo = Object.assign(defaultState().helpInfo, parsed.helpInfo||{});
+      state.helpInfo.emergencyNumbers = Array.isArray(parsed.helpInfo && parsed.helpInfo.emergencyNumbers) ? parsed.helpInfo.emergencyNumbers : [];
     }
   }catch(e){ console.error('Load failed', e); state = defaultState(); }
 }
@@ -3209,6 +3261,98 @@ function renderGuestRecs(){
   }).join('');
 }
 
+let editingHelpId = null;
+
+function addHelpNumber(){
+  const label = document.getElementById('help-new-label').value.trim();
+  const number = document.getElementById('help-new-number').value.trim();
+  if(!label || !number) return;
+  if(editingHelpId){
+    const n = state.helpInfo.emergencyNumbers.find(x=>x.id===editingHelpId);
+    if(n){ n.label=label; n.number=number; }
+    editingHelpId = null;
+  } else {
+    state.helpInfo.emergencyNumbers.push({id: genId(), label, number});
+  }
+  document.getElementById('help-new-label').value = '';
+  document.getElementById('help-new-number').value = '';
+  saveState();
+  renderAll();
+}
+
+function startEditHelpNumber(id){
+  editingHelpId = id;
+  const n = state.helpInfo.emergencyNumbers.find(x=>x.id===id);
+  if(!n) return;
+  document.getElementById('help-new-label').value = n.label;
+  document.getElementById('help-new-number').value = n.number;
+  renderHelpSetup();
+  document.getElementById('help-new-label').focus();
+}
+
+function cancelHelpEdit(){
+  editingHelpId = null;
+  document.getElementById('help-new-label').value = '';
+  document.getElementById('help-new-number').value = '';
+  renderHelpSetup();
+}
+
+function deleteHelpNumber(id){
+  state.helpInfo.emergencyNumbers = state.helpInfo.emergencyNumbers.filter(n=>n.id!==id);
+  if(editingHelpId===id) editingHelpId = null;
+  saveState();
+  renderAll();
+}
+
+function renderHelpSetup(){
+  document.getElementById('in-nearest-hospital').value = state.helpInfo.nearestHospital;
+  document.getElementById('in-help-notes').value = state.helpInfo.notes;
+  const hostPreview = (state.property.hostName || 'Not set yet') + (state.property.hostPhone ? ' · ' + state.property.hostPhone : '');
+  document.getElementById('help-host-preview').textContent = hostPreview;
+
+  const el = document.getElementById('help-numbers-list');
+  if(state.helpInfo.emergencyNumbers.length === 0){
+    el.innerHTML = '<p class="empty-note">Nothing added yet.</p>';
+  } else {
+    el.innerHTML = state.helpInfo.emergencyNumbers.map(n=>{
+      return `<div class="list-item"><div class="li-text" style="cursor:pointer;" onclick="startEditHelpNumber('${n.id}')"><div class="li-title">${escapeHtml(n.label)}</div><div class="li-sub">${escapeHtml(n.number)}</div></div><button class="li-delete" onclick="event.stopPropagation(); deleteHelpNumber('${n.id}')">remove</button></div>`;
+    }).join('');
+  }
+  const editing = editingHelpId !== null;
+  document.getElementById('help-save-btn').textContent = editing ? 'Save changes' : 'Add number';
+  document.getElementById('help-cancel-btn').style.display = editing ? 'inline-block' : 'none';
+}
+
+function renderGuestHelp(){
+  const hostName = state.property.hostName || 'Your host';
+  document.getElementById('guest-help-host').textContent = hostName + (state.property.hostPhone ? ' · ' + state.property.hostPhone : '');
+  const callLink = document.getElementById('guest-help-call');
+  if(state.property.hostPhone){
+    callLink.href = 'tel:' + state.property.hostPhone.replace(/[^0-9+]/g,'');
+  } else {
+    callLink.href = '#';
+  }
+
+  const numbersEl = document.getElementById('guest-help-numbers');
+  if(state.helpInfo.emergencyNumbers.length === 0){
+    numbersEl.innerHTML = '';
+  } else {
+    numbersEl.innerHTML = state.helpInfo.emergencyNumbers.map(n=>{
+      const tel = 'tel:' + n.number.replace(/[^0-9+]/g,'');
+      return `<div class="info-row"><div><div class="label">${escapeHtml(n.label)}</div><div class="value">${escapeHtml(n.number)}</div></div><a class="copy-btn" style="text-decoration:none;" href="${tel}">call</a></div>`;
+    }).join('');
+  }
+
+  document.getElementById('guest-help-hospital').textContent = state.helpInfo.nearestHospital || 'Not set yet';
+  const notesCard = document.getElementById('guest-help-notes-card');
+  if(state.helpInfo.notes){
+    notesCard.style.display = 'block';
+    document.getElementById('guest-help-notes').textContent = state.helpInfo.notes;
+  } else {
+    notesCard.style.display = 'none';
+  }
+}
+
 function renderAll(){
   const name = state.property.name || 'Stay Guide';
   document.getElementById('sidebar-property-name').textContent = state.property.name || 'Stay Guide';
@@ -3246,9 +3390,12 @@ function renderAll(){
   const localRecsDone = state.localRecs.length > 0;
   document.getElementById('stat-localrecs').textContent = localRecsDone ? 'done' : 'not started';
   document.getElementById('stat-localrecs').className = 'status ' + (localRecsDone?'done':'pending');
-  const doneCount = (basicsDone?1:0) + (wifiDone?1:0) + (checkinDone?1:0) + (houseGuideDone?1:0) + (localRecsDone?1:0);
-  document.getElementById('progress-sub').textContent = doneCount + ' of 5 sections complete';
-  document.getElementById('progress-fill').style.width = Math.round((doneCount/5)*100) + '%';
+  const helpDone = !!(state.helpInfo.nearestHospital || state.helpInfo.emergencyNumbers.length > 0);
+  document.getElementById('stat-help').textContent = helpDone ? 'done' : 'not started';
+  document.getElementById('stat-help').className = 'status ' + (helpDone?'done':'pending');
+  const doneCount = (basicsDone?1:0) + (wifiDone?1:0) + (checkinDone?1:0) + (houseGuideDone?1:0) + (localRecsDone?1:0) + (helpDone?1:0);
+  document.getElementById('progress-sub').textContent = doneCount + ' of 6 sections complete';
+  document.getElementById('progress-fill').style.width = Math.round((doneCount/6)*100) + '%';
 
   renderPaletteGrid();
   applyPaletteToGuestView();
@@ -3258,6 +3405,8 @@ function renderAll(){
   renderGuestCheckin();
   renderLocalRecsSetup();
   renderGuestRecs();
+  renderHelpSetup();
+  renderGuestHelp();
 }
 
 function toggleTheme(){
@@ -3357,6 +3506,8 @@ function initGuestOnlyModeIfLinked(){
   state.houseGuide = Object.assign(defaultState().houseGuide, linked.houseGuide||{});
   state.checkin = Object.assign(defaultState().checkin, linked.checkin||{});
   state.localRecs = Array.isArray(linked.localRecs) ? linked.localRecs : [];
+  state.helpInfo = Object.assign(defaultState().helpInfo, linked.helpInfo||{});
+  state.helpInfo.emergencyNumbers = Array.isArray(linked.helpInfo && linked.helpInfo.emergencyNumbers) ? linked.helpInfo.emergencyNumbers : [];
   document.body.classList.add('guest-only');
   document.getElementById('setup-view').classList.add('hidden');
   document.getElementById('guest-view').classList.remove('hidden');
