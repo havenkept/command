@@ -142,7 +142,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--plum) !i
 
 /* ---- Guest View (phone-frame) ---- */
 #guest-view{display:flex;justify-content:center;padding:44px 20px;min-height:100vh;}
-.phone{width:368px;background:var(--white);border-radius:32px;overflow:hidden;box-shadow:var(--shadow-lg);border:8px solid var(--charcoal);}
+.phone{width:368px;background:var(--white);border-radius:32px;overflow:hidden;box-shadow:var(--shadow-lg);border:8px solid var(--charcoal);position:relative;}
+.guest-theme-toggle{position:absolute;top:14px;right:14px;z-index:250;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.28);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;border:none;}
+.guest-theme-toggle svg{width:17px;height:17px;stroke:#FFFFFF;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.guest-theme-toggle .theme-icon.hidden{display:none;}
 html[data-theme="dark"] .phone{border-color:#000;}
 .guest-screen{display:none;}
 .guest-screen.active{display:block;animation:fadeIn .22s ease;}
@@ -150,6 +153,8 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .guest-header{padding:22px 22px 16px;border-bottom:1px solid var(--border);}
 .guest-header .eyebrow{font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em;}
 .guest-header h2{font-size:22px;line-height:1.2;}
+.hero-time-row{display:flex;gap:8px;margin-top:16px;}
+.hero-time-row .checkout-card{margin-top:0;flex:1;}
 .checkout-card{background:rgba(255,255,255,0.16);color:var(--on-color);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:16px;backdrop-filter:blur(2px);transition:transform .16s ease, background .16s ease;}
 .checkout-card:hover{transform:translateY(-1px);background:rgba(255,255,255,0.24);}
 .checkout-card .label{font-size:10px;opacity:.85;letter-spacing:.04em;text-transform:uppercase;}
@@ -158,6 +163,11 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .guest-hero .eyebrow{font-size:11px;color:rgba(255,255,255,0.72);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em;}
 .guest-hero h2{font-size:25px;color:var(--on-color);line-height:1.15;}
 .floating-card{margin:-24px 22px 4px !important;box-shadow:var(--shadow-md);position:relative;z-index:2;}
+.wifi-quick-card{display:flex;gap:14px;}
+.wqc-col{flex:1;min-width:0;}
+.wqc-pw-row{display:flex;align-items:center;gap:8px;margin-top:3px;}
+.wqc-pw-row .value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wqc-pw-row .copy-btn{flex-shrink:0;}
 .icon-circle.c-plum{background:var(--plum-tint);color:var(--plum-text);}
 .icon-circle.c-teal{background:var(--teal-tint);color:var(--teal);}
 .icon-circle.c-terracotta{background:var(--terracotta-tint);color:var(--terracotta);}
@@ -192,7 +202,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .add-form .btn{margin-top:4px;}
 
 /* House guide - guest hub */
-.hub-tabs{display:flex;gap:6px;padding:14px 22px;overflow-x:auto;border-bottom:1px solid var(--border);}
+.hub-tabs{display:flex;gap:6px;padding:14px 22px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
 .hub-tab{font-size:12px;font-weight:500;padding:7px 14px;border-radius:99px;white-space:nowrap;background:var(--sand);color:var(--text-muted);transition:all .16s ease;}
 .hub-tab.active{background:var(--plum);color:var(--on-color);}
 .accordion-item{border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:2px 14px;margin-bottom:8px;transition:box-shadow .16s ease;}
@@ -570,19 +580,37 @@ html[data-theme="dark"] .phone{border-color:#000;}
       <button onclick="setAppMode('setup')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Back to Setup</button>
     </div>
     <div class="phone">
+      <button class="guest-theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" id="guest-theme-toggle-btn">
+        <svg class="theme-icon" id="guest-theme-icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="theme-icon hidden" id="guest-theme-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>
+      </button>
 
       <div class="guest-screen active" id="guest-home">
         <div class="guest-hero" id="guest-hero-el">
           <div class="eyebrow">Welcome to</div>
           <h2 id="guest-property-name">Your stay</h2>
-          <div class="checkout-card" onclick="showGuestTab('guest-checkin')" style="cursor:pointer;">
-            <div><div class="label">checkout time</div><div class="value" id="guest-checkout-note">Add your details in Setup</div></div>
+          <div class="hero-time-row" onclick="showGuestTab('guest-checkin')" style="cursor:pointer;">
+            <div class="checkout-card">
+              <div><div class="label">check-in time</div><div class="value" id="guest-checkin-note">Add your details in Setup</div></div>
+            </div>
+            <div class="checkout-card">
+              <div><div class="label">checkout time</div><div class="value" id="guest-checkout-note">Add your details in Setup</div></div>
+            </div>
           </div>
         </div>
         <div class="guest-body" style="padding-top:0;">
-          <div class="info-row floating-card" onclick="showGuestTab('guest-wifi')" style="cursor:pointer;">
-            <div><div class="label">wifi network</div><div class="value" id="guest-wifi-network-preview">—</div></div>
-            <span style="font-size:11px;color:var(--text-muted);">tap for password</span>
+          <div class="card floating-card wifi-quick-card">
+            <div class="wqc-col">
+              <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">Wifi network</div>
+              <div class="value" id="guest-wifi-network-preview" style="font-size:14px;font-weight:500;margin-top:3px;">—</div>
+            </div>
+            <div class="wqc-col">
+              <div class="label" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">Password</div>
+              <div class="wqc-pw-row">
+                <div class="value" id="guest-wifi-password-preview" style="font-size:14px;font-weight:500;">—</div>
+                <button class="copy-btn" onclick="copyToClipboard('wifi-password', this)">copy</button>
+              </div>
+            </div>
           </div>
           <div class="launcher-grid">
             <div class="launcher-tile" onclick="showGuestTab('guest-wifi')">
@@ -661,12 +689,10 @@ html[data-theme="dark"] .phone{border-color:#000;}
         <div class="guest-body">
           <div class="time-card-row">
             <div class="time-card c-plum">
-              <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><circle cx="15" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg>
               <div class="tc-label">Check-in</div>
               <div class="tc-value" id="guest-checkin-time">—</div>
             </div>
             <div class="time-card c-terracotta">
-              <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg>
               <div class="tc-label">Checkout</div>
               <div class="tc-value" id="guest-checkout-time">—</div>
             </div>
@@ -4698,10 +4724,12 @@ function renderAll(){
   document.getElementById('in-parking').value = state.wifi.parkingNotes;
 
   document.getElementById('guest-wifi-network-preview').textContent = state.wifi.network || 'Not set yet';
+  document.getElementById('guest-wifi-password-preview').textContent = state.wifi.password || 'Not set yet';
   document.getElementById('guest-wifi-network').textContent = state.wifi.network || 'Not set yet';
   document.getElementById('guest-wifi-password').textContent = state.wifi.password || 'Not set yet';
   document.getElementById('guest-door-code').textContent = state.wifi.doorCode || 'Not set yet';
   document.getElementById('guest-parking').textContent = state.wifi.parkingNotes || 'Not set yet';
+  document.getElementById('guest-checkin-note').textContent = state.checkin.checkinTime ? ('Check-in is ' + state.checkin.checkinTime) : 'Add check-in time in Setup';
   document.getElementById('guest-checkout-note').textContent = state.checkin.checkoutTime ? ('Checkout is ' + state.checkin.checkoutTime) : 'Add checkout time in Setup';
 
   const basicsDone = !!(state.property.name && state.property.hostName);
@@ -4751,6 +4779,9 @@ function toggleTheme(){
 function updateThemeControls(theme){
   document.getElementById('theme-toggle-btn').textContent = theme === 'dark' ? 'Switch to light' : 'Switch to dark';
   document.getElementById('theme-status-label').textContent = theme === 'dark' ? 'Dark mode' : 'Light mode';
+  const isDark = theme === 'dark';
+  document.getElementById('guest-theme-icon-moon').classList.toggle('hidden', isDark);
+  document.getElementById('guest-theme-icon-sun').classList.toggle('hidden', !isDark);
 }
 
 function loadTheme(){
