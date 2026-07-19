@@ -286,7 +286,8 @@ input,select,textarea{font-family:'Jost',sans-serif;}
             <label>Map link (optional)</label>
             <input type="text" id="rec-new-link" placeholder="https://maps.google.com/...">
           </div>
-          <button class="btn primary" onclick="addLocalRec()">Add place</button>
+          <button class="btn primary" id="rec-save-btn" onclick="addLocalRec()">Add place</button>
+          <button class="btn" id="rec-cancel-btn" style="display:none;margin-left:8px;" onclick="cancelRecEdit()">Cancel</button>
         </div>
       </div>
 
@@ -302,14 +303,16 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <div class="card" id="checkin-arrival-list"></div>
         <div class="add-form">
           <div class="field-group"><label>Step</label><input type="text" id="checkin-new-arrival" placeholder="e.g. Lockbox is on the right of the front door"></div>
-          <button class="btn primary" onclick="addCheckinStep('arrivalSteps')">Add step</button>
+          <button class="btn primary" id="checkin-arrival-save-btn" onclick="addCheckinStep('arrivalSteps')">Add step</button>
+          <button class="btn" id="checkin-arrival-cancel-btn" style="display:none;margin-left:8px;" onclick="cancelCheckinEdit('arrivalSteps')">Cancel</button>
         </div>
 
         <p class="sub" style="margin:24px 0 8px;">Checkout steps</p>
         <div class="card" id="checkin-checkout-list"></div>
         <div class="add-form">
           <div class="field-group"><label>Step</label><input type="text" id="checkin-new-checkout" placeholder="e.g. Start the dishwasher before you leave"></div>
-          <button class="btn primary" onclick="addCheckinStep('checkoutSteps')">Add step</button>
+          <button class="btn primary" id="checkin-checkout-save-btn" onclick="addCheckinStep('checkoutSteps')">Add step</button>
+          <button class="btn" id="checkin-checkout-cancel-btn" style="display:none;margin-left:8px;" onclick="cancelCheckinEdit('checkoutSteps')">Cancel</button>
         </div>
       </div>
 
@@ -2873,8 +2876,11 @@ const HG_TABS = [
 ];
 let activeSetupHgTab = 'manual';
 let activeGuestHubTab = 'manual';
+let editingHgId = null;
 
 function genId(){ return 'i' + Date.now() + Math.floor(Math.random()*1000); }
+let editingCheckinField = null;
+let editingCheckinId = null;
 
 function renderHouseGuideSetup(){
   const tabRow = document.getElementById('hg-subtabs');
@@ -2883,7 +2889,7 @@ function renderHouseGuideSetup(){
     const el = document.createElement('div');
     el.className = 'subtab' + (activeSetupHgTab===t.key ? ' active' : '');
     el.textContent = t.label;
-    el.onclick = () => { activeSetupHgTab = t.key; renderHouseGuideSetup(); };
+    el.onclick = () => { activeSetupHgTab = t.key; editingHgId = null; renderHouseGuideSetup(); };
     tabRow.appendChild(el);
   });
 
@@ -2899,28 +2905,45 @@ function renderHouseGuideSetup(){
       else if(activeSetupHgTab==='amenities'){ title=item.name; }
       else if(activeSetupHgTab==='qa'){ title=item.question; sub=item.answer; }
       else if(activeSetupHgTab==='rules'){ title=item.text; }
-      listHtml += `<div class="list-item"><div class="li-text"><div class="li-title">${escapeHtml(title)}</div>${sub?'<div class="li-sub">'+escapeHtml(sub)+'</div>':''}</div><button class="li-delete" onclick="deleteHgItem('${activeSetupHgTab}','${item.id}')">remove</button></div>`;
+      listHtml += `<div class="list-item"><div class="li-text" style="cursor:pointer;" onclick="startEditHg('${item.id}')"><div class="li-title">${escapeHtml(title)}</div>${sub?'<div class="li-sub">'+escapeHtml(sub)+'</div>':''}</div><button class="li-delete" onclick="event.stopPropagation(); deleteHgItem('${activeSetupHgTab}','${item.id}')">remove</button></div>`;
     });
   }
 
+  const editing = editingHgId !== null;
+  const currentItem = editing ? items.find(i=>i.id===editingHgId) : null;
+  const vTitle = currentItem ? (activeSetupHgTab==='qa' ? currentItem.question : (activeSetupHgTab==='amenities' ? currentItem.name : (activeSetupHgTab==='rules' ? currentItem.text : currentItem.title))) : '';
+  const vContent = currentItem ? (activeSetupHgTab==='qa' ? currentItem.answer : currentItem.content) : '';
+
   let formHtml = '';
+  const saveLabel = editing ? 'Save changes' : 'Add';
+  const cancelBtn = editing ? `<button class="btn" style="margin-left:8px;" onclick="cancelHgEdit()">Cancel</button>` : '';
   if(activeSetupHgTab==='manual' || activeSetupHgTab==='transportation'){
-    formHtml = `<div class="field-group"><label>Title</label><input type="text" id="hg-new-title" placeholder="e.g. Thermostat"></div>
-      <div class="field-group"><label>Details</label><textarea id="hg-new-content" placeholder="How it works, what guests should know"></textarea></div>
-      <button class="btn primary" onclick="addHgItem()">Add</button>`;
+    formHtml = `<div class="field-group"><label>Title</label><input type="text" id="hg-new-title" value="${escapeHtml(vTitle)}" placeholder="e.g. Thermostat"></div>
+      <div class="field-group"><label>Details</label><textarea id="hg-new-content" placeholder="How it works, what guests should know">${escapeHtml(vContent)}</textarea></div>
+      <button class="btn primary" onclick="addHgItem()">${saveLabel}</button>${cancelBtn}`;
   } else if(activeSetupHgTab==='amenities'){
-    formHtml = `<div class="field-group"><label>Amenity name</label><input type="text" id="hg-new-title" placeholder="e.g. Hot tub"></div>
-      <button class="btn primary" onclick="addHgItem()">Add</button>`;
+    formHtml = `<div class="field-group"><label>Amenity name</label><input type="text" id="hg-new-title" value="${escapeHtml(vTitle)}" placeholder="e.g. Hot tub"></div>
+      <button class="btn primary" onclick="addHgItem()">${saveLabel}</button>${cancelBtn}`;
   } else if(activeSetupHgTab==='qa'){
-    formHtml = `<div class="field-group"><label>Question</label><input type="text" id="hg-new-title" placeholder="e.g. Is there a hair dryer?"></div>
-      <div class="field-group"><label>Answer</label><textarea id="hg-new-content" placeholder="Yes, under the bathroom sink."></textarea></div>
-      <button class="btn primary" onclick="addHgItem()">Add</button>`;
+    formHtml = `<div class="field-group"><label>Question</label><input type="text" id="hg-new-title" value="${escapeHtml(vTitle)}" placeholder="e.g. Is there a hair dryer?"></div>
+      <div class="field-group"><label>Answer</label><textarea id="hg-new-content" placeholder="Yes, under the bathroom sink.">${escapeHtml(vContent)}</textarea></div>
+      <button class="btn primary" onclick="addHgItem()">${saveLabel}</button>${cancelBtn}`;
   } else if(activeSetupHgTab==='rules'){
-    formHtml = `<div class="field-group"><label>Rule</label><input type="text" id="hg-new-title" placeholder="e.g. Quiet hours after 10pm"></div>
-      <button class="btn primary" onclick="addHgItem()">Add</button>`;
+    formHtml = `<div class="field-group"><label>Rule</label><input type="text" id="hg-new-title" value="${escapeHtml(vTitle)}" placeholder="e.g. Quiet hours after 10pm"></div>
+      <button class="btn primary" onclick="addHgItem()">${saveLabel}</button>${cancelBtn}`;
   }
 
   content.innerHTML = `<div class="card">${listHtml}</div><div class="add-form">${formHtml}</div>`;
+}
+
+function startEditHg(id){
+  editingHgId = id;
+  renderHouseGuideSetup();
+}
+
+function cancelHgEdit(){
+  editingHgId = null;
+  renderHouseGuideSetup();
 }
 
 function addHgItem(){
@@ -2929,19 +2952,32 @@ function addHgItem(){
   const title = titleEl ? titleEl.value.trim() : '';
   const content = contentEl ? contentEl.value.trim() : '';
   if(!title) return;
-  const id = genId();
-  let item;
-  if(activeSetupHgTab==='manual' || activeSetupHgTab==='transportation'){ item = {id, title, content}; }
-  else if(activeSetupHgTab==='amenities'){ item = {id, name:title}; }
-  else if(activeSetupHgTab==='qa'){ item = {id, question:title, answer:content}; }
-  else if(activeSetupHgTab==='rules'){ item = {id, text:title}; }
-  state.houseGuide[activeSetupHgTab].push(item);
+
+  if(editingHgId){
+    const item = state.houseGuide[activeSetupHgTab].find(i=>i.id===editingHgId);
+    if(item){
+      if(activeSetupHgTab==='manual' || activeSetupHgTab==='transportation'){ item.title=title; item.content=content; }
+      else if(activeSetupHgTab==='amenities'){ item.name=title; }
+      else if(activeSetupHgTab==='qa'){ item.question=title; item.answer=content; }
+      else if(activeSetupHgTab==='rules'){ item.text=title; }
+    }
+    editingHgId = null;
+  } else {
+    const id = genId();
+    let item;
+    if(activeSetupHgTab==='manual' || activeSetupHgTab==='transportation'){ item = {id, title, content}; }
+    else if(activeSetupHgTab==='amenities'){ item = {id, name:title}; }
+    else if(activeSetupHgTab==='qa'){ item = {id, question:title, answer:content}; }
+    else if(activeSetupHgTab==='rules'){ item = {id, text:title}; }
+    state.houseGuide[activeSetupHgTab].push(item);
+  }
   saveState();
   renderAll();
 }
 
 function deleteHgItem(tab, id){
   state.houseGuide[tab] = state.houseGuide[tab].filter(i=>i.id!==id);
+  if(editingHgId===id) editingHgId = null;
   saveState();
   renderAll();
 }
@@ -2995,14 +3031,40 @@ function addCheckinStep(field){
   const input = document.getElementById(inputId);
   const text = input.value.trim();
   if(!text) return;
-  state.checkin[field].push({id: genId(), text});
+  if(editingCheckinId && editingCheckinField===field){
+    const step = state.checkin[field].find(s=>s.id===editingCheckinId);
+    if(step) step.text = text;
+    editingCheckinId = null;
+    editingCheckinField = null;
+  } else {
+    state.checkin[field].push({id: genId(), text});
+  }
   input.value = '';
   saveState();
   renderAll();
 }
 
+function startEditCheckinStep(field, id){
+  editingCheckinField = field;
+  editingCheckinId = id;
+  const step = state.checkin[field].find(s=>s.id===id);
+  const inputId = field==='arrivalSteps' ? 'checkin-new-arrival' : 'checkin-new-checkout';
+  document.getElementById(inputId).value = step ? step.text : '';
+  document.getElementById(inputId).focus();
+  updateCheckinEditButtons();
+}
+
+function cancelCheckinEdit(field){
+  editingCheckinField = null;
+  editingCheckinId = null;
+  const inputId = field==='arrivalSteps' ? 'checkin-new-arrival' : 'checkin-new-checkout';
+  document.getElementById(inputId).value = '';
+  renderCheckinSetup();
+}
+
 function deleteCheckinStep(field, id){
   state.checkin[field] = state.checkin[field].filter(s=>s.id!==id);
+  if(editingCheckinId===id && editingCheckinField===field){ editingCheckinId=null; editingCheckinField=null; }
   saveState();
   renderAll();
 }
@@ -3014,15 +3076,27 @@ function renderStepList(containerId, steps, field, editable){
     return;
   }
   el.innerHTML = steps.map((s, idx)=>{
-    const del = editable ? `<button class="li-delete" onclick="deleteCheckinStep('${field}','${s.id}')">remove</button>` : '';
-    return `<div class="list-item"><div class="li-text"><div class="li-title">${idx+1}. ${escapeHtml(s.text)}</div></div>${del}</div>`;
+    if(editable){
+      return `<div class="list-item"><div class="li-text" style="cursor:pointer;" onclick="startEditCheckinStep('${field}','${s.id}')"><div class="li-title">${idx+1}. ${escapeHtml(s.text)}</div></div><button class="li-delete" onclick="event.stopPropagation(); deleteCheckinStep('${field}','${s.id}')">remove</button></div>`;
+    }
+    return `<div class="list-item"><div class="li-text"><div class="li-title">${idx+1}. ${escapeHtml(s.text)}</div></div></div>`;
   }).join('');
+}
+
+function updateCheckinEditButtons(){
+  const arrivalEditing = editingCheckinField==='arrivalSteps';
+  const checkoutEditing = editingCheckinField==='checkoutSteps';
+  document.getElementById('checkin-arrival-save-btn').textContent = arrivalEditing ? 'Save changes' : 'Add step';
+  document.getElementById('checkin-arrival-cancel-btn').style.display = arrivalEditing ? 'inline-block' : 'none';
+  document.getElementById('checkin-checkout-save-btn').textContent = checkoutEditing ? 'Save changes' : 'Add step';
+  document.getElementById('checkin-checkout-cancel-btn').style.display = checkoutEditing ? 'inline-block' : 'none';
 }
 
 function renderCheckinSetup(){
   document.getElementById('in-checkout-time').value = state.checkin.checkoutTime;
   renderStepList('checkin-arrival-list', state.checkin.arrivalSteps, 'arrivalSteps', true);
   renderStepList('checkin-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', true);
+  updateCheckinEditButtons();
 }
 
 function renderGuestCheckin(){
@@ -3039,6 +3113,7 @@ const REC_CATEGORIES = [
   {key:'emergency', label:'Emergency'}
 ];
 let activeRecCategory = 'all';
+let editingRecId = null;
 
 function addLocalRec(){
   const category = document.getElementById('rec-new-category').value;
@@ -3046,16 +3121,45 @@ function addLocalRec(){
   const note = document.getElementById('rec-new-note').value.trim();
   const link = document.getElementById('rec-new-link').value.trim();
   if(!name) return;
-  state.localRecs.push({id: genId(), category, name, note, link});
+  if(editingRecId){
+    const rec = state.localRecs.find(r=>r.id===editingRecId);
+    if(rec){ rec.category=category; rec.name=name; rec.note=note; rec.link=link; }
+    editingRecId = null;
+  } else {
+    state.localRecs.push({id: genId(), category, name, note, link});
+  }
   document.getElementById('rec-new-name').value = '';
   document.getElementById('rec-new-note').value = '';
   document.getElementById('rec-new-link').value = '';
+  document.getElementById('rec-new-category').value = 'food';
   saveState();
   renderAll();
 }
 
+function startEditLocalRec(id){
+  editingRecId = id;
+  const rec = state.localRecs.find(r=>r.id===id);
+  if(!rec) return;
+  document.getElementById('rec-new-category').value = rec.category;
+  document.getElementById('rec-new-name').value = rec.name;
+  document.getElementById('rec-new-note').value = rec.note || '';
+  document.getElementById('rec-new-link').value = rec.link || '';
+  renderLocalRecsSetup();
+  document.getElementById('rec-new-name').focus();
+}
+
+function cancelRecEdit(){
+  editingRecId = null;
+  document.getElementById('rec-new-name').value = '';
+  document.getElementById('rec-new-note').value = '';
+  document.getElementById('rec-new-link').value = '';
+  document.getElementById('rec-new-category').value = 'food';
+  renderLocalRecsSetup();
+}
+
 function deleteLocalRec(id){
   state.localRecs = state.localRecs.filter(r=>r.id!==id);
+  if(editingRecId===id) editingRecId = null;
   saveState();
   renderAll();
 }
@@ -3064,12 +3168,15 @@ function renderLocalRecsSetup(){
   const el = document.getElementById('localrecs-list');
   if(state.localRecs.length === 0){
     el.innerHTML = '<p class="empty-note">Nothing added yet.</p>';
-    return;
+  } else {
+    const catLabel = k => (REC_CATEGORIES.find(c=>c.key===k)||{}).label || k;
+    el.innerHTML = state.localRecs.map(r=>{
+      return `<div class="list-item"><div class="li-text" style="cursor:pointer;" onclick="startEditLocalRec('${r.id}')"><div class="li-title">${escapeHtml(r.name)}</div><div class="li-sub">${escapeHtml(catLabel(r.category))}${r.note?' · '+escapeHtml(r.note):''}</div></div><button class="li-delete" onclick="event.stopPropagation(); deleteLocalRec('${r.id}')">remove</button></div>`;
+    }).join('');
   }
-  const catLabel = k => (REC_CATEGORIES.find(c=>c.key===k)||{}).label || k;
-  el.innerHTML = state.localRecs.map(r=>{
-    return `<div class="list-item"><div class="li-text"><div class="li-title">${escapeHtml(r.name)}</div><div class="li-sub">${escapeHtml(catLabel(r.category))}${r.note?' · '+escapeHtml(r.note):''}</div></div><button class="li-delete" onclick="deleteLocalRec('${r.id}')">remove</button></div>`;
-  }).join('');
+  const editing = editingRecId !== null;
+  document.getElementById('rec-save-btn').textContent = editing ? 'Save changes' : 'Add place';
+  document.getElementById('rec-cancel-btn').style.display = editing ? 'inline-block' : 'none';
 }
 
 function setRecCategory(key){
