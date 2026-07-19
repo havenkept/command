@@ -164,6 +164,7 @@ input,select,textarea{font-family:'Jost',sans-serif;}
       <div class="nav-item active" data-page="dashboard" onclick="showSetupPage('dashboard')">Dashboard</div>
       <div class="nav-item" data-page="basics" onclick="showSetupPage('basics')">Basics</div>
       <div class="nav-item" data-page="wifi" onclick="showSetupPage('wifi')">Wifi & access</div>
+      <div class="nav-item" data-page="checkin" onclick="showSetupPage('checkin')">Check-in / out</div>
       <div class="nav-item" data-page="houseguide" onclick="showSetupPage('houseguide')">House guide</div>
       <div class="nav-item" data-page="design" onclick="showSetupPage('design')">Design</div>
     </div>
@@ -173,10 +174,11 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <h2>Setup progress</h2>
         <p class="sub" id="progress-sub">0 of 3 sections complete</p>
         <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-        <div class="stat-grid">
+        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
           <div class="stat-card"><div class="label">basics</div><div class="status pending" id="stat-basics">not started</div></div>
           <div class="stat-card"><div class="label">wifi & access</div><div class="status pending" id="stat-wifi">not started</div></div>
-          <div class="stat-card"><div class="label">design</div><div class="status done" id="stat-design">done</div></div>
+          <div class="stat-card"><div class="label">check-in / out</div><div class="status pending" id="stat-checkin">not started</div></div>
+          <div class="stat-card"><div class="label">house guide</div><div class="status pending" id="stat-houseguide">not started</div></div>
         </div>
         <div class="action-row">
           <button class="btn primary" onclick="setAppMode('guest')">Preview guest view</button>
@@ -243,6 +245,29 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <div class="palette-grid" id="palette-grid"></div>
       </div>
 
+      <div class="setup-page hidden" id="page-checkin">
+        <h2>Check-in / out</h2>
+        <p class="sub">Arrival steps, checkout steps, and checkout time.</p>
+        <div class="field-group">
+          <label>Checkout time</label>
+          <input type="text" id="in-checkout-time" oninput="updateField('checkin.checkoutTime', this.value)" placeholder="11:00 AM">
+        </div>
+
+        <p class="sub" style="margin-bottom:8px;">Arrival steps</p>
+        <div class="card" id="checkin-arrival-list"></div>
+        <div class="add-form">
+          <div class="field-group"><label>Step</label><input type="text" id="checkin-new-arrival" placeholder="e.g. Lockbox is on the right of the front door"></div>
+          <button class="btn primary" onclick="addCheckinStep('arrivalSteps')">Add step</button>
+        </div>
+
+        <p class="sub" style="margin:24px 0 8px;">Checkout steps</p>
+        <div class="card" id="checkin-checkout-list"></div>
+        <div class="add-form">
+          <div class="field-group"><label>Step</label><input type="text" id="checkin-new-checkout" placeholder="e.g. Start the dishwasher before you leave"></div>
+          <button class="btn primary" onclick="addCheckinStep('checkoutSteps')">Add step</button>
+        </div>
+      </div>
+
       <div class="setup-page hidden" id="page-houseguide">
         <h2>House guide</h2>
         <p class="sub">Everything guests find inside the House guide tab.</p>
@@ -261,8 +286,8 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <div class="guest-header">
           <div class="eyebrow">Welcome to</div>
           <h2 id="guest-property-name">Your stay</h2>
-          <div class="checkout-card">
-            <div><div class="label">checkout</div><div class="value" id="guest-checkout-note">Add your details in Setup</div></div>
+          <div class="checkout-card" onclick="showGuestTab('guest-checkin')" style="cursor:pointer;">
+            <div><div class="label">checkout time</div><div class="value" id="guest-checkout-note">Add your details in Setup</div></div>
           </div>
         </div>
         <div class="guest-body">
@@ -275,7 +300,7 @@ input,select,textarea{font-family:'Jost',sans-serif;}
               <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0"/><path d="M5 12.9a10 10 0 0 1 14 0"/><path d="M8.5 17a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="0.9" fill="var(--plum)" stroke="none"/></svg></div>
               <span>Wifi</span>
             </div>
-            <div class="launcher-tile soon">
+            <div class="launcher-tile" onclick="showGuestTab('guest-checkin')">
               <div class="icon-circle"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><circle cx="15" cy="12" r="0.9" fill="var(--plum)" stroke="none"/></svg></div>
               <span>Check-in / out</span>
             </div>
@@ -331,6 +356,19 @@ input,select,textarea{font-family:'Jost',sans-serif;}
             <div class="label" style="font-size:11px;color:#8a8478;margin-bottom:4px;">parking</div>
             <div style="font-size:13px;" id="guest-parking">—</div>
           </div>
+        </div>
+      </div>
+
+      <div class="guest-screen" id="guest-checkin">
+        <div class="guest-header"><h2>Check-in / out</h2></div>
+        <div class="guest-body">
+          <div class="info-row">
+            <div><div class="label">checkout time</div><div class="value" id="guest-checkout-time">—</div></div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Arrival</p>
+          <div class="card" id="guest-arrival-list"></div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Before you go</p>
+          <div class="card" id="guest-checkout-list"></div>
         </div>
       </div>
 
@@ -2666,7 +2704,8 @@ let state = {
   property: { name:'', hostName:'', hostPhone:'', address:'' },
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal' },
-  houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] }
+  houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
+  checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] }
 };
 
 function defaultState(){
@@ -2674,7 +2713,8 @@ function defaultState(){
     property: { name:'', hostName:'', hostPhone:'', address:'' },
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal' },
-    houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] }
+    houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
+    checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] }
   };
 }
 
@@ -2692,6 +2732,7 @@ function loadState(){
       state.wifi = Object.assign(defaultState().wifi, parsed.wifi||{});
       state.design = Object.assign(defaultState().design, parsed.design||{});
       state.houseGuide = Object.assign(defaultState().houseGuide, parsed.houseGuide||{});
+      state.checkin = Object.assign(defaultState().checkin, parsed.checkin||{});
     }
   }catch(e){ console.error('Load failed', e); state = defaultState(); }
 }
@@ -2842,15 +2883,13 @@ function addHgItem(){
   else if(activeSetupHgTab==='rules'){ item = {id, text:title}; }
   state.houseGuide[activeSetupHgTab].push(item);
   saveState();
-  renderHouseGuideSetup();
-  renderGuestHub();
+  renderAll();
 }
 
 function deleteHgItem(tab, id){
   state.houseGuide[tab] = state.houseGuide[tab].filter(i=>i.id!==id);
   saveState();
-  renderHouseGuideSetup();
-  renderGuestHub();
+  renderAll();
 }
 
 function escapeHtml(s){
@@ -2897,6 +2936,47 @@ function renderGuestHub(){
   }
 }
 
+function addCheckinStep(field){
+  const inputId = field==='arrivalSteps' ? 'checkin-new-arrival' : 'checkin-new-checkout';
+  const input = document.getElementById(inputId);
+  const text = input.value.trim();
+  if(!text) return;
+  state.checkin[field].push({id: genId(), text});
+  input.value = '';
+  saveState();
+  renderAll();
+}
+
+function deleteCheckinStep(field, id){
+  state.checkin[field] = state.checkin[field].filter(s=>s.id!==id);
+  saveState();
+  renderAll();
+}
+
+function renderStepList(containerId, steps, field, editable){
+  const el = document.getElementById(containerId);
+  if(steps.length === 0){
+    el.innerHTML = '<p class="empty-note">Nothing added yet.</p>';
+    return;
+  }
+  el.innerHTML = steps.map((s, idx)=>{
+    const del = editable ? `<button class="li-delete" onclick="deleteCheckinStep('${field}','${s.id}')">remove</button>` : '';
+    return `<div class="list-item"><div class="li-text"><div class="li-title">${idx+1}. ${escapeHtml(s.text)}</div></div>${del}</div>`;
+  }).join('');
+}
+
+function renderCheckinSetup(){
+  document.getElementById('in-checkout-time').value = state.checkin.checkoutTime;
+  renderStepList('checkin-arrival-list', state.checkin.arrivalSteps, 'arrivalSteps', true);
+  renderStepList('checkin-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', true);
+}
+
+function renderGuestCheckin(){
+  document.getElementById('guest-checkout-time').textContent = state.checkin.checkoutTime || 'Not set yet';
+  renderStepList('guest-arrival-list', state.checkin.arrivalSteps, 'arrivalSteps', false);
+  renderStepList('guest-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', false);
+}
+
 function renderAll(){
   const name = state.property.name || 'Stay Guide';
   document.getElementById('sidebar-property-name').textContent = state.property.name || 'Stay Guide';
@@ -2917,22 +2997,30 @@ function renderAll(){
   document.getElementById('guest-wifi-password').textContent = state.wifi.password || 'Not set yet';
   document.getElementById('guest-door-code').textContent = state.wifi.doorCode || 'Not set yet';
   document.getElementById('guest-parking').textContent = state.wifi.parkingNotes || 'Not set yet';
-  document.getElementById('guest-checkout-note').textContent = state.property.name ? 'Add checkout date in the next checkpoint' : 'Add your details in Setup';
+  document.getElementById('guest-checkout-note').textContent = state.checkin.checkoutTime ? ('Checkout is ' + state.checkin.checkoutTime) : 'Add checkout time in Setup';
 
   const basicsDone = !!(state.property.name && state.property.hostName);
   const wifiDone = !!(state.wifi.network && state.wifi.password);
+  const checkinDone = !!(state.checkin.checkoutTime && state.checkin.arrivalSteps.length > 0);
+  const houseGuideDone = !!(state.houseGuide.manual.length + state.houseGuide.amenities.length + state.houseGuide.transportation.length + state.houseGuide.qa.length + state.houseGuide.rules.length > 0);
   document.getElementById('stat-basics').textContent = basicsDone ? 'done' : 'not started';
   document.getElementById('stat-basics').className = 'status ' + (basicsDone?'done':'pending');
   document.getElementById('stat-wifi').textContent = wifiDone ? 'done' : 'not started';
   document.getElementById('stat-wifi').className = 'status ' + (wifiDone?'done':'pending');
-  const doneCount = 1 + (basicsDone?1:0) + (wifiDone?1:0);
-  document.getElementById('progress-sub').textContent = doneCount + ' of 3 sections complete';
-  document.getElementById('progress-fill').style.width = Math.round((doneCount/3)*100) + '%';
+  document.getElementById('stat-checkin').textContent = checkinDone ? 'done' : 'not started';
+  document.getElementById('stat-checkin').className = 'status ' + (checkinDone?'done':'pending');
+  document.getElementById('stat-houseguide').textContent = houseGuideDone ? 'done' : 'not started';
+  document.getElementById('stat-houseguide').className = 'status ' + (houseGuideDone?'done':'pending');
+  const doneCount = (basicsDone?1:0) + (wifiDone?1:0) + (checkinDone?1:0) + (houseGuideDone?1:0);
+  document.getElementById('progress-sub').textContent = doneCount + ' of 4 sections complete';
+  document.getElementById('progress-fill').style.width = Math.round((doneCount/4)*100) + '%';
 
   renderPaletteGrid();
   applyPaletteToGuestView();
   renderHouseGuideSetup();
   renderGuestHub();
+  renderCheckinSetup();
+  renderGuestCheckin();
 }
 
 function toggleTheme(){
@@ -3030,6 +3118,7 @@ function initGuestOnlyModeIfLinked(){
   state.wifi = Object.assign(defaultState().wifi, linked.wifi||{});
   state.design = Object.assign(defaultState().design, linked.design||{});
   state.houseGuide = Object.assign(defaultState().houseGuide, linked.houseGuide||{});
+  state.checkin = Object.assign(defaultState().checkin, linked.checkin||{});
   document.body.classList.add('guest-only');
   document.getElementById('setup-view').classList.add('hidden');
   document.getElementById('guest-view').classList.remove('hidden');
