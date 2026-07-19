@@ -339,6 +339,14 @@ html[data-theme="dark"] .phone{border-color:#000;}
             <button class="btn" onclick="downloadQRCode()">Download QR code</button>
           </div>
         </div>
+        <div id="share-message-section" class="hidden" style="margin-top:24px;">
+          <p class="sub" style="margin-bottom:8px;">Message to send guests</p>
+          <div class="field-group">
+            <textarea id="in-share-message" oninput="updateField('property.shareMessage', this.value)" style="min-height:80px;"></textarea>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Use <code>{property}</code> and <code>{link}</code> anywhere, they get filled in automatically.</p>
+          </div>
+          <button class="btn primary" onclick="copyShareMessage()" id="copy-message-btn">Copy message for guests</button>
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-basics">
@@ -3535,7 +3543,7 @@ const PALETTES = {
 };
 
 let state = {
-  property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
+  property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'', shareMessage:"Here's your check-in guide for {property}: {link}" },
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal', customPrimary:'#2B4A4A', customAccent:'#D98E5C' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -3546,7 +3554,7 @@ let state = {
 
 function defaultState(){
   return {
-    property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'' },
+    property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'', welcomeEnabled:true, welcomeNote:'', shareMessage:"Here's your check-in guide for {property}: {link}" },
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal', customPrimary:'#2B4A4A', customAccent:'#D98E5C' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -4299,6 +4307,7 @@ function renderAll(){
   document.getElementById('in-photo-url').value = state.property.photoUrl;
   document.getElementById('in-welcome-enabled').checked = state.property.welcomeEnabled;
   document.getElementById('in-welcome-note').value = state.property.welcomeNote;
+  document.getElementById('in-share-message').value = state.property.shareMessage;
   const preview = document.getElementById('photo-preview');
   const previewWrap = document.getElementById('photo-preview-wrap');
   if(state.property.photoUrl){
@@ -4389,10 +4398,13 @@ function decodeStateFromHash(hash){
   }catch(e){ console.error('Could not read link data', e); return null; }
 }
 
+let lastGeneratedLink = '';
+
 function generateShareLink(){
   const encoded = encodeStateForLink(state);
   const base = 'https://havenkept.github.io/command/stay-guide/';
   const url = base + '#' + encoded;
+  lastGeneratedLink = url;
   const box = document.getElementById('share-link-box');
   box.classList.remove('hidden');
   box.textContent = url;
@@ -4401,6 +4413,23 @@ function generateShareLink(){
     box.textContent = url + '  (copied)';
   }
   renderQRCode(url);
+  document.getElementById('share-message-section').classList.remove('hidden');
+}
+
+function copyShareMessage(){
+  if(!lastGeneratedLink){ generateShareLink(); }
+  const template = state.property.shareMessage || "Here's your check-in guide: {link}";
+  const resolved = template
+    .replace(/\{property\}/g, state.property.name || 'your stay')
+    .replace(/\{link\}/g, lastGeneratedLink);
+  const btn = document.getElementById('copy-message-btn');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(resolved).then(() => {
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+  }
 }
 
 function renderQRCode(url){
