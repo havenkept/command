@@ -119,7 +119,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .checkout-card:hover{transform:translateY(-1px);background:rgba(255,255,255,0.24);}
 .checkout-card .label{font-size:10px;opacity:.85;letter-spacing:.04em;text-transform:uppercase;}
 .checkout-card .value{font-size:15px;font-weight:500;margin-top:2px;}
-.guest-hero{background:linear-gradient(135deg,var(--plum) 0%,var(--teal) 100%);color:var(--on-color);padding:26px 22px 40px;border-radius:0 0 26px 26px;position:relative;}
+.guest-hero{background:linear-gradient(135deg,var(--plum) 0%,var(--teal) 100%);background-size:cover;background-position:center;color:var(--on-color);padding:26px 22px 40px;border-radius:0 0 26px 26px;position:relative;transition:background-image .25s ease;}
 .guest-hero .eyebrow{font-size:11px;color:rgba(255,255,255,0.72);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em;}
 .guest-hero h2{font-size:25px;color:var(--on-color);line-height:1.15;}
 .floating-card{margin:-24px 22px 4px !important;box-shadow:var(--shadow-md);position:relative;z-index:2;}
@@ -285,6 +285,13 @@ html[data-theme="dark"] .phone{border-color:#000;}
           <label>Address</label>
           <textarea id="in-address" oninput="updateField('property.address', this.value)" placeholder="123 Ridge Rd, Boone, NC"></textarea>
         </div>
+        <div class="field-group">
+          <label>Property photo</label>
+          <input type="text" id="in-photo-url" oninput="updateField('property.photoUrl', this.value)" placeholder="Paste a link to a photo (from your listing, Google Photos, Imgur, etc.)">
+        </div>
+        <div id="photo-preview-wrap" class="hidden" style="margin-bottom:18px;">
+          <img id="photo-preview" src="" alt="Property photo preview" style="width:100%;max-width:320px;height:160px;object-fit:cover;border-radius:12px;border:1px solid var(--border);">
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-wifi">
@@ -417,7 +424,8 @@ html[data-theme="dark"] .phone{border-color:#000;}
     <div class="phone">
 
       <div class="guest-screen active" id="guest-home">
-        <div class="guest-hero">
+        <div class="guest-hero" id="guest-hero-el">
+          <svg viewBox="0 0 24 24" style="position:absolute;top:16px;right:16px;width:26px;height:26px;opacity:0.35;stroke:var(--on-color);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;"><path d="M3 11l9-7 9 7"/><path d="M12 6v9"/><path d="M9.2 16.8a2 2 0 0 1 2.8 0l0 0a2 2 0 0 1 2.8 0c1 1 0 2.4-2.8 4.2-2.8-1.8-3.8-3.2-2.8-4.2z"/></svg>
           <div class="eyebrow">Welcome to</div>
           <h2 id="guest-property-name">Your stay</h2>
           <div class="checkout-card" onclick="showGuestTab('guest-checkin')" style="cursor:pointer;">
@@ -3369,7 +3377,7 @@ const PALETTES = {
 };
 
 let state = {
-  property: { name:'', hostName:'', hostPhone:'', address:'' },
+  property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'' },
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -3380,7 +3388,7 @@ let state = {
 
 function defaultState(){
   return {
-    property: { name:'', hostName:'', hostPhone:'', address:'' },
+    property: { name:'', hostName:'', hostPhone:'', address:'', photoUrl:'' },
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
@@ -3924,6 +3932,24 @@ function renderGuestHelp(){
   }
 }
 
+function applyHeroPhoto(){
+  const heroEl = document.getElementById('guest-hero-el');
+  const fallback = 'linear-gradient(135deg, var(--plum) 0%, var(--teal) 100%)';
+  const url = state.property.photoUrl;
+  if(!url){
+    heroEl.style.backgroundImage = fallback;
+    return;
+  }
+  const test = new Image();
+  test.onload = () => {
+    heroEl.style.backgroundImage = 'linear-gradient(rgba(20,18,14,0.5), rgba(20,18,14,0.25)), url("' + url.replace(/"/g,'') + '")';
+  };
+  test.onerror = () => {
+    heroEl.style.backgroundImage = fallback;
+  };
+  test.src = url;
+}
+
 function renderAll(){
   const name = state.property.name || 'Stay Guide';
   document.getElementById('sidebar-property-name').textContent = state.property.name || 'Stay Guide';
@@ -3933,6 +3959,16 @@ function renderAll(){
   document.getElementById('in-host-name').value = state.property.hostName;
   document.getElementById('in-host-phone').value = state.property.hostPhone;
   document.getElementById('in-address').value = state.property.address;
+  document.getElementById('in-photo-url').value = state.property.photoUrl;
+  const preview = document.getElementById('photo-preview');
+  const previewWrap = document.getElementById('photo-preview-wrap');
+  if(state.property.photoUrl){
+    preview.src = state.property.photoUrl;
+    previewWrap.classList.remove('hidden');
+    preview.onerror = () => { previewWrap.classList.add('hidden'); };
+  } else {
+    previewWrap.classList.add('hidden');
+  }
 
   document.getElementById('in-wifi-network').value = state.wifi.network;
   document.getElementById('in-wifi-password').value = state.wifi.password;
@@ -3970,6 +4006,7 @@ function renderAll(){
 
   renderPaletteGrid();
   applyPaletteToGuestView();
+  applyHeroPhoto();
   renderHouseGuideSetup();
   renderGuestHub();
   renderCheckinSetup();
