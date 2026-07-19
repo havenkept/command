@@ -213,6 +213,23 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .launcher-tile.soon:hover{background:none;}
 .launcher-tile.soon span{font-style:italic;font-weight:400;}
 
+/* Mobile responsive - Setup mode */
+@media (max-width: 780px){
+  .mode-toggle{top:10px;right:10px;}
+  .theme-toggle{top:56px;right:10px;left:auto;}
+  #setup-view{flex-direction:column;}
+  .sidebar{width:100%;padding:16px 16px 10px;border-right:none;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+  .sidebar .brand{width:100%;border-bottom:none;margin-bottom:8px;padding:0;padding-right:150px;}
+  .nav-item{padding:8px 12px;font-size:12px;margin-bottom:0;white-space:nowrap;}
+  .setup-main{padding:100px 16px 32px;}
+  .setup-page{max-width:100%;}
+  .field-row{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:1fr 1fr !important;}
+  .action-row{flex-wrap:wrap;}
+  .action-row .btn{flex:1 1 45%;}
+  .palette-grid{grid-template-columns:1fr;}
+}
+
 /* Icon badges for list items */
 .item-icon-badge{width:30px;height:30px;border-radius:9px;background:var(--sand);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--plum);}
 .item-icon-badge.c-teal{color:var(--teal);}
