@@ -91,6 +91,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--plum) !i
 .welcome-modal .wm-signoff{font-size:13px;font-style:italic;color:var(--text-muted);margin-bottom:24px;}
 .welcome-modal button{background:var(--plum);color:var(--on-color);padding:12px 30px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--shadow-sm);}
 .welcome-modal button:hover{background:#223c3c;}
+.time-card-row{display:flex;gap:10px;}
+.time-card{flex:1;border-radius:12px;padding:16px 14px;text-align:center;}
+.time-card svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:8px;}
+.time-card.c-plum{background:rgba(43,74,74,0.10);color:var(--plum);}
+.time-card.c-terracotta{background:rgba(217,142,92,0.14);color:var(--terracotta);}
+.time-card .tc-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:0.85;margin-bottom:4px;}
+.time-card .tc-value{font-size:16px;font-weight:600;color:var(--charcoal);}
 
 .field-group{margin-bottom:18px;}
 .field-group label{display:block;font-size:12px;color:#5c574d;margin-bottom:6px;font-weight:500;}
@@ -475,10 +482,16 @@ html[data-theme="dark"] .phone{border-color:#000;}
 
       <div class="setup-page hidden" id="page-checkin">
         <h2>Check-in / out</h2>
-        <p class="sub">Arrival steps, checkout steps, and checkout time.</p>
-        <div class="field-group">
-          <label>Checkout time</label>
-          <input type="text" id="in-checkout-time" oninput="updateField('checkin.checkoutTime', this.value)" placeholder="11:00 AM">
+        <p class="sub">Arrival steps, checkout steps, and check-in / checkout times.</p>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Check-in time</label>
+            <input type="text" id="in-checkin-time" oninput="updateField('checkin.checkinTime', this.value)" placeholder="4:00 PM">
+          </div>
+          <div class="field-group">
+            <label>Checkout time</label>
+            <input type="text" id="in-checkout-time" oninput="updateField('checkin.checkoutTime', this.value)" placeholder="11:00 AM">
+          </div>
         </div>
 
         <p class="sub" style="margin-bottom:8px;">Arrival steps</p>
@@ -616,8 +629,17 @@ html[data-theme="dark"] .phone{border-color:#000;}
       <div class="guest-screen" id="guest-checkin">
         <div class="guest-header"><h2>Check-in / out</h2></div>
         <div class="guest-body">
-          <div class="info-row">
-            <div><div class="label">checkout time</div><div class="value" id="guest-checkout-time">—</div></div>
+          <div class="time-card-row">
+            <div class="time-card c-plum">
+              <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><circle cx="15" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg>
+              <div class="tc-label">Check-in</div>
+              <div class="tc-value" id="guest-checkin-time">—</div>
+            </div>
+            <div class="time-card c-terracotta">
+              <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg>
+              <div class="tc-label">Checkout</div>
+              <div class="tc-value" id="guest-checkout-time">—</div>
+            </div>
           </div>
           <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">Arrival</p>
           <div class="card" id="guest-arrival-list"></div>
@@ -3493,7 +3515,7 @@ let state = {
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
-  checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
+  checkin: { checkinTime:'', checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
   localRecs: [],
   helpInfo: { nearestHospital:'', notes:'', emergencyNumbers:[] }
 };
@@ -3504,7 +3526,7 @@ function defaultState(){
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
-    checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
+    checkin: { checkinTime:'', checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
     localRecs: [],
     helpInfo: { nearestHospital:'', notes:'', emergencyNumbers:[] }
   };
@@ -3930,6 +3952,7 @@ function updateCheckinEditButtons(){
 }
 
 function renderCheckinSetup(){
+  document.getElementById('in-checkin-time').value = state.checkin.checkinTime;
   document.getElementById('in-checkout-time').value = state.checkin.checkoutTime;
   renderStepList('checkin-arrival-list', state.checkin.arrivalSteps, 'arrivalSteps', true);
   renderStepList('checkin-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', true);
@@ -3937,6 +3960,7 @@ function renderCheckinSetup(){
 }
 
 function renderGuestCheckin(){
+  document.getElementById('guest-checkin-time').textContent = state.checkin.checkinTime || 'Not set yet';
   document.getElementById('guest-checkout-time').textContent = state.checkin.checkoutTime || 'Not set yet';
   renderStepList('guest-arrival-list', state.checkin.arrivalSteps, 'arrivalSteps', false);
   renderStepList('guest-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', false);
