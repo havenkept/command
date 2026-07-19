@@ -137,6 +137,16 @@ input,select,textarea{font-family:'Jost',sans-serif;}
 .amenity-tile{background:var(--sand);border-radius:8px;padding:10px;text-align:center;font-size:12px;}
 .amenity-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 
+/* Local recs */
+.rec-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.rec-card .rec-cat{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--teal);margin-bottom:4px;}
+.rec-card .rec-name{font-size:14px;font-weight:500;margin-bottom:2px;}
+.rec-card .rec-note{font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+.rec-card .rec-link{font-size:12px;color:var(--plum);text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block;}
+.rec-cat-chips{display:flex;gap:6px;padding:12px 20px;overflow-x:auto;border-bottom:1px solid var(--border);}
+.rec-cat-chip{font-size:12px;padding:6px 12px;border-radius:16px;white-space:nowrap;background:var(--sand);color:var(--text-muted);}
+.rec-cat-chip.active{background:var(--plum);color:var(--white);}
+
 /* Home launcher icon grid */
 .launcher-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px;}
 .launcher-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:12px;cursor:pointer;}
@@ -166,6 +176,7 @@ input,select,textarea{font-family:'Jost',sans-serif;}
       <div class="nav-item" data-page="wifi" onclick="showSetupPage('wifi')">Wifi & access</div>
       <div class="nav-item" data-page="checkin" onclick="showSetupPage('checkin')">Check-in / out</div>
       <div class="nav-item" data-page="houseguide" onclick="showSetupPage('houseguide')">House guide</div>
+      <div class="nav-item" data-page="localrecs" onclick="showSetupPage('localrecs')">Local recs</div>
       <div class="nav-item" data-page="design" onclick="showSetupPage('design')">Design</div>
     </div>
     <div class="setup-main">
@@ -174,11 +185,12 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <h2>Setup progress</h2>
         <p class="sub" id="progress-sub">0 of 3 sections complete</p>
         <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);">
           <div class="stat-card"><div class="label">basics</div><div class="status pending" id="stat-basics">not started</div></div>
           <div class="stat-card"><div class="label">wifi & access</div><div class="status pending" id="stat-wifi">not started</div></div>
           <div class="stat-card"><div class="label">check-in / out</div><div class="status pending" id="stat-checkin">not started</div></div>
           <div class="stat-card"><div class="label">house guide</div><div class="status pending" id="stat-houseguide">not started</div></div>
+          <div class="stat-card"><div class="label">local recs</div><div class="status pending" id="stat-localrecs">not started</div></div>
         </div>
         <div class="action-row">
           <button class="btn primary" onclick="setAppMode('guest')">Preview guest view</button>
@@ -243,6 +255,39 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <h2>Design</h2>
         <p class="sub">Pick a palette. This changes what guests see, not the setup screens.</p>
         <div class="palette-grid" id="palette-grid"></div>
+      </div>
+
+      <div class="setup-page hidden" id="page-localrecs">
+        <h2>Local recs</h2>
+        <p class="sub">Places nearby worth pointing guests to.</p>
+        <div class="card" id="localrecs-list"></div>
+        <div class="add-form">
+          <div class="field-row">
+            <div class="field-group">
+              <label>Category</label>
+              <select id="rec-new-category">
+                <option value="food">Food</option>
+                <option value="coffee">Coffee</option>
+                <option value="grocery">Grocery</option>
+                <option value="activities">Activities</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Name</label>
+              <input type="text" id="rec-new-name" placeholder="e.g. Trailhead Coffee Co.">
+            </div>
+          </div>
+          <div class="field-group">
+            <label>Note</label>
+            <input type="text" id="rec-new-note" placeholder="e.g. Best espresso in town, 5 min walk">
+          </div>
+          <div class="field-group">
+            <label>Map link (optional)</label>
+            <input type="text" id="rec-new-link" placeholder="https://maps.google.com/...">
+          </div>
+          <button class="btn primary" onclick="addLocalRec()">Add place</button>
+        </div>
       </div>
 
       <div class="setup-page hidden" id="page-checkin">
@@ -324,7 +369,7 @@ input,select,textarea{font-family:'Jost',sans-serif;}
               <div class="icon-circle"><svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg></div>
               <span>Rules</span>
             </div>
-            <div class="launcher-tile soon">
+            <div class="launcher-tile" onclick="showGuestTab('guest-nearby')">
               <div class="icon-circle"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.3"/></svg></div>
               <span>Local recs</span>
             </div>
@@ -378,11 +423,17 @@ input,select,textarea{font-family:'Jost',sans-serif;}
         <div class="guest-body" id="hub-content"></div>
       </div>
 
+      <div class="guest-screen" id="guest-nearby">
+        <div class="guest-header"><h2>Nearby</h2></div>
+        <div class="rec-cat-chips" id="rec-chips"></div>
+        <div class="guest-body" id="rec-list"></div>
+      </div>
+
       <div class="tabbar">
         <div class="tab active" data-tab="guest-home" onclick="showGuestTab('guest-home')">Home</div>
         <div class="tab" data-tab="guest-wifi" onclick="showGuestTab('guest-wifi')">Wifi</div>
         <div class="tab" data-tab="guest-guide" onclick="showGuestTab('guest-guide')">Guide</div>
-        <div class="tab" style="opacity:.4;">Nearby</div>
+        <div class="tab" data-tab="guest-nearby" onclick="showGuestTab('guest-nearby')">Nearby</div>
         <div class="tab" style="opacity:.4;">Help</div>
       </div>
 
@@ -2705,7 +2756,8 @@ let state = {
   wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
   design: { palette: 'coastal' },
   houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
-  checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] }
+  checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
+  localRecs: []
 };
 
 function defaultState(){
@@ -2714,7 +2766,8 @@ function defaultState(){
     wifi: { network:'', password:'', doorCode:'', parkingNotes:'' },
     design: { palette: 'coastal' },
     houseGuide: { manual:[], amenities:[], transportation:[], qa:[], rules:[] },
-    checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] }
+    checkin: { checkoutTime:'', arrivalSteps:[], checkoutSteps:[] },
+    localRecs: []
   };
 }
 
@@ -2733,6 +2786,7 @@ function loadState(){
       state.design = Object.assign(defaultState().design, parsed.design||{});
       state.houseGuide = Object.assign(defaultState().houseGuide, parsed.houseGuide||{});
       state.checkin = Object.assign(defaultState().checkin, parsed.checkin||{});
+      state.localRecs = Array.isArray(parsed.localRecs) ? parsed.localRecs : [];
     }
   }catch(e){ console.error('Load failed', e); state = defaultState(); }
 }
@@ -2977,6 +3031,77 @@ function renderGuestCheckin(){
   renderStepList('guest-checkout-list', state.checkin.checkoutSteps, 'checkoutSteps', false);
 }
 
+const REC_CATEGORIES = [
+  {key:'food', label:'Food'},
+  {key:'coffee', label:'Coffee'},
+  {key:'grocery', label:'Grocery'},
+  {key:'activities', label:'Activities'},
+  {key:'emergency', label:'Emergency'}
+];
+let activeRecCategory = 'all';
+
+function addLocalRec(){
+  const category = document.getElementById('rec-new-category').value;
+  const name = document.getElementById('rec-new-name').value.trim();
+  const note = document.getElementById('rec-new-note').value.trim();
+  const link = document.getElementById('rec-new-link').value.trim();
+  if(!name) return;
+  state.localRecs.push({id: genId(), category, name, note, link});
+  document.getElementById('rec-new-name').value = '';
+  document.getElementById('rec-new-note').value = '';
+  document.getElementById('rec-new-link').value = '';
+  saveState();
+  renderAll();
+}
+
+function deleteLocalRec(id){
+  state.localRecs = state.localRecs.filter(r=>r.id!==id);
+  saveState();
+  renderAll();
+}
+
+function renderLocalRecsSetup(){
+  const el = document.getElementById('localrecs-list');
+  if(state.localRecs.length === 0){
+    el.innerHTML = '<p class="empty-note">Nothing added yet.</p>';
+    return;
+  }
+  const catLabel = k => (REC_CATEGORIES.find(c=>c.key===k)||{}).label || k;
+  el.innerHTML = state.localRecs.map(r=>{
+    return `<div class="list-item"><div class="li-text"><div class="li-title">${escapeHtml(r.name)}</div><div class="li-sub">${escapeHtml(catLabel(r.category))}${r.note?' · '+escapeHtml(r.note):''}</div></div><button class="li-delete" onclick="deleteLocalRec('${r.id}')">remove</button></div>`;
+  }).join('');
+}
+
+function setRecCategory(key){
+  activeRecCategory = key;
+  renderGuestRecs();
+}
+
+function renderGuestRecs(){
+  const chips = document.getElementById('rec-chips');
+  const allChip = {key:'all', label:'All'};
+  chips.innerHTML = '';
+  [allChip, ...REC_CATEGORIES].forEach(c=>{
+    const el = document.createElement('div');
+    el.className = 'rec-cat-chip' + (activeRecCategory===c.key ? ' active' : '');
+    el.textContent = c.label;
+    el.onclick = () => setRecCategory(c.key);
+    chips.appendChild(el);
+  });
+
+  const list = document.getElementById('rec-list');
+  const items = activeRecCategory==='all' ? state.localRecs : state.localRecs.filter(r=>r.category===activeRecCategory);
+  if(items.length === 0){
+    list.innerHTML = '<p class="empty-note">Nothing here yet.</p>';
+    return;
+  }
+  const catLabel = k => (REC_CATEGORIES.find(c=>c.key===k)||{}).label || k;
+  list.innerHTML = items.map(r=>{
+    const linkHtml = r.link ? `<a class="rec-link" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">Open map</a>` : '';
+    return `<div class="rec-card"><div class="rec-cat">${escapeHtml(catLabel(r.category))}</div><div class="rec-name">${escapeHtml(r.name)}</div>${r.note?'<div class="rec-note">'+escapeHtml(r.note)+'</div>':''}${linkHtml}</div>`;
+  }).join('');
+}
+
 function renderAll(){
   const name = state.property.name || 'Stay Guide';
   document.getElementById('sidebar-property-name').textContent = state.property.name || 'Stay Guide';
@@ -3011,9 +3136,12 @@ function renderAll(){
   document.getElementById('stat-checkin').className = 'status ' + (checkinDone?'done':'pending');
   document.getElementById('stat-houseguide').textContent = houseGuideDone ? 'done' : 'not started';
   document.getElementById('stat-houseguide').className = 'status ' + (houseGuideDone?'done':'pending');
-  const doneCount = (basicsDone?1:0) + (wifiDone?1:0) + (checkinDone?1:0) + (houseGuideDone?1:0);
-  document.getElementById('progress-sub').textContent = doneCount + ' of 4 sections complete';
-  document.getElementById('progress-fill').style.width = Math.round((doneCount/4)*100) + '%';
+  const localRecsDone = state.localRecs.length > 0;
+  document.getElementById('stat-localrecs').textContent = localRecsDone ? 'done' : 'not started';
+  document.getElementById('stat-localrecs').className = 'status ' + (localRecsDone?'done':'pending');
+  const doneCount = (basicsDone?1:0) + (wifiDone?1:0) + (checkinDone?1:0) + (houseGuideDone?1:0) + (localRecsDone?1:0);
+  document.getElementById('progress-sub').textContent = doneCount + ' of 5 sections complete';
+  document.getElementById('progress-fill').style.width = Math.round((doneCount/5)*100) + '%';
 
   renderPaletteGrid();
   applyPaletteToGuestView();
@@ -3021,6 +3149,8 @@ function renderAll(){
   renderGuestHub();
   renderCheckinSetup();
   renderGuestCheckin();
+  renderLocalRecsSetup();
+  renderGuestRecs();
 }
 
 function toggleTheme(){
@@ -3119,6 +3249,7 @@ function initGuestOnlyModeIfLinked(){
   state.design = Object.assign(defaultState().design, linked.design||{});
   state.houseGuide = Object.assign(defaultState().houseGuide, linked.houseGuide||{});
   state.checkin = Object.assign(defaultState().checkin, linked.checkin||{});
+  state.localRecs = Array.isArray(linked.localRecs) ? linked.localRecs : [];
   document.body.classList.add('guest-only');
   document.getElementById('setup-view').classList.add('hidden');
   document.getElementById('guest-view').classList.remove('hidden');
