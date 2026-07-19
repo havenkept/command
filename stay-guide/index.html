@@ -157,7 +157,6 @@ html[data-theme="dark"] .phone{border-color:#000;}
 .guest-hero{background:linear-gradient(135deg,var(--plum) 0%,var(--teal) 100%);background-size:cover;background-position:center;color:var(--on-color);padding:26px 22px 40px;border-radius:0 0 26px 26px;position:relative;transition:background-image .25s ease;}
 .guest-hero .eyebrow{font-size:11px;color:rgba(255,255,255,0.72);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em;}
 .guest-hero h2{font-size:25px;color:var(--on-color);line-height:1.15;}
-.floating-card{margin:-24px 22px 4px !important;box-shadow:var(--shadow-md);position:relative;z-index:2;}
 .icon-circle.c-plum{background:var(--plum-tint);color:var(--plum-text);}
 .icon-circle.c-teal{background:var(--teal-tint);color:var(--teal);}
 .icon-circle.c-terracotta{background:var(--terracotta-tint);color:var(--terracotta);}
@@ -579,11 +578,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
             <div><div class="label">checkout time</div><div class="value" id="guest-checkout-note">Add your details in Setup</div></div>
           </div>
         </div>
-        <div class="guest-body" style="padding-top:0;">
-          <div class="info-row floating-card" onclick="showGuestTab('guest-wifi')" style="cursor:pointer;">
-            <div><div class="label">wifi network</div><div class="value" id="guest-wifi-network-preview">—</div></div>
-            <span style="font-size:11px;color:var(--text-muted);">tap for password</span>
-          </div>
+        <div class="guest-body">
           <div class="launcher-grid">
             <div class="launcher-tile" onclick="showGuestTab('guest-wifi')">
               <div class="icon-circle c-teal"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0"/><path d="M5 12.9a10 10 0 0 1 14 0"/><path d="M8.5 17a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="0.9" fill="currentColor" stroke="none"/></svg></div>
@@ -4697,7 +4692,6 @@ function renderAll(){
   document.getElementById('in-door-code').value = state.wifi.doorCode;
   document.getElementById('in-parking').value = state.wifi.parkingNotes;
 
-  document.getElementById('guest-wifi-network-preview').textContent = state.wifi.network || 'Not set yet';
   document.getElementById('guest-wifi-network').textContent = state.wifi.network || 'Not set yet';
   document.getElementById('guest-wifi-password').textContent = state.wifi.password || 'Not set yet';
   document.getElementById('guest-door-code').textContent = state.wifi.doorCode || 'Not set yet';
