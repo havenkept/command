@@ -3481,7 +3481,12 @@ function applyPaletteToGuestView(){
   document.documentElement.style.setProperty('--plum', p.colors[0]);
   document.documentElement.style.setProperty('--teal', p.colors[1]);
   document.documentElement.style.setProperty('--terracotta', p.colors[2]);
-  document.documentElement.style.setProperty('--sand', p.colors[3]);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(isDark){
+    document.documentElement.style.removeProperty('--sand');
+  } else {
+    document.documentElement.style.setProperty('--sand', p.colors[3]);
+  }
 }
 
 const HG_TABS = [
@@ -3980,6 +3985,7 @@ function toggleTheme(){
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('stayGuideTheme', next);
   document.getElementById('theme-toggle-btn').textContent = next === 'dark' ? 'Light mode' : 'Dark mode';
+  applyPaletteToGuestView();
 }
 
 function loadTheme(){
