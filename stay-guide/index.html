@@ -73,6 +73,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--plum) !i
 .setup-page{max-width:640px;}
 .setup-page h2{font-size:26px;margin-bottom:4px;}
 .setup-page .sub{font-size:13px;color:var(--text-muted);margin-bottom:26px;line-height:1.6;}
+.sidebar-footer{margin-top:auto;padding:16px 12px 4px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);}
+.sidebar-footer a{color:var(--plum);text-decoration:none;font-weight:500;}
+.sidebar-footer a:hover{text-decoration:underline;}
 
 .field-group{margin-bottom:18px;}
 .field-group label{display:block;font-size:12px;color:#5c574d;margin-bottom:6px;font-weight:500;}
@@ -282,6 +285,7 @@ html[data-theme="dark"] .phone{border-color:#000;}
       <div class="nav-item" data-page="localrecs" onclick="showSetupPage('localrecs')">Local recs</div>
       <div class="nav-item" data-page="help" onclick="showSetupPage('help')">Help</div>
       <div class="nav-item" data-page="design" onclick="showSetupPage('design')">Settings</div>
+      <div class="sidebar-footer">Made with <a href="https://havenkept.com" target="_blank" rel="noopener">HavenKept</a></div>
     </div>
     <div class="setup-main">
 
@@ -3500,6 +3504,7 @@ function updateField(path, value){
 function setAppMode(mode){
   document.getElementById('setup-view').classList.toggle('hidden', mode!=='setup');
   document.getElementById('guest-view').classList.toggle('hidden', mode!=='guest');
+  document.title = mode === 'setup' ? 'HavenKept Stay Guide' : 'Stay Guide';
 }
 
 const PAGE_TITLES = {
@@ -4272,6 +4277,7 @@ function initGuestOnlyModeIfLinked(){
   document.body.classList.add('guest-only');
   document.getElementById('setup-view').classList.add('hidden');
   document.getElementById('guest-view').classList.remove('hidden');
+  document.title = 'Stay Guide';
   return true;
 }
 
