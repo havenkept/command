@@ -619,6 +619,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 <!-- FOOTER DATA BAR -->
 <div class="data-bar">
   <div class="data-bar-label">Data saves automatically. Export save file and import on other device to sync.</div>
+  <button class="data-btn" id="theme-toggle-btn-mobile" onclick="toggleDarkMode()"></button>
   <button class="data-btn" onclick="undoLast()">↩ Undo</button>
   <button class="data-btn" onclick="exportData()">⬇ Export</button>
   <button class="data-btn" onclick="document.getElementById('import-file-input').click()">⬆ Import</button>
@@ -3092,6 +3093,8 @@ function applyDarkMode(){
   document.body.classList.toggle('dark-mode',on);
   var btn=document.getElementById('theme-toggle-btn');
   if(btn)btn.innerHTML=svgIcon(on?'sun':'moon',15)+'<span>'+(on?'Light Mode':'Dark Mode')+'</span>';
+  var btnMobile=document.getElementById('theme-toggle-btn-mobile');
+  if(btnMobile)btnMobile.textContent=on?'☀ Light Mode':'☾ Dark Mode';
 }
 function toggleDarkMode(){
   state.darkMode=!state.darkMode;
