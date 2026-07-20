@@ -250,9 +250,9 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   .bottom-nav-inner{display:flex;width:100%;}
   .bottom-nav-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:none;border:none;color:var(--muted);font-size:9px;cursor:pointer;}
   .bottom-nav-item.active{color:var(--rose-dark);}
-  .data-bar{left:0;bottom:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;}
+  .data-bar{left:0;bottom:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;gap:5px;padding:8px 10px;}
   .data-bar-label{display:none;}
-  .data-btn{flex-shrink:0;}
+  .data-btn{flex-shrink:0;padding:5px 9px;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
 }
 </style>
@@ -3099,7 +3099,13 @@ function applyDarkMode(){
   var btn=document.getElementById('theme-toggle-btn');
   if(btn)btn.innerHTML=svgIcon(on?'sun':'moon',15)+'<span>'+(on?'Light Mode':'Dark Mode')+'</span>';
   var btnMobile=document.getElementById('theme-toggle-btn-mobile');
-  if(btnMobile)btnMobile.textContent=on?'☀ Light Mode':'☾ Dark Mode';
+  if(btnMobile){
+    // Icon-only on mobile: the full "Dark Mode"/"Light Mode" label was the widest
+    // button in the footer row and pushed Start Over off-screen on narrow phones.
+    btnMobile.textContent=on?'☀':'☾';
+    btnMobile.title=on?'Switch to light mode':'Switch to dark mode';
+    btnMobile.setAttribute('aria-label',btnMobile.title);
+  }
 }
 function toggleDarkMode(){
   state.darkMode=!state.darkMode;
