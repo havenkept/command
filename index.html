@@ -235,9 +235,11 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
 
 /* ===== FOOTER DATA BAR ===== */
-.data-bar{position:fixed;bottom:0;left:var(--sidebar-w);right:0;background:var(--ivory-dark);border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;align-items:center;z-index:80;flex-wrap:wrap;}
+.data-bar{position:fixed;bottom:0;left:var(--sidebar-w);right:0;background:var(--warm-white);border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;align-items:center;z-index:80;flex-wrap:wrap;}
 .data-bar-label{font-size:10.5px;color:var(--muted);margin-right:auto;}
-.data-btn{-webkit-appearance:none;appearance:none;background:var(--warm-white);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;cursor:pointer;font-family:var(--font-sans);color:var(--charcoal);transition:0.15s;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
+.data-btn{-webkit-appearance:none;appearance:none;background:none;border:none;border-radius:8px;padding:9px;cursor:pointer;color:var(--muted);transition:background-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;}
+.data-btn:hover{background:var(--rose-light);color:var(--rose-dark);}
+.data-btn:active{background:var(--rose-light);}
 .data-btn:hover{border-color:var(--rose);color:var(--rose-dark);}
 
 .toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:var(--plum);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:1500;opacity:0;pointer-events:none;transition:0.25s;}
@@ -252,7 +254,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   .bottom-nav-item.active{color:var(--rose-dark);}
   .data-bar{left:0;bottom:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:center;gap:10px;padding:10px 14px;}
   .data-bar-label{display:none;}
-  .data-btn{flex-shrink:0;padding:9px 12px;display:flex;align-items:center;justify-content:center;}
+  .data-btn{flex-shrink:0;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
 }
 </style>
@@ -624,7 +626,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <button class="data-btn" onclick="exportData()" title="Export" aria-label="Export"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
   <button class="data-btn" onclick="document.getElementById('import-file-input').click()" title="Import" aria-label="Import"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
   <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="importData(this)"/>
-  <button class="data-btn" style="color:#b05a5a;border-color:#e8c8c8;" onclick="startOver()" title="Start Over" aria-label="Start Over"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+  <button class="data-btn" style="color:#b05a5a;" onclick="startOver()" title="Start Over" aria-label="Start Over"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
 </div>
 
 <!-- ===== MODALS ===== -->
