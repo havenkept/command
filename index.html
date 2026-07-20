@@ -1842,7 +1842,12 @@ async function reconcileWithAirtable(manual){
   var remoteItems=await airtableListAll(AIRTABLE_TESTING_ITEMS_TABLE);
   if(!state.testingPasses)state.testingPasses=[];
   state.testingPasses.forEach(function(pass){
-    if(!pass.airtableId){
+    // A saved airtableId can go stale if the Airtable record was deleted and later
+    // recreated (e.g. a pass got deleted and rebuilt fresh). Without re-checking that
+    // the ID still exists, this pass would be permanently stuck matching zero items
+    // against a record that no longer exists, no matter how many times you sync.
+    var idStillValid=pass.airtableId&&remotePasses.some(function(r){return r.id===pass.airtableId;});
+    if(!idStillValid){
       var m=remotePasses.find(function(r){return r.fields&&r.fields['Label']===pass.label;});
       pass.airtableId=m?m.id:null;
     }
