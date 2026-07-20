@@ -1853,6 +1853,30 @@ async function reconcileWithAirtable(manual){
         item.airtableId=im?im.id:null;
       }
     });
+    // Pull in any remote items for this pass that aren't represented locally yet —
+    // matched by airtableId first, falling back to exact text match to avoid duplicates.
+    // Without this, items added to an already-synced pass in Airtable would never
+    // appear locally no matter how many times Sync Now was clicked.
+    var localAirtableItemIds=pass.items.map(function(i){return i.airtableId;}).filter(Boolean);
+    var localItemTexts=pass.items.map(function(i){return i.text;});
+    thisPassItems.forEach(function(ri){
+      if(localAirtableItemIds.indexOf(ri.id)!==-1)return;
+      var rf=ri.fields||{};
+      var text=rf['Item Text']||'';
+      if(localItemTexts.indexOf(text)!==-1)return;
+      pass.items.push({id:uid(),section:rf['Section']||'General',text:text,priority:!!rf['Priority'],done:!!rf['Done'],note:rf['Note']||'',knownIssue:!!rf['Known Issue'],airtableId:ri.id});
+    });
+    // Also pick up remote Done/Note/Priority edits on items we already know about,
+    // so changes made directly in Airtable (or by Claude) are reflected here too.
+    pass.items.forEach(function(item){
+      if(!item.airtableId)return;
+      var ri=thisPassItems.find(function(r){return r.id===item.airtableId;});
+      if(!ri||!ri.fields)return;
+      item.done=!!ri.fields['Done'];
+      item.note=ri.fields['Note']||item.note||'';
+      item.priority=!!ri.fields['Priority'];
+      item.knownIssue=!!ri.fields['Known Issue'];
+    });
   });
   var localPassIds=state.testingPasses.map(function(p){return p.airtableId;}).filter(Boolean);
   remotePasses.forEach(function(r){
