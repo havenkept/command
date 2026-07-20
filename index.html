@@ -1455,6 +1455,24 @@ async function airtableRequest(method,path,body){
   }
 }
 
+// Airtable's list endpoint caps each response at 100 records and returns an
+// `offset` token when more exist. The direct airtableRequest('GET',...) calls
+// below only ever fetched page 1, so any table that grew past 100 records
+// silently dropped everything after it (this is what caused newly-created
+// Testing Items/Passes to go missing from Studio once the base had enough
+// history). This helper follows the offset token until every record is in.
+async function airtableListAll(tableId){
+  var all=[];
+  var offset=null;
+  do{
+    var path='/'+tableId+(offset?('?offset='+encodeURIComponent(offset)):'');
+    var res=await airtableRequest('GET',path,null);
+    if(!res)break;
+    all=all.concat(res.records||[]);
+    offset=res.offset||null;
+  }while(offset);
+  return all;
+}
 async function airtableCreateProduct(p){
   var fields={};
   fields[AIRTABLE_FIELDS.name]=p.name; fields[AIRTABLE_FIELDS.brand]=p.brand||'HavenKept';
@@ -1604,16 +1622,13 @@ async function reconcileWithAirtable(manual){
   var statusEl=document.getElementById('airtable-sync-status');
   if(statusEl)statusEl.textContent='Syncing…';
 
-  var productsRes=await airtableRequest('GET','/'+AIRTABLE_PRODUCTS_TABLE,null);
-  var remoteProducts=(productsRes&&productsRes.records)||[];
+  var remoteProducts=await airtableListAll(AIRTABLE_PRODUCTS_TABLE);
   var getError=_airtableLastError;
 
-  var bugsRes=await airtableRequest('GET','/'+AIRTABLE_BUGS_TABLE,null);
-  var remoteBugs=(bugsRes&&bugsRes.records)||[];
+  var remoteBugs=await airtableListAll(AIRTABLE_BUGS_TABLE);
   if(!getError)getError=_airtableLastError;
 
-  var featuresRes=await airtableRequest('GET','/'+AIRTABLE_FEATURES_TABLE,null);
-  var remoteFeatures=(featuresRes&&featuresRes.records)||[];
+  var remoteFeatures=await airtableListAll(AIRTABLE_FEATURES_TABLE);
   if(!getError)getError=_airtableLastError;
 
   // Features: match by name, pull down any missing locally, push up any local-only ones
@@ -1731,8 +1746,7 @@ async function reconcileWithAirtable(manual){
   // ===== FULL TWO-WAY RECONCILE: Custom Orders, Calendar Events, Notes, Websites, Testing =====
   var stageMapRev={'Inquiry':'inquiry','Intake':'deposit paid','In Progress':'building','Delivered':'delivered'};
 
-  var ordersRes=await airtableRequest('GET','/'+AIRTABLE_ORDERS_TABLE,null);
-  var remoteOrders=(ordersRes&&ordersRes.records)||[];
+  var remoteOrders=await airtableListAll(AIRTABLE_ORDERS_TABLE);
   if(!state.customOrders)state.customOrders=[];
   state.customOrders.forEach(function(o){
     if(!o.airtableId){
@@ -1757,8 +1771,7 @@ async function reconcileWithAirtable(manual){
     if(!state.customOrders[oi].airtableId)await airtableCreateOrder(state.customOrders[oi]);
   }
 
-  var eventsRes=await airtableRequest('GET','/'+AIRTABLE_EVENTS_TABLE,null);
-  var remoteEvents=(eventsRes&&eventsRes.records)||[];
+  var remoteEvents=await airtableListAll(AIRTABLE_EVENTS_TABLE);
   if(!state.calendarEvents)state.calendarEvents=[];
   state.calendarEvents.forEach(function(e){
     if(!e.airtableId){
@@ -1777,8 +1790,7 @@ async function reconcileWithAirtable(manual){
     if(!state.calendarEvents[ei].airtableId)await airtableCreateEvent(state.calendarEvents[ei]);
   }
 
-  var notesRes=await airtableRequest('GET','/'+AIRTABLE_NOTES_TABLE,null);
-  var remoteNotes=(notesRes&&notesRes.records)||[];
+  var remoteNotes=await airtableListAll(AIRTABLE_NOTES_TABLE);
   if(!state.notes)state.notes=[];
   state.notes.forEach(function(n){
     if(!n.airtableId){
@@ -1806,8 +1818,7 @@ async function reconcileWithAirtable(manual){
     if(!state.notes[ni].airtableId)await airtableCreateNote(state.notes[ni]);
   }
 
-  var websitesRes=await airtableRequest('GET','/'+AIRTABLE_WEBSITES_TABLE,null);
-  var remoteWebsites=(websitesRes&&websitesRes.records)||[];
+  var remoteWebsites=await airtableListAll(AIRTABLE_WEBSITES_TABLE);
   if(!state.websites)state.websites=[];
   state.websites.forEach(function(w){
     if(!w.airtableId){
@@ -1826,10 +1837,8 @@ async function reconcileWithAirtable(manual){
     if(!state.websites[wi].airtableId)await airtableCreateWebsite(state.websites[wi]);
   }
 
-  var passesRes=await airtableRequest('GET','/'+AIRTABLE_PASSES_TABLE,null);
-  var remotePasses=(passesRes&&passesRes.records)||[];
-  var itemsRes=await airtableRequest('GET','/'+AIRTABLE_TESTING_ITEMS_TABLE,null);
-  var remoteItems=(itemsRes&&itemsRes.records)||[];
+  var remotePasses=await airtableListAll(AIRTABLE_PASSES_TABLE);
+  var remoteItems=await airtableListAll(AIRTABLE_TESTING_ITEMS_TABLE);
   if(!state.testingPasses)state.testingPasses=[];
   state.testingPasses.forEach(function(pass){
     if(!pass.airtableId){
