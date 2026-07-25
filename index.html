@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="color-scheme" content="light"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1"/>
-<title>HavenKept Studio</title>
+<title>HavenKept Command Center</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -265,19 +265,19 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 <div id="setup-screen">
   <div class="setup-box">
     <div class="setup-monogram">✦</div>
-    <div class="setup-title">HavenKept Studio</div>
+    <div class="setup-title">HavenKept Command Center</div>
     <div class="setup-sub">Your Business Command Center</div>
     <div class="form-field" style="text-align:left;">
       <label>Your Name</label>
       <input type="text" id="ownerName" placeholder="Bailey"/>
     </div>
-    <button class="setup-btn" onclick="saveSetup()">Enter Studio ✦</button>
+    <button class="setup-btn" onclick="saveSetup()">Enter Command Center ✦</button>
   </div>
 </div>
 
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-brand">HavenKept Studio</div>
+    <div class="sidebar-brand">HavenKept Command Center</div>
     <div class="sidebar-subtitle">Command Center</div>
   </div>
   <div class="sidebar-nav" id="sidebar-nav"></div>
@@ -611,11 +611,11 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 
 <div id="page-sync" class="page">
   <div class="page-header">
-    <div><div class="page-title">Airtable Sync</div><div class="page-sub">Connect Studio to your Airtable base so Claude can read live status without exports</div></div>
+    <div><div class="page-title">Airtable Sync</div><div class="page-sub">Connect Command Center to your Airtable base so Claude can read live status without exports</div></div>
   </div>
   <div class="card" style="margin-bottom:14px;">
     <div class="card-title" style="margin-bottom:8px;">Personal Access Token</div>
-    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Generate this once at airtable.com/create/tokens, scoped to just the HavenKept Studio base with data.records:read and data.records:write. This token is stored only in this browser's localStorage, separate from your regular Export/Import backups, so it's never included when you share a backup file.</p>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Generate this once at airtable.com/create/tokens, scoped to just the HavenKept Command Center base with data.records:read and data.records:write. This token is stored only in this browser's localStorage, separate from your regular Export/Import backups, so it's never included when you share a backup file.</p>
     <div class="form-field"><input type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="airtable-token-input" placeholder="pat..."/></div>
     <button class="btn-add" onclick="saveAirtableToken()">Save Token</button>
     <span id="airtable-token-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
@@ -1192,7 +1192,7 @@ function importData(input){
   reader.readAsText(file);
 }
 async function startOver(){
-  if(!await styledConfirm('Start Over','This will erase all Studio data on this device. Export a backup first if you want to keep it. Continue?'))return;
+  if(!await styledConfirm('Start Over','This will erase all Command Center data on this device. Export a backup first if you want to keep it. Continue?'))return;
   localStorage.removeItem('havenKeptStudio');location.reload();
 }
 
@@ -2611,7 +2611,7 @@ function renderCalendarDayEvents(){
 function icsEscape(str){if(!str)return'';return String(str).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
 function icsDate(dateStr){return String(dateStr).replace(/-/g,'');}
 function generateICS(events,calName){
-  var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//HavenKept//Studio Export//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:'+icsEscape(calName)];
+  var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//HavenKept//Command Center Export//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:'+icsEscape(calName)];
   events.forEach(function(ev,i){
     if(!ev.title||!ev.start)return;
     var uid='havenkept-studio-'+Date.now()+'-'+i+'@havenkept.com';
@@ -2628,16 +2628,16 @@ function generateICS(events,calName){
   return lines.join('\r\n');
 }
 function downloadICS(events,filename,calName){
-  var icsContent=generateICS(events,calName||'HavenKept Studio');
+  var icsContent=generateICS(events,calName||'HavenKept Command Center');
   var blob=new Blob([icsContent],{type:'text/calendar;charset=utf-8'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');a.href=url;a.download=filename||'studio-events.ics';
+  var a=document.createElement('a');a.href=url;a.download=filename||'command-center-events.ics';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 function exportToCalendar(){
   var events=(state.calendarEvents||[]).map(function(e){return {title:e.title,start:e.date,description:e.notes||''};});
   if(!events.length){toast('No events to export yet');return;}
-  downloadICS(events,'havenkept-studio-calendar.ics','HavenKept Studio');
+  downloadICS(events,'havenkept-command-center-calendar.ics','HavenKept Command Center');
   toast('Calendar file downloaded ✓');
 }
 
