@@ -1997,6 +1997,10 @@ async function reconcileWithAirtable(manual){
         issue.airtableIds[product.id]=r.id;
       });
     });
+    // Remove any local issue with no matching Airtable rows at all - these are
+    // orphans left behind by an earlier sync bug (e.g. a title that no longer
+    // matches anything remote) rather than a real, currently-tracked issue.
+    state.knownIssues=localIssues.filter(function(i){return !!rowsByTitle[i.title];});
     saveState();
     if(typeof renderKnownIssues==='function')renderKnownIssues();
   }
