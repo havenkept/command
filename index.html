@@ -1775,6 +1775,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   var localOrderIds=state.customOrders.map(function(o){return o.airtableId;}).filter(Boolean);
+  var remoteOrderIds=remoteOrders.map(function(r){return r.id;});
+  state.customOrders=state.customOrders.filter(function(o){
+    return !o.airtableId||remoteOrderIds.indexOf(o.airtableId)!==-1;
+  });
   remoteOrders.forEach(function(r){
     if(localOrderIds.indexOf(r.id)===-1){
       var f=r.fields||{};
@@ -1800,6 +1804,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   var localEventIds=state.calendarEvents.map(function(e){return e.airtableId;}).filter(Boolean);
+  var remoteEventIds=remoteEvents.map(function(r){return r.id;});
+  state.calendarEvents=state.calendarEvents.filter(function(e){
+    return !e.airtableId||remoteEventIds.indexOf(e.airtableId)!==-1;
+  });
   remoteEvents.forEach(function(r){
     if(localEventIds.indexOf(r.id)===-1){
       var f=r.fields||{};
@@ -1820,12 +1828,19 @@ async function reconcileWithAirtable(manual){
     if(n.airtableId){
       var mm=remoteNotes.find(function(r){return r.id===n.airtableId;});
       if(mm&&mm.fields){
+        n.text=mm.fields['Text']||n.text;
+        n.pinned=!!mm.fields['Pinned'];
         n.isHandoff=!!mm.fields['Is Handoff'];
         n.handoffType=mm.fields['Handoff Type']||n.handoffType||'';
         n.handoffRelatedTo=mm.fields['Handoff Related To']||n.handoffRelatedTo||'';
         n.handoffResolved=!!mm.fields['Handoff Resolved'];
       }
     }
+  });
+  // Remove notes locally that no longer exist in Airtable (were deleted remotely)
+  var remoteNoteIds=remoteNotes.map(function(r){return r.id;});
+  state.notes=state.notes.filter(function(n){
+    return !n.airtableId||remoteNoteIds.indexOf(n.airtableId)!==-1;
   });
   var localNoteIds=state.notes.map(function(n){return n.airtableId;}).filter(Boolean);
   remoteNotes.forEach(function(r){
@@ -1847,6 +1862,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   var localWebsiteIds=state.websites.map(function(w){return w.airtableId;}).filter(Boolean);
+  var remoteWebsiteIds=remoteWebsites.map(function(r){return r.id;});
+  state.websites=state.websites.filter(function(w){
+    return !w.airtableId||remoteWebsiteIds.indexOf(w.airtableId)!==-1;
+  });
   remoteWebsites.forEach(function(r){
     if(localWebsiteIds.indexOf(r.id)===-1){
       var f=r.fields||{};
