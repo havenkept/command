@@ -477,6 +477,15 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <div id="notes-list"></div>
 </div>
 
+<!-- STANDING RULES -->
+<div id="page-standing-rules" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Standing Rules</div><div class="page-sub">Brand rules, pricing, and other things that don't change often</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openNoteEditor(null,true)">+ New Standing Rule</button>
+  </div>
+  <div id="standing-rules-list"></div>
+</div>
+
 <div id="note-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(42,36,29,0.35);z-index:900;" onclick="if(event.target===this)closeNoteEditor()">
   <div id="note-editor-panel" style="position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:var(--warm-white);box-shadow:-4px 0 24px rgba(0,0,0,0.12);padding:20px;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -491,7 +500,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
       <button class="btn-ghost" style="padding:5px 9px;" onclick="noteInsertLink()" data-tip="Insert link">⚭</button>
     </div>
     <div id="note-editor-body" contenteditable="true" style="min-height:200px;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13.5px;line-height:1.5;background:var(--ivory);outline:none;"></div>
-    <label style="margin-top:12px;"><input type="checkbox" id="note-pinned-input" style="width:auto;margin-right:6px;"/> Pin to top</label>
+    <label style="margin-top:12px;"><input type="checkbox" id="note-pinned-input" style="width:auto;margin-right:6px;"/> Mark as Standing Rule (moves to the Standing Rules page)</label>
     <div class="modal-footer" style="margin-top:14px;">
       <button class="btn-ghost" onclick="closeNoteEditor()">Cancel</button>
       <button class="btn-add" onclick="saveNoteEditor()">Save Note</button>
@@ -737,7 +746,8 @@ var ICONS={
   moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
   undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'
 };
 function svgIcon(key,size){
   size=size||17;
@@ -751,6 +761,7 @@ var NAV_ITEMS=[
   {id:'orders',icon:'clipboard',label:'Custom Orders'},
   {id:'calendar',icon:'calendar',label:'Calendar'},
   {id:'notes',icon:'edit',label:'Notes'},
+  {id:'standing-rules',icon:'bookmark',label:'Standing Rules'},
   {id:'websites',icon:'link',label:'Websites'},
   {id:'testing',icon:'checkCircle',label:'Testing'},
   {id:'upload',icon:'uploadCloud',label:'Upload Zone'},
@@ -1221,6 +1232,7 @@ function showPage(id,el){
   if(id==='orders')renderOrders();
   if(id==='calendar')renderCalendar();
   if(id==='notes')renderNotes();
+  if(id==='standing-rules')renderStandingRules();
   if(id==='websites')renderWebsites();
   if(id==='testing')renderTesting();
   if(id==='upload')renderUploadZone();
@@ -1228,7 +1240,7 @@ function showPage(id,el){
   if(id==='knownissues')renderKnownIssues();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();applyDarkMode();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();applyDarkMode();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -1310,7 +1322,7 @@ function renderDashboard(){
   }).join('');}
 
   var notesEl=document.getElementById('dash-recent-notes');
-  var recentNotes=(state.notes||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,4);
+  var recentNotes=(state.notes||[]).filter(function(n){return !n.pinned;}).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,4);
   if(!recentNotes.length){notesEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No notes yet.</div>';}
   else{notesEl.innerHTML=recentNotes.map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px;cursor:pointer;" onclick="showPage(\'notes\',null)"><div style="color:var(--muted);font-size:10.5px;">'+fmtDateShort(n.date)+'</div><div style="max-height:36px;overflow:hidden;">'+n.text+'</div></div>';}).join('');}
 
@@ -2641,11 +2653,11 @@ async function noteInsertLink(){
   document.getElementById('note-editor-body').focus();
   document.execCommand('createLink',false,url);
 }
-function openNoteEditor(id){
+function openNoteEditor(id,defaultPinned){
   var n=id?(state.notes||[]).find(function(x){return x.id===id;}):null;
   _editingNoteId=id;
   document.getElementById('note-editor-body').innerHTML=n?n.text:'';
-  document.getElementById('note-pinned-input').checked=n?!!n.pinned:false;
+  document.getElementById('note-pinned-input').checked=n?!!n.pinned:!!defaultPinned;
   document.getElementById('note-editor-overlay').style.display='block';
   setTimeout(function(){document.getElementById('note-editor-body').focus();},50);
 }
@@ -2667,7 +2679,7 @@ function saveNoteEditor(){
     n={id:uid(),text:html,date:new Date().toISOString().slice(0,10),pinned:pinned};
     state.notes.unshift(n);
   }
-  saveState();closeNoteEditor();renderNotes();renderDashboard();toast('Note saved ✓');
+  saveState();closeNoteEditor();renderNotes();renderStandingRules();renderDashboard();toast('Note saved ✓');
   if(airtableEnabled()&&n){
     if(n.airtableId){airtableUpdateNote(n.airtableId,{'Text':n.text,'Pinned':!!n.pinned});}
     else{airtableCreateNote(n);}
@@ -2678,21 +2690,38 @@ function togglePinNote(id,ev){
   var n=(state.notes||[]).find(function(x){return x.id===id;});
   if(!n)return;
   n.pinned=!n.pinned;
-  saveState();renderNotes();renderDashboard();
+  saveState();renderNotes();renderStandingRules();renderDashboard();
   if(airtableEnabled()&&n.airtableId)airtableUpdateNote(n.airtableId,{'Pinned':n.pinned});
 }
 function renderNotes(){
   var list=document.getElementById('notes-list');
-  var notes=(state.notes||[]).slice().sort(function(a,b){
-    if(!!a.pinned!==!!b.pinned)return a.pinned?-1:1;
+  var notes=(state.notes||[]).filter(function(n){return !n.pinned;}).slice().sort(function(a,b){
     return (b.date||'').localeCompare(a.date||'');
   });
   if(!notes.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No notes yet.</div>';return;}
   list.innerHTML=notes.map(function(n){
-    return '<div class="note-card" style="position:relative;cursor:pointer;'+(n.pinned?'border-color:var(--rose);':'')+'" onclick="openNoteEditor(\''+n.id+'\')">'
+    return '<div class="note-card" style="position:relative;cursor:pointer;" onclick="openNoteEditor(\''+n.id+'\')">'
       +'<div class="note-actions" style="display:flex;gap:6px;">'
-        +'<button onclick="togglePinNote(\''+n.id+'\',event)" data-tip="'+(n.pinned?'Unpin':'Pin to top')+'" style="background:none;border:none;cursor:pointer;font-size:14px;color:'+(n.pinned?'var(--rose-dark)':'var(--muted-light)')+';">★</button>'
+        +'<button onclick="togglePinNote(\''+n.id+'\',event)" data-tip="Move to Standing Rules" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted-light);">'+svgIcon('bookmark',14)+'</button>'
         +'<button onclick="event.stopPropagation();removeNote(\''+n.id+'\')" data-tip="Delete note">×</button>'
+      +'</div>'
+      +'<div class="note-date">'+fmtDateShort(n.date)+'</div>'
+      +'<div class="note-text">'+n.text+'</div>'
+    +'</div>';
+  }).join('');
+}
+function renderStandingRules(){
+  var list=document.getElementById('standing-rules-list');
+  if(!list)return;
+  var notes=(state.notes||[]).filter(function(n){return n.pinned;}).slice().sort(function(a,b){
+    return (b.date||'').localeCompare(a.date||'');
+  });
+  if(!notes.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No standing rules yet. Anything marked "Standing Rule" shows up here instead of Notes.</div>';return;}
+  list.innerHTML=notes.map(function(n){
+    return '<div class="note-card" style="position:relative;cursor:pointer;border-color:var(--rose);" onclick="openNoteEditor(\''+n.id+'\')">'
+      +'<div class="note-actions" style="display:flex;gap:6px;">'
+        +'<button onclick="togglePinNote(\''+n.id+'\',event)" data-tip="Move back to Notes" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--rose-dark);">'+svgIcon('bookmark',14)+'</button>'
+        +'<button onclick="event.stopPropagation();removeNote(\''+n.id+'\')" data-tip="Delete">×</button>'
       +'</div>'
       +'<div class="note-date">'+fmtDateShort(n.date)+'</div>'
       +'<div class="note-text">'+n.text+'</div>'
@@ -2703,7 +2732,7 @@ function removeNote(id){
   var n=(state.notes||[]).find(function(x){return x.id===id;});
   var removedAirtableId=n?n.airtableId:null;
   state.notes=(state.notes||[]).filter(function(n){return n.id!==id;});
-  saveState();renderNotes();renderDashboard();
+  saveState();renderNotes();renderStandingRules();renderDashboard();
   if(airtableEnabled()&&removedAirtableId)airtableDeleteNote(removedAirtableId);
 }
 
