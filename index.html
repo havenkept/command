@@ -1428,11 +1428,13 @@ var AIRTABLE_NOTES_TABLE='tblG3CMvgjukWGvbx';
 var AIRTABLE_WEBSITES_TABLE='tblS2ffbUo5vmJQKd';
 var AIRTABLE_PASSES_TABLE='tblgQKfabEqiV0KmU';
 var AIRTABLE_TESTING_ITEMS_TABLE='tblyxZ1CteC4EwL9l';
+var AIRTABLE_KNOWN_ISSUES_TABLE='tblJtL6nHT11sjXNn';
 var AIRTABLE_FIELDS={
   name:'Name', brand:'Brand', listedUrl:'Listed URL', heroImage:'Hero Image', completedSteps:'Completed Steps',
   bugText:'Text', bugDone:'Done', bugProduct:'Product', bugPriority:'High Priority',
   featureName:'Feature Name', featureDesc:'Description', featureProducts:'Products',
-  plannerFile:'Planner File', plannerFileTag:'Planner File Tag', plannerFileUploadedAt:'Planner File Uploaded At'
+  plannerFile:'Planner File', plannerFileTag:'Planner File Tag', plannerFileUploadedAt:'Planner File Uploaded At',
+  kiIssue:'Issue', kiProducts:'Products', kiVerified:'Verified', kiNotes:'Notes'
 };
 
 function getAirtableToken(){ try{return localStorage.getItem('havenKeptStudioAirtableToken')||'';}catch(e){return '';} }
@@ -1515,6 +1517,18 @@ async function airtableCreateBug(productAirtableId,bug){
   if(productAirtableId)fields[AIRTABLE_FIELDS.bugProduct]=[productAirtableId];
   var res=await airtableRequest('POST','/'+AIRTABLE_BUGS_TABLE,{records:[{fields:fields}]});
   return res&&res.records&&res.records[0]?res.records[0].id:null;
+}
+async function airtableCreateKnownIssue(title,desc,productAirtableId,verified){
+  var fields={};
+  fields[AIRTABLE_FIELDS.kiIssue]=title;
+  if(productAirtableId)fields[AIRTABLE_FIELDS.kiProducts]=[productAirtableId];
+  fields[AIRTABLE_FIELDS.kiVerified]=!!verified;
+  var res=await airtableRequest('POST','/'+AIRTABLE_KNOWN_ISSUES_TABLE,{records:[{fields:fields}]});
+  return res&&res.records&&res.records[0]?res.records[0].id:null;
+}
+async function airtableUpdateKnownIssue(airtableId,fields){
+  if(!airtableId)return;
+  await airtableRequest('PATCH','/'+AIRTABLE_KNOWN_ISSUES_TABLE,{records:[{id:airtableId,fields:fields}]});
 }
 async function airtableUpdateBug(airtableId,fields){
   if(!airtableId)return;
@@ -1947,6 +1961,33 @@ async function reconcileWithAirtable(manual){
   if(typeof renderNotes==='function')renderNotes();
   if(typeof renderWebsites==='function')renderWebsites();
   if(typeof renderTesting==='function')renderTesting();
+
+  // Known Issues: pull remote Issue+Product+Verified rows and merge into the
+  // local state.knownIssues structure (one issue entry with a per-product
+  // verified map, matching what renderKnownIssues expects).
+  if(typeof getKnownIssues==='function'){
+    var localIssues=getKnownIssues();
+    var remoteKnownIssues=await airtableListAll(AIRTABLE_KNOWN_ISSUES_TABLE);
+    remoteKnownIssues.forEach(function(r){
+      var f=r.fields||{};
+      var title=f[AIRTABLE_FIELDS.kiIssue];
+      if(!title)return;
+      var issue=localIssues.find(function(i){return i.title===title;});
+      if(!issue){
+        issue={id:'ki-'+title.toLowerCase().replace(/[^a-z0-9]+/g,'-'),title:title,desc:f[AIRTABLE_FIELDS.kiNotes]||'',verified:{},airtableIds:{}};
+        localIssues.push(issue);
+      }
+      if(!issue.airtableIds)issue.airtableIds={};
+      var linkedProduct=(f[AIRTABLE_FIELDS.kiProducts]||[])[0];
+      if(!linkedProduct)return;
+      var product=(state.products||[]).find(function(p){return p.airtableId===linkedProduct;});
+      if(!product)return;
+      issue.verified[product.id]=!!f[AIRTABLE_FIELDS.kiVerified];
+      issue.airtableIds[product.id]=r.id;
+    });
+    saveState();
+    if(typeof renderKnownIssues==='function')renderKnownIssues();
+  }
 
   saveState();
   if(typeof renderProducts==='function')renderProducts();
@@ -3121,12 +3162,12 @@ var DEFAULT_KNOWN_ISSUES=[
   {id:'ki-colorpicker',title:'Color-picker Undo coalescing',desc:'Native color pickers can fire multiple discrete change events while browsing swatches before settling on one, each becoming its own undo checkpoint. Fix: add onfocus/onblur handlers that hold the undo-coalescing window open for the whole picker interaction, not just one JS tick.'}
 ];
 function getKnownIssues(){
-  if(!state.knownIssues){state.knownIssues=DEFAULT_KNOWN_ISSUES.map(function(k){return {id:k.id,title:k.title,desc:k.desc,verified:{}};});saveState();}
+  if(!state.knownIssues){state.knownIssues=DEFAULT_KNOWN_ISSUES.map(function(k){return {id:k.id,title:k.title,desc:k.desc,verified:{},airtableIds:{}};});saveState();}
   else{
     var existingIds=state.knownIssues.map(function(k){return k.id;});
     var missing=DEFAULT_KNOWN_ISSUES.filter(function(k){return existingIds.indexOf(k.id)===-1;});
     if(missing.length){
-      missing.forEach(function(k){state.knownIssues.push({id:k.id,title:k.title,desc:k.desc,verified:{}});});
+      missing.forEach(function(k){state.knownIssues.push({id:k.id,title:k.title,desc:k.desc,verified:{},airtableIds:{}});});
       saveState();
     }
   }
@@ -3136,8 +3177,20 @@ function toggleKnownIssueVerified(issueId,productId){
   var issues=getKnownIssues();
   var issue=issues.find(function(i){return i.id===issueId;});if(!issue)return;
   if(!issue.verified)issue.verified={};
+  if(!issue.airtableIds)issue.airtableIds={};
   issue.verified[productId]=!issue.verified[productId];
   saveState();renderKnownIssues();
+  if(airtableEnabled()){
+    var existingAirtableId=issue.airtableIds[productId];
+    if(existingAirtableId){
+      airtableUpdateKnownIssue(existingAirtableId,{'Verified':!!issue.verified[productId]});
+    } else {
+      var product=(state.products||[]).find(function(p){return p.id===productId;});
+      airtableCreateKnownIssue(issue.title,issue.desc,product?product.airtableId:null,!!issue.verified[productId]).then(function(id){
+        if(id){issue.airtableIds[productId]=id;saveState();}
+      });
+    }
+  }
 }
 function renderKnownIssues(){
   var el=document.getElementById('known-issues-list');
