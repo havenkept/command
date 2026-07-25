@@ -1962,28 +1962,40 @@ async function reconcileWithAirtable(manual){
   if(typeof renderWebsites==='function')renderWebsites();
   if(typeof renderTesting==='function')renderTesting();
 
-  // Known Issues: pull remote Issue+Product+Verified rows and merge into the
-  // local state.knownIssues structure (one issue entry with a per-product
-  // verified map, matching what renderKnownIssues expects).
+  // Known Issues: pull remote Issue+Product+Verified rows and REPLACE the
+  // local verified/airtableIds maps for any issue that has remote rows, so
+  // Airtable is fully authoritative and no stale local checkmark can survive
+  // a sync (previously this only ever added checkmarks found remotely and
+  // never cleared ones that shouldn't be there, so local drift could persist
+  // indefinitely no matter how many times Sync ran).
   if(typeof getKnownIssues==='function'){
     var localIssues=getKnownIssues();
     var remoteKnownIssues=await airtableListAll(AIRTABLE_KNOWN_ISSUES_TABLE);
+    var rowsByTitle={};
     remoteKnownIssues.forEach(function(r){
-      var f=r.fields||{};
-      var title=f[AIRTABLE_FIELDS.kiIssue];
+      var title=(r.fields||{})[AIRTABLE_FIELDS.kiIssue];
       if(!title)return;
+      if(!rowsByTitle[title])rowsByTitle[title]=[];
+      rowsByTitle[title].push(r);
+    });
+    Object.keys(rowsByTitle).forEach(function(title){
       var issue=localIssues.find(function(i){return i.title===title;});
       if(!issue){
-        issue={id:'ki-'+title.toLowerCase().replace(/[^a-z0-9]+/g,'-'),title:title,desc:f[AIRTABLE_FIELDS.kiNotes]||'',verified:{},airtableIds:{}};
+        issue={id:'ki-'+title.toLowerCase().replace(/[^a-z0-9]+/g,'-'),title:title,desc:'',verified:{},airtableIds:{}};
         localIssues.push(issue);
       }
-      if(!issue.airtableIds)issue.airtableIds={};
-      var linkedProduct=(f[AIRTABLE_FIELDS.kiProducts]||[])[0];
-      if(!linkedProduct)return;
-      var product=(state.products||[]).find(function(p){return p.airtableId===linkedProduct;});
-      if(!product)return;
-      issue.verified[product.id]=!!f[AIRTABLE_FIELDS.kiVerified];
-      issue.airtableIds[product.id]=r.id;
+      issue.verified={};
+      issue.airtableIds={};
+      rowsByTitle[title].forEach(function(r){
+        var f=r.fields||{};
+        if(f[AIRTABLE_FIELDS.kiNotes]&&!issue.desc)issue.desc=f[AIRTABLE_FIELDS.kiNotes];
+        var linkedProduct=(f[AIRTABLE_FIELDS.kiProducts]||[])[0];
+        if(!linkedProduct)return;
+        var product=(state.products||[]).find(function(p){return p.airtableId===linkedProduct;});
+        if(!product)return;
+        issue.verified[product.id]=!!f[AIRTABLE_FIELDS.kiVerified];
+        issue.airtableIds[product.id]=r.id;
+      });
     });
     saveState();
     if(typeof renderKnownIssues==='function')renderKnownIssues();
