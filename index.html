@@ -3116,10 +3116,20 @@ function resolveHandoff(id){
 var DEFAULT_KNOWN_ISSUES=[
   {id:'ki-savestate',title:'Undo / saveState timing',desc:'saveState() must run before the mutation, not after — use a _lastPersistedJSON baseline to track true pre-mutation state.'},
   {id:'ki-iosdate',title:'iOS Safari date input overflow',desc:'Native date inputs overflow flex containers on iOS — use a custom date picker modal instead.'},
-  {id:'ki-calprint',title:'Calendar grid print overflow',desc:'repeat(7,1fr) causes print overflow — fix with minmax(0,1fr) + overflow:hidden on day cells and print pill wrap.'}
+  {id:'ki-calprint',title:'Calendar grid print overflow',desc:'repeat(7,1fr) causes print overflow — fix with minmax(0,1fr) + overflow:hidden on day cells and print pill wrap.'},
+  {id:'ki-autozoom',title:'Mobile input auto-zoom fix must be scoped to mobile',desc:'The 16px font-size!important override that blocks iOS/Android auto-zoom must live inside @media(max-width:900px), not applied globally — otherwise it silently inflates desktop input sizes too.'},
+  {id:'ki-colorpicker',title:'Color-picker Undo coalescing',desc:'Native color pickers can fire multiple discrete change events while browsing swatches before settling on one, each becoming its own undo checkpoint. Fix: add onfocus/onblur handlers that hold the undo-coalescing window open for the whole picker interaction, not just one JS tick.'}
 ];
 function getKnownIssues(){
   if(!state.knownIssues){state.knownIssues=DEFAULT_KNOWN_ISSUES.map(function(k){return {id:k.id,title:k.title,desc:k.desc,verified:{}};});saveState();}
+  else{
+    var existingIds=state.knownIssues.map(function(k){return k.id;});
+    var missing=DEFAULT_KNOWN_ISSUES.filter(function(k){return existingIds.indexOf(k.id)===-1;});
+    if(missing.length){
+      missing.forEach(function(k){state.knownIssues.push({id:k.id,title:k.title,desc:k.desc,verified:{}});});
+      saveState();
+    }
+  }
   return state.knownIssues;
 }
 function toggleKnownIssueVerified(issueId,productId){
