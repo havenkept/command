@@ -478,6 +478,101 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <div id="pins-list"></div>
 </div>
 
+<!-- PIN STUDIO -->
+<div id="page-pinstudio" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Pin Studio</div><div class="page-sub">Paste the copy, get 5 genuinely different pins</div></div>
+    <button class="btn-ghost" style="margin-left:auto;" onclick="psShuffle()" data-tip="Randomize layout, palette, font and accent">⟳ Shuffle</button>
+    <button class="btn-add" onclick="psExportCurrent()" data-tip="Download this pin as a 1000×1500 PNG">⬇ Export PNG</button>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <div class="form-field" style="margin-bottom:8px;">
+      <label>Paste a pin pack from Claude</label>
+      <textarea id="ps-paste" rows="4" placeholder="Paste the whole PIN block — Eyebrow / Headline / Subhead / Feature Lines / Footer — and I'll split it into the fields below."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-add" onclick="psParsePaste()">Fill fields from paste</button>
+      <button class="btn-ghost" onclick="psClearFields()">Clear</button>
+    </div>
+  </div>
+
+  <div id="ps-workspace" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:16px;align-items:start;">
+    <div class="card" style="min-width:0;">
+      <div style="display:flex;justify-content:center;">
+        <canvas id="ps-canvas" width="1000" height="1500" style="width:100%;max-width:340px;height:auto;border:1px solid var(--border);border-radius:8px;background:#fff;"></canvas>
+      </div>
+      <div id="ps-layout-name" style="text-align:center;font-size:11px;color:var(--muted);margin-top:10px;"></div>
+    </div>
+
+    <div style="min-width:0;">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="form-field"><label>Eyebrow</label><input type="text" id="ps-eyebrow" placeholder="INTERACTIVE PLANNER — NOT A PDF"/></div>
+        <div class="form-field"><label>Headline</label><textarea id="ps-headline" rows="2" placeholder="One planner. Every kid."></textarea></div>
+        <div class="form-field"><label>Subhead</label><textarea id="ps-subhead" rows="2" placeholder="Eleven sections that hold your whole family's school year in one place."></textarea></div>
+        <div class="form-field"><label>Feature Lines (one per line)</label><textarea id="ps-features" rows="4" placeholder="Every child tracked separately&#10;Supplies, budget &amp; pickup plans&#10;Auto-saves as you type&#10;Phone, tablet, or laptop"></textarea></div>
+        <div class="form-field" style="margin-bottom:0;"><label>Footer</label><input type="text" id="ps-footer" placeholder="HavenKept · Free lifetime updates"/></div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="form-field" style="margin-bottom:8px;"><label>Planner screenshot</label>
+          <input type="file" id="ps-img-file" accept="image/*" style="font-size:11.5px;"/></div>
+        <div id="ps-img-status" style="font-size:11px;color:var(--muted);margin-bottom:10px;">No screenshot yet — image layouts will show a placeholder.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-field" style="margin-bottom:0;flex:1;min-width:110px;"><label>Fit</label><select id="ps-img-fit">
+            <option value="cover">Fill (crop)</option>
+            <option value="contain">Fit (no crop)</option>
+          </select></div>
+          <div class="form-field" style="margin-bottom:0;flex:1;min-width:110px;"><label>Crop from</label><select id="ps-img-focal">
+            <option value="top">Top / centre</option>
+            <option value="topleft">Top / left</option>
+            <option value="center">Dead centre</option>
+          </select></div>
+          <button class="btn-ghost" onclick="psClearImage()">Remove</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="form-field"><label>Layout</label><select id="ps-layout"></select></div>
+        <div class="form-field"><label>Palette</label><select id="ps-theme"></select></div>
+        <div class="form-field"><label>Display font</label><select id="ps-font">
+          <option value="serif">Cormorant Garamond (serif)</option>
+          <option value="sans">Jost (sans)</option>
+        </select></div>
+        <div class="form-field"><label>Accent motif</label><select id="ps-motif">
+          <option value="rule">Thin rule</option>
+          <option value="dot">Dot</option>
+          <option value="bar">Short bar</option>
+          <option value="none">None</option>
+        </select></div>
+        <div class="form-field" style="margin-bottom:0;"><label>Headline size <span id="ps-scale-val" style="color:var(--muted);"></span></label>
+          <input type="range" id="ps-scale" min="70" max="130" value="100" style="width:100%;"/></div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px;">Override colours (optional)</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="font-size:11px;">Bg<br><input type="color" id="ps-c-bg" style="width:56px;height:30px;border:1px solid var(--border);border-radius:5px;background:none;"/></label>
+          <label style="font-size:11px;">Ink<br><input type="color" id="ps-c-ink" style="width:56px;height:30px;border:1px solid var(--border);border-radius:5px;background:none;"/></label>
+          <label style="font-size:11px;">Accent<br><input type="color" id="ps-c-accent" style="width:56px;height:30px;border:1px solid var(--border);border-radius:5px;background:none;"/></label>
+          <button class="btn-ghost" style="align-self:flex-end;" onclick="psResetColors()">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header" style="margin-top:26px;">
+    <div><div class="page-title" style="font-size:20px;">Batch of 5</div><div class="page-sub">Every pin gets a different layout, palette and accent — not the same pin five times</div></div>
+    <button class="btn-ghost" style="margin-left:auto;" onclick="psBuildBatch()" data-tip="Generate 5 varied designs from the headlines below">Generate 5</button>
+    <button class="btn-add" onclick="psExportBatch()" data-tip="Download all 5 as PNGs">⬇ Export all</button>
+  </div>
+  <div class="card" style="margin-bottom:14px;">
+    <div class="form-field" style="margin-bottom:0;"><label>5 headlines (one per line) — everything else carries over from above</label>
+      <textarea id="ps-batch-headlines" rows="5" placeholder="One planner. Every kid.&#10;The back-to-school brain dump, organized&#10;Never lose a permission slip again&#10;Supply lists that build themselves&#10;Who's doing pickup Thursday?"></textarea></div>
+  </div>
+  <div id="ps-batch-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;"></div>
+</div>
+
 <!-- NOTES -->
 <div id="page-notes" class="page">
   <div class="page-header">
@@ -796,6 +891,7 @@ var NAV_ITEMS=[
   {id:'handoffs',icon:'handoff',label:'Pending Handoffs'},
   {id:'knownissues',icon:'flagShield',label:'Known Issues'},
   {id:'pins',icon:'pin',label:'Pins'},
+  {id:'pinstudio',icon:'penTool',label:'Pin Studio'},
   {id:'colors',icon:'droplet',label:'Colors'},
   {id:'sync',icon:'refresh',label:'Airtable Sync'}
 ];
@@ -1268,9 +1364,10 @@ function showPage(id,el){
   if(id==='handoffs')renderHandoffs();
   if(id==='knownissues')renderKnownIssues();
   if(id==='pins')renderPins();
+  if(id==='pinstudio')psRender();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();applyDarkMode();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -3509,6 +3606,836 @@ function toggleDarkMode(){
   state.darkMode=!state.darkMode;
   saveState();
   applyDarkMode();
+}
+
+// ===== PIN STUDIO =====
+// Renders Pinterest pins (1000x1500) straight to a canvas. The preview and the
+// exported PNG run the SAME draw function at the same pixel size, so what she
+// sees is exactly what downloads — no separate export path to drift out of sync.
+//
+// The point of this page is genuine design variation. Bailey's old generator
+// "literally makes the SAME pin with one line that's different", so a batch of 5
+// here walks distinct LAYOUTS (different composition, not swapped text), distinct
+// palettes, distinct accent motifs and alternating display fonts.
+var PS_W=1000, PS_H=1500;
+
+var PS_THEMES=[
+  {name:'Core Plum',            bg:'#FAF8F3', ink:'#3D2A4A', accent:'#B98D7A', deep:'#3D2A4A', onDeep:'#FAF8F3'},
+  {name:'Plum Reverse',         bg:'#3D2A4A', ink:'#FAF8F3', accent:'#B98D7A', deep:'#2A1B33', onDeep:'#FAF8F3'},
+  {name:'Heather',              bg:'#FAF8F3', ink:'#2A241D', accent:'#A895B0', deep:'#4A3D52', onDeep:'#FAF8F3'},
+  {name:'Wedding Sage',         bg:'#FAF8F3', ink:'#3D2A4A', accent:'#7D9B76', deep:'#4A5F45', onDeep:'#FAF8F3'},
+  {name:'Wedding Blush',        bg:'#F2D5C8', ink:'#3D2A4A', accent:'#C97B7B', deep:'#8C4A4A', onDeep:'#FAF8F3'},
+  {name:'Wedding Gold',         bg:'#FAF8F3', ink:'#2A241D', accent:'#C4A882', deep:'#5C4A2E', onDeep:'#FAF8F3'},
+  {name:'Teacher Coral',        bg:'#F9F7F1', ink:'#4A4038', accent:'#E2735A', deep:'#4A4038', onDeep:'#F9F7F1'},
+  {name:'Teacher Sage',         bg:'#F9F7F1', ink:'#4A4038', accent:'#9BB79B', deep:'#3F5240', onDeep:'#F9F7F1'},
+  {name:'BTS Sunshine',         bg:'#FAF8F3', ink:'#2A241D', accent:'#FFB347', deep:'#4A3A1E', onDeep:'#FAF8F3'},
+  {name:'BTS Red',              bg:'#FAF8F3', ink:'#2A241D', accent:'#E57373', deep:'#7A2E2E', onDeep:'#FAF8F3'},
+  {name:'Homeschool Navy',      bg:'#FAF8F3', ink:'#1F2D40', accent:'#C1682F', deep:'#1F2D40', onDeep:'#FAF8F3'},
+  {name:'Homeschool Reverse',   bg:'#1F2D40', ink:'#FAF8F3', accent:'#C9A227', deep:'#16202E', onDeep:'#FAF8F3'},
+  {name:'Admissions Forest',    bg:'#FAF8F3', ink:'#1B3A2B', accent:'#B8912E', deep:'#1B3A2B', onDeep:'#FAF8F3'},
+  {name:'Admissions Reverse',   bg:'#1B3A2B', ink:'#FAF8F3', accent:'#D9B84A', deep:'#12281D', onDeep:'#FAF8F3'},
+  {name:'Milestone Champagne',  bg:'#FAF8F3', ink:'#3D2A4A', accent:'#D9BF8C', deep:'#5C4A2E', onDeep:'#FAF8F3'},
+  {name:'Milestone Emerald',    bg:'#2F5D50', ink:'#FAF8F3', accent:'#D9BF8C', deep:'#22463C', onDeep:'#FAF8F3'}
+];
+
+function psFont(size,weight,kind){
+  var fam=(kind==='sans')?'"Jost", "Helvetica Neue", Arial, sans-serif':'"Cormorant Garamond", Georgia, serif';
+  return (weight||400)+' '+Math.round(size)+'px '+fam;
+}
+// Canvas letterSpacing isn't reliable across browsers, so tracked text is drawn
+// glyph by glyph. Returns the width so callers can centre/right-align properly.
+function psTracked(ctx,text,x,y,tracking,align,maxWidth){
+  var chars=String(text).split('');
+  var w=0,i;
+  for(i=0;i<chars.length;i++)w+=ctx.measureText(chars[i]).width+tracking;
+  if(chars.length)w-=tracking;
+  // Long eyebrows and footers used to run straight off the canvas. Shrink the
+  // face (and the tracking with it) until the run fits the box it was given.
+  if(maxWidth&&w>maxWidth){
+    var m=/(\d+(?:\.\d+)?)px/.exec(ctx.font);
+    if(m){
+      var ratio=maxWidth/w;
+      var ns=Math.max(13,parseFloat(m[1])*ratio);
+      ctx.font=ctx.font.replace(/(\d+(?:\.\d+)?)px/,(Math.round(ns*10)/10)+'px');
+      tracking=tracking*ratio;
+      w=0;
+      for(i=0;i<chars.length;i++)w+=ctx.measureText(chars[i]).width+tracking;
+      if(chars.length)w-=tracking;
+    }
+  }
+  var sx=x;
+  if(align==='center')sx=x-w/2; else if(align==='right')sx=x-w;
+  var prev=ctx.textAlign; ctx.textAlign='left';
+  for(i=0;i<chars.length;i++){ ctx.fillText(chars[i],sx,y); sx+=ctx.measureText(chars[i]).width+tracking; }
+  ctx.textAlign=prev;
+  return w;
+}
+function psWrap(ctx,text,maxWidth){
+  var words=String(text).replace(/\s+/g,' ').trim().split(' ');
+  if(!words[0])return [];
+  var lines=[],cur=words[0];
+  for(var i=1;i<words.length;i++){
+    var test=cur+' '+words[i];
+    if(ctx.measureText(test).width<=maxWidth)cur=test;
+    else{lines.push(cur);cur=words[i];}
+  }
+  lines.push(cur);
+  return lines;
+}
+// Shrink until the text fits the box in both directions. Guarantees no overflow
+// regardless of how long a headline she pastes in.
+function psFit(ctx,text,startSize,minSize,weight,kind,maxWidth,maxLines){
+  var size=startSize;
+  while(size>minSize){
+    ctx.font=psFont(size,weight,kind);
+    var lines=psWrap(ctx,text,maxWidth);
+    if(lines.length<=maxLines)return {size:size,lines:lines};
+    size-=2;
+  }
+  ctx.font=psFont(minSize,weight,kind);
+  return {size:minSize,lines:psWrap(ctx,text,maxWidth).slice(0,maxLines)};
+}
+// Feature lines are drawn as single lines in most layouts, so the longest one
+// decides the size for all of them — a uniform shrink looks deliberate, whereas
+// shrinking only the offender looks like a mistake.
+function psFitAll(ctx,arr,maxWidth){
+  if(!arr||!arr.length||!maxWidth)return;
+  var worst=0;
+  for(var i=0;i<arr.length;i++)worst=Math.max(worst,ctx.measureText(String(arr[i])).width);
+  if(worst<=maxWidth)return;
+  var m=/(\d+(?:\.\d+)?)px/.exec(ctx.font);
+  if(!m)return;
+  var ns=Math.max(16,parseFloat(m[1])*maxWidth/worst);
+  ctx.font=ctx.font.replace(/(\d+(?:\.\d+)?)px/,(Math.round(ns*10)/10)+'px');
+}
+function psMotif(ctx,motif,cx,y,color,width){
+  if(motif==='none')return;
+  ctx.fillStyle=color; ctx.strokeStyle=color;
+  if(motif==='dot'){ctx.beginPath();ctx.arc(cx,y,7,0,Math.PI*2);ctx.fill();return;}
+  var w=(motif==='bar')?70:(width||140);
+  var h=(motif==='bar')?5:1.6;
+  ctx.fillRect(cx-w/2,y-h/2,w,h);
+}
+function psRoundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+// Each layout is a genuinely different composition: different focal point,
+// different alignment, different use of colour blocks.
+var PS_LAYOUTS=[
+{id:'editorial',name:'Editorial — centred, airy',draw:function(ctx,c,t,o){
+  var M=110,cx=PS_W/2;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=250;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);y+=52;}
+  psMotif(ctx,o.motif,cx,y,t.accent); y+=76;
+  var h=psFit(ctx,c.headline,Math.round(112*o.scale),46,500,o.font,PS_W-M*2,3);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.1;});
+  y+=34;
+  if(c.subhead){
+    ctx.font=psFont(33,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2-60).slice(0,3).forEach(function(l){ctx.fillText(l,cx,y);y+=46;});
+  }
+  y+=40; psMotif(ctx,o.motif==='none'?'rule':o.motif,cx,y,t.accent,90); y+=64;
+  ctx.font=psFont(31,400,'sans'); ctx.fillStyle=t.ink;
+  psFitAll(ctx,c.features.slice(0,5),PS_W-M*2);
+  c.features.slice(0,5).forEach(function(f){ctx.fillText(f,cx,y);y+=48;});
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(24,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-95,3,'center',PS_W-M*2);}
+}},
+
+{id:'blockTop',name:'Block top — headline on colour',draw:function(ctx,c,t,o){
+  var M=100,cx=PS_W/2,BH=700;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,PS_W,BH);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,160,4.5,'center',PS_W-M*2);}
+  var h=psFit(ctx,c.headline,Math.round(104*o.scale),44,500,o.font,PS_W-M*2,3);
+  ctx.fillStyle=t.onDeep; ctx.font=psFont(h.size,500,o.font);
+  var hy=BH/2+ (h.lines.length===1?30: (h.lines.length===2?0:-30));
+  h.lines.forEach(function(l){ctx.fillText(l,cx,hy);hy+=h.size*1.1;});
+  psMotif(ctx,o.motif,cx,BH-90,t.accent,110);
+  var y=BH+130;
+  if(c.subhead){
+    ctx.font=psFont(34,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,3).forEach(function(l){ctx.fillText(l,cx,y);y+=48;});
+    y+=56;
+  }
+  ctx.textAlign='left';
+  ctx.font=psFont(33,400,'sans');
+  psFitAll(ctx,c.features.slice(0,5),PS_W-M*2-42);
+  c.features.slice(0,5).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(M+10,y-11,8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=t.ink; ctx.fillText(f,M+42,y); y+=66;
+  });
+  if(c.footer){ctx.textAlign='center';ctx.fillStyle=t.ink;ctx.font=psFont(23,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-80,3,'center',PS_W-M*2);}
+}},
+
+{id:'leftRail',name:'Left rail — left aligned',draw:function(ctx,c,t,o){
+  var RAIL=76,M=RAIL+80;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.accent; ctx.fillRect(0,0,RAIL,PS_H);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  var maxW=PS_W-M-100, y=260;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),M,y,4.5,'left',PS_W-M*2);y+=104;}
+  var h=psFit(ctx,c.headline,Math.round(106*o.scale),44,500,o.font,maxW,4);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,M,y);y+=h.size*1.08;});
+  y+=30;
+  if(o.motif!=='none'){ctx.fillStyle=t.accent;ctx.fillRect(M,y,80,5);y+=56;}
+  if(c.subhead){
+    ctx.font=psFont(33,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,maxW).slice(0,3).forEach(function(l){ctx.fillText(l,M,y);y+=47;});
+    y+=40;
+  }
+  ctx.font=psFont(32,400,'sans');
+  psFitAll(ctx,c.features.slice(0,5),maxW-40);
+  c.features.slice(0,5).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.fillRect(M,y-14,20,3);
+    ctx.fillStyle=t.ink; ctx.fillText(f,M+40,y); y+=56;
+  });
+  if(c.footer){ctx.fillStyle=t.ink;ctx.font=psFont(23,400,'sans');psTracked(ctx,c.footer.toUpperCase(),M,PS_H-90,3,'left',maxW);}
+}},
+
+{id:'checklist',name:'Checklist — feature cards',draw:function(ctx,c,t,o){
+  var M=90;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  var y=210;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),M,y,4.5,'left',PS_W-M*2);y+=90;}
+  var h=psFit(ctx,c.headline,Math.round(96*o.scale),42,500,o.font,PS_W-M*2,3);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,M,y);y+=h.size*1.08;});
+  y+=22;
+  if(c.subhead){
+    ctx.font=psFont(31,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,M,y);y+=44;});
+  }
+  var feats=c.features.slice(0,5), n=feats.length||1;
+  var top=y+56, avail=PS_H-140-top;
+  var ch=Math.min(126,Math.floor((avail-(n-1)*18)/n)), gap=18;
+  feats.forEach(function(f,i){
+    var cy=top+i*(ch+gap);
+    ctx.fillStyle=(i%2===0)?t.accent:t.ink;
+    ctx.globalAlpha=0.10; psRoundRect(ctx,M,cy,PS_W-M*2,ch,14); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(M+52,cy+ch/2,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=t.bg; ctx.font=psFont(24,600,'sans'); ctx.textAlign='center';
+    ctx.fillText('✓',M+52,cy+ch/2+9);
+    ctx.textAlign='left'; ctx.fillStyle=t.ink; ctx.font=psFont(31,400,'sans');
+    var fl=psWrap(ctx,f,PS_W-M*2-140).slice(0,2);
+    var fy=cy+ch/2+(fl.length===1?10:-8);
+    fl.forEach(function(l){ctx.fillText(l,M+96,fy);fy+=38;});
+  });
+  if(c.footer){ctx.textAlign='center';ctx.fillStyle=t.accent;ctx.font=psFont(23,400,'sans');psTracked(ctx,c.footer.toUpperCase(),PS_W/2,PS_H-70,3,'center',PS_W-M*2);}
+}},
+
+{id:'framed',name:'Framed — full colour, bordered',draw:function(ctx,c,t,o){
+  var cx=PS_W/2, F=64;
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.strokeStyle=t.accent; ctx.lineWidth=2;
+  ctx.strokeRect(F,F,PS_W-F*2,PS_H-F*2);
+  ctx.strokeRect(F+14,F+14,PS_W-(F+14)*2,PS_H-(F+14)*2);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=310;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,5,'center',PS_W-300);y+=98;}
+  var h=psFit(ctx,c.headline,Math.round(108*o.scale),44,500,o.font,PS_W-260,3);
+  ctx.fillStyle=t.onDeep; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.1;});
+  y+=36; psMotif(ctx,o.motif==='none'?'rule':o.motif,cx,y,t.accent,100); y+=68;
+  if(c.subhead){
+    ctx.font=psFont(32,300,'sans'); ctx.fillStyle=t.onDeep;
+    psWrap(ctx,c.subhead,PS_W-300).slice(0,3).forEach(function(l){ctx.fillText(l,cx,y);y+=46;});
+    y+=46;
+  }
+  ctx.font=psFont(30,400,'sans'); ctx.fillStyle=t.onDeep;
+  psFitAll(ctx,c.features.slice(0,5),PS_W-300);
+  c.features.slice(0,5).forEach(function(f){ctx.fillText(f,cx,y);y+=50;});
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(23,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-125,3,'center',PS_W-300);}
+}},
+
+{id:'bottomBanner',name:'Bottom banner — big headline up top',draw:function(ctx,c,t,o){
+  var cx=PS_W/2, SPLIT=880, M=100;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.accent; ctx.globalAlpha=0.16;
+  ctx.beginPath(); ctx.arc(PS_W-120,180,300,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=300;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);y+=112;}
+  var h=psFit(ctx,c.headline,Math.round(128*o.scale),48,500,o.font,PS_W-M*2,4);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.06;});
+  ctx.fillStyle=t.deep; ctx.fillRect(0,SPLIT,PS_W,PS_H-SPLIT);
+  var by=SPLIT+100;
+  if(c.subhead){
+    ctx.font=psFont(33,300,'sans'); ctx.fillStyle=t.onDeep;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,cx,by);by+=46;});
+    by+=30;
+  }
+  ctx.textAlign='left'; ctx.font=psFont(30,400,'sans');
+  psFitAll(ctx,c.features.slice(0,4),PS_W-M*2-34);
+  c.features.slice(0,4).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.fillRect(M,by-12,16,3);
+    ctx.fillStyle=t.onDeep; ctx.fillText(f,M+34,by); by+=50;
+  });
+  if(c.footer){ctx.textAlign='center';ctx.fillStyle=t.accent;ctx.font=psFont(22,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-60,3,'center',PS_W-M*2);}
+}},
+
+{id:'numbered',name:'Numbered — asymmetric list',draw:function(ctx,c,t,o){
+  var M=95;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  var y=215;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),M,y,4.5,'left',PS_W-M*2);y+=92;}
+  var h=psFit(ctx,c.headline,Math.round(100*o.scale),42,500,o.font,PS_W-M*2-40,3);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,M,y);y+=h.size*1.06;});
+  y+=18;
+  if(c.subhead){
+    ctx.font=psFont(30,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2-40).slice(0,2).forEach(function(l){ctx.fillText(l,M,y);y+=42;});
+  }
+  var feats=c.features.slice(0,5), n=feats.length||1;
+  var top=y+70, avail=PS_H-150-top, rh=Math.min(150,Math.floor(avail/n));
+  feats.forEach(function(f,i){
+    var ry=top+i*rh;
+    ctx.strokeStyle=t.accent; ctx.globalAlpha=0.35; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(M,ry); ctx.lineTo(PS_W-M,ry); ctx.stroke(); ctx.globalAlpha=1;
+    ctx.fillStyle=t.accent; ctx.font=psFont(60,500,o.font);
+    ctx.fillText('0'+(i+1),M,ry+rh*0.62);
+    ctx.fillStyle=t.ink; ctx.font=psFont(31,400,'sans');
+    var fl=psWrap(ctx,f,PS_W-M*2-140).slice(0,2);
+    var fy=ry+rh*0.5+(fl.length===1?8:-10);
+    fl.forEach(function(l){ctx.fillText(l,M+130,fy);fy+=38;});
+  });
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(23,400,'sans');psTracked(ctx,c.footer.toUpperCase(),M,PS_H-70,3,'left',PS_W-M*2);}
+}},
+
+{id:'splitVert',name:'Split — colour column',draw:function(ctx,c,t,o){
+  var SP=380, M=SP+70, maxW=PS_W-M-80;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,SP,PS_H);
+  ctx.textBaseline='alphabetic';
+  ctx.save(); ctx.translate(150,PS_H-170); ctx.rotate(-Math.PI/2);
+  if(c.eyebrow){ctx.textAlign='left';ctx.fillStyle=t.accent;ctx.font=psFont(27,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),0,0,5,'left',PS_H-340);}
+  ctx.restore();
+  ctx.textAlign='center';
+  ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(SP/2,230,54,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=t.deep; ctx.font=psFont(50,500,o.font); ctx.fillText('✦',SP/2,248);
+  ctx.textAlign='left';
+  var y=290;
+  var h=psFit(ctx,c.headline,Math.round(88*o.scale),38,500,o.font,maxW,4);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,M,y);y+=h.size*1.08;});
+  y+=26;
+  if(o.motif!=='none'){ctx.fillStyle=t.accent;ctx.fillRect(M,y,70,4);y+=54;}
+  if(c.subhead){
+    ctx.font=psFont(30,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,maxW).slice(0,4).forEach(function(l){ctx.fillText(l,M,y);y+=43;});
+    y+=36;
+  }
+  ctx.font=psFont(29,400,'sans');
+  c.features.slice(0,5).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(M+7,y-10,6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=t.ink;
+    var fl=psWrap(ctx,f,maxW-40).slice(0,2);
+    fl.forEach(function(l,k){ctx.fillText(l,M+32,y+k*36);});
+    y+=fl.length*36+22;
+  });
+  if(c.footer){ctx.textAlign='left';ctx.fillStyle=t.ink;ctx.font=psFont(22,400,'sans');psTracked(ctx,c.footer.toUpperCase(),M,PS_H-90,2.5,'left',maxW);}
+}}
+];
+
+// ----- SCREENSHOT SUPPORT -----
+// The image is deliberately NOT written into state/localStorage. Bailey's whole
+// business lives in that same key and a base64 screenshot would be megabytes, so
+// this is session-only: upload, design the batch, export, done.
+// It also has to be a local file (not an Airtable attachment URL) — drawing a
+// cross-origin image taints the canvas and toDataURL() would throw on export.
+var psImg=null, psImgName='';
+function psHasImg(){ return !!(psImg&&psImg.complete&&psImg.naturalWidth); }
+function psClearImage(){
+  psImg=null; psImgName='';
+  var f=document.getElementById('ps-img-file'); if(f)f.value='';
+  var st=document.getElementById('ps-img-status');
+  if(st)st.textContent='No screenshot yet — image layouts will show a placeholder.';
+  psRender(); psRedrawBatch();
+}
+function psLoadImageFile(file){
+  if(!file)return;
+  var fr=new FileReader();
+  fr.onload=function(ev){
+    var im=new Image();
+    im.onload=function(){
+      psImg=im; psImgName=file.name;
+      var st=document.getElementById('ps-img-status');
+      if(st)st.textContent=file.name+'  ·  '+im.naturalWidth+'×'+im.naturalHeight+'  (session only — re-upload after a refresh)';
+      psRender(); psRedrawBatch();
+    };
+    im.onerror=function(){ toast('Could not read that image'); };
+    im.src=ev.target.result;
+  };
+  fr.onerror=function(){ toast('Could not read that file'); };
+  fr.readAsDataURL(file);
+}
+function psRoundClip(ctx,x,y,w,h,r){ psRoundRect(ctx,x,y,w,h,r); ctx.clip(); }
+// Fills the box completely, cropping the overflow. Portrait screenshots of a
+// planner are usually most useful cropped from the top, so that's the default.
+function psCover(ctx,img,dx,dy,dw,dh,focal){
+  var ir=img.naturalWidth/img.naturalHeight, dr=dw/dh, sw,sh,sx,sy;
+  if(ir>dr){
+    // image is wider than the box: the excess is horizontal
+    sh=img.naturalHeight; sw=sh*dr; sy=0;
+    sx=(focal==='topleft')?0:(img.naturalWidth-sw)/2;
+  } else {
+    // image is taller than the box: the excess is vertical
+    sw=img.naturalWidth; sh=sw/dr; sx=0;
+    sy=(focal==='center')?(img.naturalHeight-sh)/2:0;
+  }
+  ctx.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
+}
+function psContain(ctx,img,dx,dy,dw,dh,pad){
+  var iw=img.naturalWidth, ih=img.naturalHeight;
+  var aw=dw-pad*2, ah=dh-pad*2;
+  var sc=Math.min(aw/iw,ah/ih);
+  var w=iw*sc, h=ih*sc;
+  ctx.drawImage(img,dx+(dw-w)/2,dy+(dh-h)/2,w,h);
+}
+function psPlaceImg(ctx,t,dx,dy,dw,dh,o,radius){
+  ctx.save();
+  if(radius)psRoundClip(ctx,dx,dy,dw,dh,radius);
+  else{ctx.beginPath();ctx.rect(dx,dy,dw,dh);ctx.clip();}
+  if(psHasImg()){
+    if(o.imgFit==='contain'){ ctx.fillStyle=t.bg; ctx.fillRect(dx,dy,dw,dh); psContain(ctx,psImg,dx,dy,dw,dh,18); }
+    else psCover(ctx,psImg,dx,dy,dw,dh,o.imgFocal);
+  } else {
+    // Placeholder so the composition still reads while she's writing copy.
+    ctx.fillStyle=t.accent; ctx.globalAlpha=0.13; ctx.fillRect(dx,dy,dw,dh); ctx.globalAlpha=1;
+    ctx.strokeStyle=t.accent; ctx.globalAlpha=0.5; ctx.lineWidth=2; ctx.setLineDash([12,10]);
+    ctx.strokeRect(dx+10,dy+10,dw-20,dh-20); ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=t.ink; ctx.globalAlpha=0.55;
+    ctx.textAlign='center'; ctx.font=psFont(30,400,'sans');
+    ctx.fillText('Add a planner screenshot',dx+dw/2,dy+dh/2+10);
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+// A browser window frame. Bailey's core differentiator is "interactive web
+// planner, NOT a PDF" — showing the screenshot inside real browser chrome makes
+// that argument visually instead of relying on the eyebrow text.
+function psBrowserFrame(ctx,t,x,y,w,h,o){
+  var bar=48, r=16;
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.22)'; ctx.shadowBlur=34; ctx.shadowOffsetY=14;
+  ctx.fillStyle='#FFFFFF'; psRoundRect(ctx,x,y,w,h,r); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  psRoundClip(ctx,x,y,w,h,r);
+  ctx.fillStyle='#EDE9E3'; ctx.fillRect(x,y,w,bar);
+  var dots=['#E5A0A0','#E8CE9A','#A9C9A9'];
+  for(var i=0;i<3;i++){ ctx.fillStyle=dots[i]; ctx.beginPath(); ctx.arc(x+30+i*26,y+bar/2,7.5,0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='#FFFFFF'; psRoundRect(ctx,x+120,y+11,w-160,bar-22,10); ctx.fill();
+  ctx.restore();
+  psPlaceImg(ctx,t,x,y+bar,w,h-bar,o,0);
+  ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1.5;
+  psRoundRect(ctx,x,y,w,h,r); ctx.stroke();
+}
+function psPhoneFrame(ctx,t,x,y,w,h,o){
+  var r=46, bez=13;
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.26)'; ctx.shadowBlur=38; ctx.shadowOffsetY=16;
+  ctx.fillStyle='#241C2B'; psRoundRect(ctx,x,y,w,h,r); ctx.fill();
+  ctx.restore();
+  psPlaceImg(ctx,t,x+bez,y+bez,w-bez*2,h-bez*2,o,r-12);
+  ctx.fillStyle='#241C2B';
+  psRoundRect(ctx,x+w/2-46,y+bez+4,92,17,9); ctx.fill();
+}
+
+// ----- IMAGE-LED LAYOUTS -----
+var PS_IMG_LAYOUTS=[
+{id:'imgTop',name:'Screenshot top — full bleed',needsImg:true,draw:function(ctx,c,t,o){
+  var M=95,cx=PS_W/2,IH=800;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  psPlaceImg(ctx,t,0,0,PS_W,IH,o,0);
+  ctx.fillStyle=t.accent; ctx.fillRect(0,IH-7,PS_W,7);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=IH+92;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);y+=74;}
+  var h=psFit(ctx,c.headline,Math.round(84*o.scale),38,500,o.font,PS_W-M*2,2);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.08;});
+  y+=20;
+  if(c.subhead){
+    ctx.font=psFont(29,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,cx,y);y+=40;});
+    y+=14;
+  }
+  ctx.font=psFont(27,400,'sans');
+  psFitAll(ctx,c.features.slice(0,3),PS_W-M*2);
+  c.features.slice(0,3).forEach(function(f){ctx.fillText(f,cx,y);y+=40;});
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(22,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-56,3,'center',PS_W-M*2);}
+}},
+
+{id:'imgBrowser',name:'Browser window — “not a PDF”',needsImg:true,draw:function(ctx,c,t,o){
+  var M=95,cx=PS_W/2;
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=175;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);y+=76;}
+  var h=psFit(ctx,c.headline,Math.round(80*o.scale),38,500,o.font,PS_W-M*2,2);
+  ctx.fillStyle=t.onDeep; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.06;});
+  y+=16;
+  if(c.subhead){
+    ctx.font=psFont(28,300,'sans'); ctx.fillStyle=t.onDeep; ctx.globalAlpha=0.9;
+    psWrap(ctx,c.subhead,PS_W-M*2-40).slice(0,2).forEach(function(l){ctx.fillText(l,cx,y);y+=39;});
+    ctx.globalAlpha=1;
+  }
+  psBrowserFrame(ctx,t,80,y+46,PS_W-160,668,o);
+  var fy=y+46+668+72;
+  ctx.textAlign='left'; ctx.font=psFont(27,400,'sans');
+  psFitAll(ctx,c.features.slice(0,3),PS_W-M*2-30);
+  c.features.slice(0,3).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(M+6,fy-9,6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=t.onDeep; ctx.fillText(f,M+30,fy); fy+=42;
+  });
+  if(c.footer){ctx.textAlign='center';ctx.fillStyle=t.accent;ctx.font=psFont(21,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-52,3,'center',PS_W-M*2);}
+}},
+
+{id:'imgPhone',name:'Phone mockup — copy below',needsImg:true,draw:function(ctx,c,t,o){
+  var cx=PS_W/2,M=95;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,PS_W,660);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=140;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);}
+  psPhoneFrame(ctx,t,cx-195,215,390,700,o);
+  y=990;
+  var h=psFit(ctx,c.headline,Math.round(82*o.scale),36,500,o.font,PS_W-M*2,2);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.06;});
+  y+=18;
+  if(c.subhead){
+    ctx.font=psFont(28,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,cx,y);y+=39;});
+    y+=12;
+  }
+  ctx.font=psFont(27,400,'sans');
+  psFitAll(ctx,c.features.slice(0,3),PS_W-M*2);
+  c.features.slice(0,3).forEach(function(f){ctx.fillText(f,cx,y);y+=39;});
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(21,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-52,3,'center',PS_W-M*2);}
+}},
+
+{id:'imgCard',name:'Offset card — screenshot over colour',needsImg:true,draw:function(ctx,c,t,o){
+  var M=90;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.fillStyle=t.deep; ctx.fillRect(0,0,PS_W,560);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  var y=150;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(25,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),M,y,4.5,'left',PS_W-M*2);y+=80;}
+  var h=psFit(ctx,c.headline,Math.round(78*o.scale),36,500,o.font,PS_W-M*2-30,3);
+  ctx.fillStyle=t.onDeep; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,M,y);y+=h.size*1.06;});
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.28)'; ctx.shadowBlur=40; ctx.shadowOffsetY=16;
+  ctx.fillStyle='#fff'; psRoundRect(ctx,M,470,PS_W-M*2,560,18); ctx.fill();
+  ctx.restore();
+  psPlaceImg(ctx,t,M+12,482,PS_W-M*2-24,536,o,12);
+  var fy=1110;
+  if(c.subhead){
+    ctx.font=psFont(29,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,M,fy);fy+=41;});
+    fy+=18;
+  }
+  ctx.font=psFont(27,400,'sans');
+  psFitAll(ctx,c.features.slice(0,3),PS_W-M*2-32);
+  c.features.slice(0,3).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.fillRect(M,fy-11,16,3);
+    ctx.fillStyle=t.ink; ctx.fillText(f,M+32,fy); fy+=40;
+  });
+  if(c.footer){ctx.fillStyle=t.accent;ctx.font=psFont(21,400,'sans');psTracked(ctx,c.footer.toUpperCase(),M,PS_H-54,3,'left',PS_W-M*2);}
+}},
+
+{id:'imgBottom',name:'Copy top — screenshot below',needsImg:true,draw:function(ctx,c,t,o){
+  var cx=PS_W/2,M=95,SPLIT=760;
+  ctx.fillStyle=t.bg; ctx.fillRect(0,0,PS_W,PS_H);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var y=180;
+  if(c.eyebrow){ctx.fillStyle=t.accent;ctx.font=psFont(26,500,'sans');psTracked(ctx,c.eyebrow.toUpperCase(),cx,y,4.5,'center',PS_W-M*2);y+=90;}
+  var h=psFit(ctx,c.headline,Math.round(92*o.scale),40,500,o.font,PS_W-M*2,3);
+  ctx.fillStyle=t.ink; ctx.font=psFont(h.size,500,o.font);
+  h.lines.forEach(function(l){ctx.fillText(l,cx,y);y+=h.size*1.08;});
+  y+=22;
+  if(c.subhead){
+    ctx.font=psFont(29,300,'sans'); ctx.fillStyle=t.ink;
+    psWrap(ctx,c.subhead,PS_W-M*2).slice(0,2).forEach(function(l){ctx.fillText(l,cx,y);y+=40;});
+    y+=16;
+  }
+  ctx.textAlign='left'; ctx.font=psFont(27,400,'sans');
+  psFitAll(ctx,c.features.slice(0,3),PS_W-M*2-30);
+  c.features.slice(0,3).forEach(function(f){
+    ctx.fillStyle=t.accent; ctx.beginPath(); ctx.arc(M+6,y-9,6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=t.ink; ctx.fillText(f,M+30,y); y+=40;
+  });
+  psPlaceImg(ctx,t,0,SPLIT,PS_W,PS_H-SPLIT-90,o,0);
+  ctx.fillStyle=t.deep; ctx.fillRect(0,PS_H-90,PS_W,90);
+  if(c.footer){ctx.textAlign='center';ctx.fillStyle=t.accent;ctx.font=psFont(22,400,'sans');psTracked(ctx,c.footer.toUpperCase(),cx,PS_H-34,3,'center',PS_W-M*2);}
+}}
+];
+
+PS_LAYOUTS=PS_IMG_LAYOUTS.concat(PS_LAYOUTS);
+var psSel={layout:0,theme:0,font:'serif',motif:'rule',scale:1.0,imgFit:'cover',imgFocal:'top',over:{}};
+// Layouts that need a screenshot are excluded from Shuffle and from batches
+// until one is uploaded, so she never gets handed a placeholder pin.
+function psEligible(){
+  var out=[],i;
+  for(i=0;i<PS_LAYOUTS.length;i++){ if(!PS_LAYOUTS[i].needsImg||psHasImg())out.push(i); }
+  return out;
+}
+var psBatch=[];
+
+function psCopy(){
+  function v(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+  return {
+    eyebrow:v('ps-eyebrow'), headline:v('ps-headline')||'Your headline here',
+    subhead:v('ps-subhead'), footer:v('ps-footer'),
+    features:v('ps-features').split('\n').map(function(s){return s.trim();}).filter(Boolean)
+  };
+}
+function psTheme(i){
+  var base=PS_THEMES[i%PS_THEMES.length];
+  var t={name:base.name,bg:base.bg,ink:base.ink,accent:base.accent,deep:base.deep,onDeep:base.onDeep};
+  if(psSel.over.bg)t.bg=psSel.over.bg;
+  if(psSel.over.ink)t.ink=psSel.over.ink;
+  if(psSel.over.accent)t.accent=psSel.over.accent;
+  return t;
+}
+function psDraw(canvas,copy,layoutIdx,themeIdx,opts){
+  var ctx=canvas.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,PS_W,PS_H);
+  var L=PS_LAYOUTS[layoutIdx%PS_LAYOUTS.length];
+  var base=PS_THEMES[themeIdx%PS_THEMES.length];
+  var t=(opts&&opts.rawTheme)?{name:base.name,bg:base.bg,ink:base.ink,accent:base.accent,deep:base.deep,onDeep:base.onDeep}:psTheme(themeIdx);
+  L.draw(ctx,copy,t,opts||{motif:'rule',font:'serif',scale:1});
+  return {layout:L,theme:t};
+}
+function psRender(){
+  var canvas=document.getElementById('ps-canvas');
+  if(!canvas)return;
+  var r=psDraw(canvas,psCopy(),psSel.layout,psSel.theme,{motif:psSel.motif,font:psSel.font,scale:psSel.scale,imgFit:psSel.imgFit,imgFocal:psSel.imgFocal});
+  var lbl=document.getElementById('ps-layout-name');
+  if(lbl)lbl.textContent=r.layout.name+'  ·  '+r.theme.name+'  ·  1000×1500';
+}
+function psShuffle(){
+  var el=psEligible();
+  psSel.layout=el[Math.floor(Math.random()*el.length)];
+  psSel.theme=Math.floor(Math.random()*PS_THEMES.length);
+  psSel.font=Math.random()<0.55?'serif':'sans';
+  var motifs=['rule','dot','bar','none'];
+  psSel.motif=motifs[Math.floor(Math.random()*motifs.length)];
+  psSel.over={};
+  psSyncControls(); psRender(); toast('Shuffled ✦');
+}
+function psSyncControls(){
+  var l=document.getElementById('ps-layout'); if(l)l.value=String(psSel.layout);
+  var t=document.getElementById('ps-theme'); if(t)t.value=String(psSel.theme);
+  var f=document.getElementById('ps-font'); if(f)f.value=psSel.font;
+  var m=document.getElementById('ps-motif'); if(m)m.value=psSel.motif;
+  var s=document.getElementById('ps-scale'); if(s)s.value=String(Math.round(psSel.scale*100));
+  var sv=document.getElementById('ps-scale-val'); if(sv)sv.textContent=Math.round(psSel.scale*100)+'%';
+  var base=PS_THEMES[psSel.theme%PS_THEMES.length];
+  var cb=document.getElementById('ps-c-bg'); if(cb)cb.value=psSel.over.bg||base.bg;
+  var ci=document.getElementById('ps-c-ink'); if(ci)ci.value=psSel.over.ink||base.ink;
+  var ca=document.getElementById('ps-c-accent'); if(ca)ca.value=psSel.over.accent||base.accent;
+}
+function psResetColors(){psSel.over={};psSyncControls();psRender();}
+function psClearFields(){
+  ['ps-eyebrow','ps-headline','ps-subhead','ps-features','ps-footer','ps-paste'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.value='';
+  });
+  psRender();
+}
+// Parses the exact shape Claude sends every Sunday: "Eyebrow: ...", "Headline: ...",
+// a Feature Lines block of dashes/bullets, "Footer: ...". Falls back gracefully if
+// she pastes something looser.
+function psParsePaste(){
+  var raw=document.getElementById('ps-paste').value;
+  if(!raw.trim()){toast('Paste a pin pack first');return;}
+  var lines=raw.split('\n');
+  var out={eyebrow:'',headline:'',subhead:'',footer:'',features:[]};
+  var mode=null;
+  lines.forEach(function(line){
+    var s=line.replace(/^\s*[\*\-•–]+\s*/,'').trim();
+    if(!s)return;
+    var m=s.match(/^\**\s*(eyebrow|headline|sub[- ]?head(?:line)?|feature lines?|footer|pin description|alt text|board|link target)\s*\**\s*[:\-–]\s*(.*)$/i);
+    if(m){
+      var key=m[1].toLowerCase().replace(/[\s-]/g,''), val=m[2].trim().replace(/^\((.*)\)$/,'$1');
+      if(key==='eyebrow'){out.eyebrow=val;mode=null;}
+      else if(key==='headline'){out.headline=val;mode=null;}
+      else if(key.indexOf('subhead')===0){out.subhead=val;mode=null;}
+      else if(key.indexOf('featureline')===0){mode='features';if(val)out.features.push(val);}
+      else if(key==='footer'){out.footer=val;mode=null;}
+      else {mode='skip';}
+      return;
+    }
+    if(mode==='features'){
+      if(/^(pin\s*description|alt\s*text|board|link\s*target|pin\s*\d)/i.test(s)){mode='skip';return;}
+      out.features.push(s);
+    }
+  });
+  if(!out.headline){
+    var first=lines.map(function(l){return l.trim();}).filter(Boolean)[0];
+    if(first)out.headline=first.replace(/^\**\s*/,'').replace(/\**$/,'');
+  }
+  document.getElementById('ps-eyebrow').value=out.eyebrow;
+  document.getElementById('ps-headline').value=out.headline;
+  document.getElementById('ps-subhead').value=out.subhead;
+  document.getElementById('ps-features').value=out.features.slice(0,5).join('\n');
+  document.getElementById('ps-footer').value=out.footer||'HavenKept · Free lifetime updates';
+  psRender();
+  toast('Fields filled ✓');
+}
+function psSlug(s){return String(s||'pin').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'pin';}
+function psDownload(canvas,name){
+  try{
+    var url=canvas.toDataURL('image/png');
+    var a=document.createElement('a');
+    a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return true;
+  }catch(e){ toast('Export failed: '+e.message); return false; }
+}
+function psExportCurrent(){
+  var canvas=document.getElementById('ps-canvas');
+  psRender();
+  if(psDownload(canvas,psSlug(psCopy().headline)+'-1000x1500.png'))toast('Exported ✓');
+}
+// Builds 5 designs that differ by construction: layouts step by a stride that is
+// coprime with the layout count so no two repeat, palettes and motifs likewise,
+// and the display font alternates. Same copy in, five different-looking pins out.
+function psBuildBatch(){
+  var heads=document.getElementById('ps-batch-headlines').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  if(!heads.length){toast('Add some headlines first');return;}
+  heads=heads.slice(0,5);
+  var base=psCopy();
+  var motifs=['rule','dot','bar','none'];
+  var T=PS_THEMES.length, n=heads.length, t0=psSel.theme;
+  var imgIdx=[],txtIdx=[],i;
+  for(i=0;i<PS_LAYOUTS.length;i++){ (PS_LAYOUTS[i].needsImg?imgIdx:txtIdx).push(i); }
+  function spread(arr,k,off){
+    var out=[],st=Math.max(1,Math.floor(arr.length/Math.max(1,k)));
+    for(var j=0;j<k;j++)out.push(arr[(off+j*st)%arr.length]);
+    return out;
+  }
+  var order=[];
+  if(psHasImg()&&imgIdx.length){
+    var wantImg=Math.min(imgIdx.length,Math.max(1,Math.round(n*0.6)));
+    var wantTxt=n-wantImg;
+    var pi=spread(imgIdx,wantImg,Math.max(0,imgIdx.indexOf(psSel.layout)));
+    var pt=spread(txtIdx,wantTxt,0);
+    // interleave so the board doesn't read as "3 screenshots then 2 text"
+    while(pi.length||pt.length){
+      if(pi.length)order.push(pi.shift());
+      if(pt.length)order.push(pt.shift());
+    }
+    order=order.slice(0,n);
+  } else {
+    order=spread(txtIdx,n,Math.max(0,txtIdx.indexOf(psSel.layout)));
+  }
+  psBatch=heads.map(function(h,i){
+    return {
+      copy:{eyebrow:base.eyebrow,headline:h,subhead:base.subhead,footer:base.footer,features:base.features},
+      layout:order[i],
+      theme:(t0+i*5)%T,
+      motif:motifs[i%motifs.length],
+      font:(i%2===0)?psSel.font:(psSel.font==='serif'?'sans':'serif'),
+      scale:psSel.scale,
+      imgFit:psSel.imgFit, imgFocal:psSel.imgFocal
+    };
+  });
+  var grid=document.getElementById('ps-batch-grid');
+  grid.innerHTML=psBatch.map(function(b,i){
+    return '<div class="card" style="padding:10px;">'
+      +'<canvas id="ps-b-'+i+'" width="1000" height="1500" style="width:100%;height:auto;border-radius:6px;border:1px solid var(--border);"></canvas>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:7px;line-height:1.5;" id="ps-b-lbl-'+i+'"></div>'
+      +'<div style="display:flex;gap:6px;margin-top:8px;">'
+        +'<button class="btn-ghost" style="flex:1;" onclick="psLoadFromBatch('+i+')">Edit</button>'
+        +'<button class="btn-ghost" onclick="psExportOne('+i+')">⬇</button>'
+      +'</div></div>';
+  }).join('');
+  psBatch.forEach(function(b,i){
+    var cv=document.getElementById('ps-b-'+i);
+    var r=psDraw(cv,b.copy,b.layout,b.theme,{motif:b.motif,font:b.font,scale:b.scale,imgFit:b.imgFit||psSel.imgFit,imgFocal:b.imgFocal||psSel.imgFocal});
+    var lbl=document.getElementById('ps-b-lbl-'+i);
+    if(lbl)lbl.textContent=(i+1)+'. '+r.layout.name.split(' — ')[0]+' · '+r.theme.name;
+  });
+  toast(psBatch.length+' designs generated ✦');
+}
+// Re-renders an existing batch in place after the screenshot is added or removed.
+function psRedrawBatch(){
+  if(!psBatch.length)return;
+  psBatch.forEach(function(b,i){
+    var cv=document.getElementById('ps-b-'+i); if(!cv)return;
+    var r=psDraw(cv,b.copy,b.layout,b.theme,{motif:b.motif,font:b.font,scale:b.scale,imgFit:psSel.imgFit,imgFocal:psSel.imgFocal});
+    var lbl=document.getElementById('ps-b-lbl-'+i);
+    if(lbl)lbl.textContent=(i+1)+'. '+r.layout.name.split(' — ')[0]+' · '+r.theme.name;
+  });
+}
+function psLoadFromBatch(i){
+  var b=psBatch[i]; if(!b)return;
+  document.getElementById('ps-headline').value=b.copy.headline;
+  psSel.layout=b.layout; psSel.theme=b.theme; psSel.motif=b.motif; psSel.font=b.font;
+  psSyncControls(); psRender();
+  document.getElementById('ps-canvas').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function psExportOne(i){
+  var cv=document.getElementById('ps-b-'+i); if(!cv)return;
+  if(psDownload(cv,String(i+1)+'-'+psSlug(psBatch[i].copy.headline)+'-1000x1500.png'))toast('Pin '+(i+1)+' exported ✓');
+}
+// Browsers throttle rapid programmatic downloads, so these are staggered.
+function psExportBatch(){
+  if(!psBatch.length){toast('Generate the batch first');return;}
+  psBatch.forEach(function(b,i){ setTimeout(function(){psExportOne(i);},i*600); });
+  toast('Exporting '+psBatch.length+' pins…');
+}
+function psInit(){
+  var l=document.getElementById('ps-layout');
+  if(!l)return;
+  l.innerHTML=PS_LAYOUTS.map(function(x,i){return '<option value="'+i+'">'+x.name+'</option>';}).join('');
+  document.getElementById('ps-theme').innerHTML=PS_THEMES.map(function(x,i){return '<option value="'+i+'">'+x.name+'</option>';}).join('');
+  l.addEventListener('change',function(){psSel.layout=parseInt(this.value,10)||0;psRender();});
+  document.getElementById('ps-theme').addEventListener('change',function(){psSel.theme=parseInt(this.value,10)||0;psSel.over={};psSyncControls();psRender();});
+  document.getElementById('ps-font').addEventListener('change',function(){psSel.font=this.value;psRender();});
+  document.getElementById('ps-motif').addEventListener('change',function(){psSel.motif=this.value;psRender();});
+  document.getElementById('ps-scale').addEventListener('input',function(){
+    psSel.scale=(parseInt(this.value,10)||100)/100;
+    var sv=document.getElementById('ps-scale-val'); if(sv)sv.textContent=Math.round(psSel.scale*100)+'%';
+    psRender();
+  });
+  ['bg','ink','accent'].forEach(function(k){
+    var el=document.getElementById('ps-c-'+k);
+    if(el)el.addEventListener('input',function(){psSel.over[k]=this.value;psRender();});
+  });
+  ['ps-eyebrow','ps-headline','ps-subhead','ps-features','ps-footer'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.addEventListener('input',psRender);
+  });
+  var fi=document.getElementById('ps-img-file');
+  if(fi)fi.addEventListener('change',function(){psLoadImageFile(this.files&&this.files[0]);});
+  var ff=document.getElementById('ps-img-fit');
+  if(ff)ff.addEventListener('change',function(){psSel.imgFit=this.value;psRender();psRedrawBatch();});
+  var fo=document.getElementById('ps-img-focal');
+  if(fo)fo.addEventListener('change',function(){psSel.imgFocal=this.value;psRender();psRedrawBatch();});
+  psSyncControls();
+  // Cormorant Garamond / Jost arrive from the font CDN after first paint, so the
+  // first draw is repeated once fonts are ready or the preview renders in Georgia.
+  psRender();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){psRender();});
 }
 
 // ===== BOOTSTRAP =====
