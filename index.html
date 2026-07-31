@@ -720,8 +720,8 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   </div>
   <div class="card" style="margin-bottom:14px;border:1px solid var(--accent,#B98D7A);">
     <div class="card-title" style="margin-bottom:8px;">Supabase Key <span style="font-weight:400;font-size:11px;color:var(--muted);">— the new home for your data</span></div>
-    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Supabase Dashboard &rarr; your <b>havenkept</b> project &rarr; Project Settings &rarr; API Keys &rarr; copy the <b>service_role</b> key (the secret one, not <i>anon</i>). Stored only in this browser's localStorage, never in your GitHub repo and never in an Export backup.</p>
-    <div class="form-field"><input type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="supabase-key-input" placeholder="eyJ..."/></div>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Supabase Dashboard &rarr; <b>havenkept</b> project &rarr; Project Settings &rarr; API Keys &rarr; under <b>Secret keys</b>, reveal and copy the key starting <b>sb_secret_</b>. (Supabase renamed this; it used to be called <i>service_role</i>.) Do <b>not</b> use the Publishable key &mdash; it cannot read your data. Stored only in this browser's localStorage, never in your GitHub repo and never in an Export backup.</p>
+    <div class="form-field"><input type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="supabase-key-input" placeholder="sb_secret_..."/></div>
     <button class="btn-add" onclick="saveSupabaseKey()">Save Key</button>
     <button class="btn-ghost" onclick="sbTestConnection()">Test Connection</button>
     <span id="supabase-key-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
