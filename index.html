@@ -910,7 +910,7 @@ var NAV_ITEMS=[
   {id:'pins',icon:'pin',label:'Pins'},
   {id:'pinstudio',icon:'penTool',label:'Pin Studio'},
   {id:'colors',icon:'droplet',label:'Colors'},
-  {id:'sync',icon:'refresh',label:'Airtable Sync'}
+  {id:'sync',icon:'refresh',label:'Data Sync'}
 ];
 var DEFAULT_WEBSITES=[
   {label:'Etsy Shop Manager',url:'https://www.etsy.com/your/shops/me/dashboard',category:'Selling'},
@@ -1940,6 +1940,207 @@ async function doSbSignIn(){
   sbTestConnection();
 }
 
+
+// ---- Supabase -> Airtable record shape adapter ---------------------
+// reconcile() is 418 lines of carefully tuned matching logic that has already
+// been debugged more than once. Rather than rewrite it against a new data
+// shape (and risk reintroducing those bugs), we translate Supabase rows into
+// the {id, fields:{...}} shape it already understands. The logic stays
+// untouched; only the source of the data changes.
+//
+// Airtable linked-record fields were ARRAYS of record ids and the reconcile
+// code tests them with .indexOf(). Supabase uses single FK columns or join
+// tables, so every link below is wrapped back into an array.
+
+var _sbLinkCache={productFeatures:null,knownIssueProducts:null};
+
+async function sbLoadLinkTables(){
+  _sbLinkCache.productFeatures=await sbListAll(SB_TABLES.productFeatures)||[];
+  _sbLinkCache.knownIssueProducts=await sbListAll(SB_TABLES.knownIssueProducts)||[];
+}
+
+function _att(url,filename){
+  // Airtable attachment fields were arrays of {url, filename}.
+  return url?[{url:url,filename:filename||''}]:undefined;
+}
+
+function sbAsAirtable(table,row){
+  var f={};
+  switch(table){
+    case 'products':
+      f['Name']=row.name; f['Brand']=row.brand; f['Listed URL']=row.listed_url;
+      // Airtable stored this as a comma string; Supabase uses a text[].
+      f['Completed Steps']=(row.completed_steps||[]).join(',');
+      f['Hero Image']=_att(row.hero_image_url);
+      f['Planner File']=_att(row.planner_file_url,row.planner_file_tag);
+      f['Planner File Tag']=row.planner_file_tag;
+      f['Planner File Uploaded At']=row.planner_file_uploaded_at;
+      break;
+    case 'bugs':
+      f['Text']=row.text; f['Done']=!!row.done; f['High Priority']=!!row.high_priority;
+      f['Product']=row.product_id?[row.product_id]:undefined;
+      break;
+    case 'features':
+      f['Feature Name']=row.name; f['Description']=row.description;
+      // Rebuilt from the product_features join table.
+      f['Products']=(_sbLinkCache.productFeatures||[])
+        .filter(function(l){return l.feature_id===row.id;})
+        .map(function(l){return l.product_id;});
+      break;
+    case 'custom_orders':
+      f['Client/Project Name']=row.client_name; f['Tier']=row.tier; f['Stage']=row.stage;
+      f['Deposit Paid']=!!row.deposit_paid; f['Paid In Full']=!!row.paid_in_full;
+      f['Deadline']=row.deadline; f['Problem']=row.problem; f['Who']=row.who;
+      f['Info Tracked']=row.info_tracked; f['Pages']=row.pages;
+      f['Features Wanted']=row.features_wanted; f['Devices']=row.devices;
+      f['Examples']=row.examples;
+      break;
+    case 'calendar_events':
+      f['Title']=row.title; f['Date']=row.event_date; f['Notes']=row.notes;
+      f['Product']=row.product_id?[row.product_id]:undefined;
+      break;
+    case 'notes':
+      f['Text']=row.text; f['Date']=row.note_date; f['Pinned']=!!row.pinned;
+      f['Is Handoff']=!!row.is_handoff; f['Handoff Type']=row.handoff_type;
+      f['Handoff Related To']=row.handoff_related_to;
+      f['Handoff Resolved']=!!row.handoff_resolved;
+      break;
+    case 'websites':
+      f['Label']=row.label; f['URL']=row.url; f['Category']=row.category;
+      break;
+    case 'testing_passes':
+      f['Label']=row.label; f['Date']=row.pass_date;
+      break;
+    case 'testing_items':
+      f['Item Text']=row.item_text; f['Section']=row.section;
+      f['Priority']=!!row.priority; f['Done']=!!row.done;
+      f['Known Issue']=!!row.known_issue; f['Note']=row.note;
+      f['Pass']=row.pass_id?[row.pass_id]:undefined;
+      f['Product']=row.product_id?[row.product_id]:undefined;
+      break;
+    case 'known_issues':
+      f['Issue']=row.issue;
+      // Airtable held Verified/Notes per issue x product pair. Supabase keeps
+      // that in known_issue_products, so expand one row per linked product,
+      // which is what the reconcile code below expects to iterate.
+      f['Products']=(_sbLinkCache.knownIssueProducts||[])
+        .filter(function(l){return l.known_issue_id===row.id;})
+        .map(function(l){return l.product_id;});
+      f['Verified']=!!row.verified; f['Notes']=row.notes;
+      break;
+    case 'pinterest_metrics':
+      f['Pin Title']=row.pin_title; f['Date']=row.pin_date; f['Board']=row.board;
+      f['Link Target']=row.link_target;
+      f['Products']=row.product_id?[row.product_id]:undefined;
+      f['Impressions']=row.impressions; f['Saves']=row.saves;
+      f['Outbound Clicks']=row.outbound_clicks; f['CTR']=row.ctr;
+      f['Week #']=row.week_number; f['Notes']=row.notes;
+      break;
+  }
+  // Drop undefined keys so `if(fields[x]!==undefined)` checks behave exactly
+  // as they did with Airtable, which simply omitted empty fields.
+  for(var k in f){ if(f[k]===undefined||f[k]===null)delete f[k]; }
+  return {id:row.id,fields:f};
+}
+
+// Drop-in replacement for airtableListAll(), returning the same shape.
+async function sbListAsAirtable(table){
+  var rows=await sbListAll(table);
+  if(!rows)return [];
+  return rows.map(function(r){return sbAsAirtable(table,r);});
+}
+
+
+// ---- Supabase creates (used by reconcile to push local-only rows up) ------
+// PostgREST returns the inserted row when asked, so each of these returns the
+// new uuid, exactly like the Airtable versions returned a record id.
+async function sbInsert(table,row){
+  var res=await sbRequest('POST',table,[row],{'Prefer':'return=representation'});
+  return (res&&res[0]&&res[0].id)?res[0].id:null;
+}
+async function sbUpdate(table,id,row){
+  if(!id)return null;
+  return await sbRequest('PATCH',table+'?id=eq.'+encodeURIComponent(id),row,{'Prefer':'return=minimal'});
+}
+async function sbDelete(table,id){
+  if(!id)return null;
+  return await sbRequest('DELETE',table+'?id=eq.'+encodeURIComponent(id),null,{'Prefer':'return=minimal'});
+}
+
+async function sbCreateProduct(p){
+  return await sbInsert(SB_TABLES.products,{
+    name:p.name, brand:p.brand||'HavenKept', listed_url:p.listedUrl||'',
+    completed_steps:(p.completedSteps||[])   // text[] here, was a comma string in Airtable
+  });
+}
+async function sbCreateBug(productId,bug){
+  return await sbInsert(SB_TABLES.bugs,{
+    text:bug.text, done:!!bug.done, high_priority:!!bug.priority,
+    product_id:productId||null
+  });
+}
+async function sbCreateFeature(f){
+  var id=await sbInsert(SB_TABLES.features,{name:f.name,description:f.description||''});
+  if(id)f.airtableId=id;
+  return id;
+}
+async function sbCreateOrder(o){
+  return await sbInsert(SB_TABLES.orders,{
+    client_name:o.name, tier:o.tier||null, stage:o.stage||null,
+    deposit_paid:!!o.depositPaid, paid_in_full:!!o.paidInFull,
+    deadline:o.deadline||null, problem:o.problem||null, who:o.who||null,
+    info_tracked:o.infoTracked||null, pages:o.pages||null,
+    features_wanted:o.featuresWanted||null, devices:o.devices||null,
+    examples:o.examples||null
+  });
+}
+async function sbCreateEvent(e){
+  var id=await sbInsert(SB_TABLES.events,{
+    title:e.title, event_date:e.date||null, notes:e.notes||''
+  });
+  if(id){e.airtableId=id;saveState();}
+  return id;
+}
+async function sbCreateNote(n){
+  var id=await sbInsert(SB_TABLES.notes,{
+    text:n.text||'', note_date:n.date||null, pinned:!!n.pinned,
+    is_handoff:!!n.isHandoff, handoff_type:n.handoffType||null,
+    handoff_related_to:n.handoffRelatedTo||null, handoff_resolved:!!n.handoffResolved
+  });
+  if(id){n.airtableId=id;saveState();}
+  return id;
+}
+async function sbCreatePin(p){
+  var id=await sbInsert(SB_TABLES.pins,{
+    pin_title:p.title||null, pin_date:p.date||null, board:p.board||null,
+    link_target:p.target||null, product_id:p.productAirtableId||null
+  });
+  if(id){p.airtableId=id;saveState();}
+  return id;
+}
+async function sbCreateWebsite(w){
+  var id=await sbInsert(SB_TABLES.websites,{
+    label:w.label, url:w.url||null, category:w.category||null
+  });
+  if(id){w.airtableId=id;saveState();}
+  return id;
+}
+async function sbCreatePass(p){
+  var id=await sbInsert(SB_TABLES.passes,{label:p.label,pass_date:p.date||null});
+  if(id){p.airtableId=id;saveState();}
+  return id;
+}
+async function sbCreateTestingItem(passId,item,productId){
+  var id=await sbInsert(SB_TABLES.testingItems,{
+    item_text:item.text, section:item.section||null,
+    priority:!!item.priority, done:!!item.done,
+    known_issue:!!item.knownIssue, note:item.note||null,
+    pass_id:passId||null, product_id:productId||null
+  });
+  if(id){item.airtableId=id;saveState();}
+  return id;
+}
+
 // Cheap read-only probe so the key can be verified before anything depends on it.
 async function sbTestConnection(){
   var statusEl=document.getElementById('supabase-conn-status');
@@ -2201,21 +2402,22 @@ async function airtableUpdateTestingItem(airtableId,fields){if(airtableId)await 
 // import) links up correctly instead of creating duplicates. Anything with no match gets
 // created fresh in Airtable. Safe to re-run any time via the Sync Now button.
 async function reconcileWithAirtable(manual){
-  if(!airtableEnabled()){
-    if(manual)toast('Add a token first');
+  if(!supabaseEnabled()){
+    if(manual)toast('Sign in to Supabase first');
     return;
   }
   var statusEl=document.getElementById('airtable-sync-status');
   if(statusEl)statusEl.textContent='Syncing…';
 
-  var remoteProducts=await airtableListAll(AIRTABLE_PRODUCTS_TABLE);
-  var getError=_airtableLastError;
+  await sbLoadLinkTables();
+  var remoteProducts=await sbListAsAirtable(SB_TABLES.products);
+  var getError=_sbLastError;
 
-  var remoteBugs=await airtableListAll(AIRTABLE_BUGS_TABLE);
-  if(!getError)getError=_airtableLastError;
+  var remoteBugs=await sbListAsAirtable(SB_TABLES.bugs);
+  if(!getError)getError=_sbLastError;
 
-  var remoteFeatures=await airtableListAll(AIRTABLE_FEATURES_TABLE);
-  if(!getError)getError=_airtableLastError;
+  var remoteFeatures=await sbListAsAirtable(SB_TABLES.features);
+  if(!getError)getError=_sbLastError;
 
   // Features: match by name, pull down any missing locally, push up any local-only ones
   if(!state.features)state.features=[];
@@ -2233,14 +2435,14 @@ async function reconcileWithAirtable(manual){
   });
   // Create any local features that still have no Airtable counterpart at all
   for(var fi=0;fi<state.features.length;fi++){
-    if(!state.features[fi].airtableId)await airtableCreateFeature(state.features[fi]);
+    if(!state.features[fi].airtableId)await sbCreateFeature(state.features[fi]);
   }
 
   for(var i=0;i<(state.products||[]).length;i++){
     var p=state.products[i];
     if(!p.airtableId){
       var match=remoteProducts.find(function(r){return r.fields&&r.fields[AIRTABLE_FIELDS.name]===p.name;});
-      p.airtableId=match?match.id:await airtableCreateProduct(p);
+      p.airtableId=match?match.id:await sbCreateProduct(p);
     }
     var remoteMatch=remoteProducts.find(function(r){return r.id===p.airtableId;});
     if(remoteMatch&&remoteMatch.fields){
@@ -2276,7 +2478,7 @@ async function reconcileWithAirtable(manual){
       var b=p.bugs[j];
       if(!b.airtableId){
         var bmatch=thisProductBugs.find(function(r){return r.fields&&r.fields[AIRTABLE_FIELDS.bugText]===b.text;});
-        b.airtableId=bmatch?bmatch.id:await airtableCreateBug(p.airtableId,b);
+        b.airtableId=bmatch?bmatch.id:await sbCreateBug(p.airtableId,b);
       }
       if(b.airtableId){
         var bRemote=thisProductBugs.find(function(r){return r.id===b.airtableId;});
@@ -2332,7 +2534,7 @@ async function reconcileWithAirtable(manual){
   // ===== FULL TWO-WAY RECONCILE: Custom Orders, Calendar Events, Notes, Websites, Testing =====
   var stageMapRev={'Inquiry':'inquiry','Intake':'deposit paid','In Progress':'building','Delivered':'delivered'};
 
-  var remoteOrders=await airtableListAll(AIRTABLE_ORDERS_TABLE);
+  var remoteOrders=await sbListAsAirtable(SB_TABLES.orders);
   if(!state.customOrders)state.customOrders=[];
   state.customOrders.forEach(function(o){
     if(!o.airtableId){
@@ -2358,10 +2560,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   for(var oi=0;oi<state.customOrders.length;oi++){
-    if(!state.customOrders[oi].airtableId)await airtableCreateOrder(state.customOrders[oi]);
+    if(!state.customOrders[oi].airtableId)await sbCreateOrder(state.customOrders[oi]);
   }
 
-  var remoteEvents=await airtableListAll(AIRTABLE_EVENTS_TABLE);
+  var remoteEvents=await sbListAsAirtable(SB_TABLES.events);
   if(!state.calendarEvents)state.calendarEvents=[];
   state.calendarEvents.forEach(function(e){
     if(!e.airtableId){
@@ -2381,10 +2583,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   for(var ei=0;ei<state.calendarEvents.length;ei++){
-    if(!state.calendarEvents[ei].airtableId)await airtableCreateEvent(state.calendarEvents[ei]);
+    if(!state.calendarEvents[ei].airtableId)await sbCreateEvent(state.calendarEvents[ei]);
   }
 
-  var remoteNotes=await airtableListAll(AIRTABLE_NOTES_TABLE);
+  var remoteNotes=await sbListAsAirtable(SB_TABLES.notes);
   if(!state.notes)state.notes=[];
   state.notes.forEach(function(n){
     if(!n.airtableId){
@@ -2416,14 +2618,14 @@ async function reconcileWithAirtable(manual){
     }
   });
   for(var ni=0;ni<state.notes.length;ni++){
-    if(!state.notes[ni].airtableId)await airtableCreateNote(state.notes[ni]);
+    if(!state.notes[ni].airtableId)await sbCreateNote(state.notes[ni]);
   }
 
   // ----- PINS -----
   // Pulls down the performance numbers Bailey fills in on the Airtable side later,
   // so Studio shows impressions/saves/clicks without her re-entering anything.
-  var remotePins=await airtableListAll(AIRTABLE_PINS_TABLE);
-  if(!getError)getError=_airtableLastError;
+  var remotePins=await sbListAsAirtable(SB_TABLES.pins);
+  if(!getError)getError=_sbLastError;
   if(!state.pins)state.pins=[];
   state.pins.forEach(function(p){
     if(p.airtableId){
@@ -2463,10 +2665,10 @@ async function reconcileWithAirtable(manual){
     }
   });
   for(var pi=0;pi<state.pins.length;pi++){
-    if(!state.pins[pi].airtableId)await airtableCreatePin(state.pins[pi]);
+    if(!state.pins[pi].airtableId)await sbCreatePin(state.pins[pi]);
   }
 
-  var remoteWebsites=await airtableListAll(AIRTABLE_WEBSITES_TABLE);
+  var remoteWebsites=await sbListAsAirtable(SB_TABLES.websites);
   if(!state.websites)state.websites=[];
   state.websites.forEach(function(w){
     if(!w.airtableId){
@@ -2486,11 +2688,11 @@ async function reconcileWithAirtable(manual){
     }
   });
   for(var wi=0;wi<state.websites.length;wi++){
-    if(!state.websites[wi].airtableId)await airtableCreateWebsite(state.websites[wi]);
+    if(!state.websites[wi].airtableId)await sbCreateWebsite(state.websites[wi]);
   }
 
-  var remotePasses=await airtableListAll(AIRTABLE_PASSES_TABLE);
-  var remoteItems=await airtableListAll(AIRTABLE_TESTING_ITEMS_TABLE);
+  var remotePasses=await sbListAsAirtable(SB_TABLES.passes);
+  var remoteItems=await sbListAsAirtable(SB_TABLES.testingItems);
   if(!state.testingPasses)state.testingPasses=[];
   state.testingPasses.forEach(function(pass){
     // A saved airtableId can go stale if the Airtable record was deleted and later
@@ -2548,10 +2750,10 @@ async function reconcileWithAirtable(manual){
   });
   for(var pi=0;pi<state.testingPasses.length;pi++){
     var pass2=state.testingPasses[pi];
-    if(!pass2.airtableId)await airtableCreatePass(pass2);
+    if(!pass2.airtableId)await sbCreatePass(pass2);
     if(!pass2.items)pass2.items=[];
     for(var ii2=0;ii2<pass2.items.length;ii2++){
-      if(!pass2.items[ii2].airtableId)await airtableCreateTestingItem(pass2.airtableId,null,pass2.items[ii2]);
+      if(!pass2.items[ii2].airtableId)await sbCreateTestingItem(pass2.airtableId,null,pass2.items[ii2]);
     }
   }
 
@@ -2570,7 +2772,7 @@ async function reconcileWithAirtable(manual){
   // indefinitely no matter how many times Sync ran).
   if(typeof getKnownIssues==='function'){
     var localIssues=getKnownIssues();
-    var remoteKnownIssues=await airtableListAll(AIRTABLE_KNOWN_ISSUES_TABLE);
+    var remoteKnownIssues=await sbListAsAirtable(SB_TABLES.knownIssues);
     var rowsByTitle={};
     remoteKnownIssues.forEach(function(r){
       var title=(r.fields||{})[AIRTABLE_FIELDS.kiIssue];
@@ -2614,8 +2816,8 @@ async function reconcileWithAirtable(manual){
     if(statusEl)statusEl.textContent='✕ Sync failed — '+getError+' (token used: '+tokenPrefix+'…)';
     if(manual)toast('Sync failed, see error on this page');
   } else {
-    if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+')'+(newlyPulled?' — pulled '+newlyPulled+' product(s) from Airtable':' — no new products to pull (token: '+tokenPrefix+'…)');
-    if(manual)toast(newlyPulled?('Synced, pulled '+newlyPulled+' new product(s) ✓'):'Airtable sync complete ✓');
+    if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+')'+(newlyPulled?' — pulled '+newlyPulled+' product(s) from Supabase':' — no new products to pull (token: '+tokenPrefix+'…)');
+    if(manual)toast(newlyPulled?('Synced, pulled '+newlyPulled+' new product(s) ✓'):'Supabase sync complete ✓');
   }
 }
 
