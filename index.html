@@ -2040,7 +2040,7 @@ function sbAsAirtable(table,row){
   // Drop undefined keys so `if(fields[x]!==undefined)` checks behave exactly
   // as they did with Airtable, which simply omitted empty fields.
   for(var k in f){ if(f[k]===undefined||f[k]===null)delete f[k]; }
-  return {id:row.id,fields:f};
+  return {id:row.id,airtable_id:row.airtable_id,fields:f};
 }
 
 // Drop-in replacement for airtableListAll(), returning the same shape.
@@ -2139,6 +2139,111 @@ async function sbCreateTestingItem(passId,item,productId){
   });
   if(id){item.airtableId=id;saveState();}
   return id;
+}
+
+
+// ---- one-time local ID migration + duplicate repair ----------------
+// Local records remember the id of their remote counterpart in `airtableId`.
+// Before the migration those were Airtable record ids ("recXXXXXXXX" or, for
+// the CSV-imported rows, "csv-bug:..."/"csv-ti:..."). Supabase uses uuids, so
+// after switching the data source nothing matched and reconcile pushed a
+// second copy of every record. Supabase kept the original id in its
+// `airtable_id` column, which is the bridge used here.
+//
+// Runs at the top of every sync. Idempotent: a value that is already a uuid,
+// or has no match, is left alone.
+
+function _isLegacyId(v){
+  return typeof v==='string' && v.length>0 && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v);
+}
+
+async function sbBuildLegacyIdMap(){
+  var map={};
+  var tables=[SB_TABLES.products,SB_TABLES.bugs,SB_TABLES.features,SB_TABLES.orders,
+              SB_TABLES.events,SB_TABLES.notes,SB_TABLES.websites,SB_TABLES.passes,
+              SB_TABLES.testingItems,SB_TABLES.knownIssues,SB_TABLES.pins];
+  for(var i=0;i<tables.length;i++){
+    var rows=await sbListAll(tables[i],'id,airtable_id');
+    (rows||[]).forEach(function(r){ if(r.airtable_id)map[r.airtable_id]=r.id; });
+  }
+  return map;
+}
+
+function _remap(obj,map,stats){
+  if(!obj||!obj.airtableId)return;
+  if(!_isLegacyId(obj.airtableId))return;          // already a uuid
+  if(map[obj.airtableId]){ obj.airtableId=map[obj.airtableId]; stats.remapped++; }
+  else { obj.airtableId=null; stats.cleared++; }   // no counterpart: let reconcile rematch
+}
+
+// Collapse records that were duplicated by the id mismatch. Keeps the FIRST
+// occurrence, which is the one the user has been editing, and prefers a copy
+// that carries local-only detail (notes, etsy fields) over a bare pulled one.
+function _dedupe(list,keyFn,stats){
+  if(!Array.isArray(list))return list;
+  var seen={}, out=[];
+  list.forEach(function(item){
+    var k=keyFn(item);
+    if(!k){ out.push(item); return; }
+    if(seen[k]===undefined){ seen[k]=out.length; out.push(item); return; }
+    var kept=out[seen[k]];
+    // merge anything the kept copy is missing rather than silently dropping it
+    for(var f in item){
+      if(item[f]&&(kept[f]===undefined||kept[f]===''||kept[f]===null))kept[f]=item[f];
+    }
+    if(Array.isArray(item.bugs)&&Array.isArray(kept.bugs)&&item.bugs.length>kept.bugs.length)kept.bugs=item.bugs;
+    if(Array.isArray(item.items)&&Array.isArray(kept.items)&&item.items.length>kept.items.length)kept.items=item.items;
+    stats.deduped++;
+  });
+  return out;
+}
+
+async function sbRepairLocalIds(){
+  var map=await sbBuildLegacyIdMap();
+  var stats={remapped:0,cleared:0,deduped:0};
+
+  (state.products||[]).forEach(function(p){
+    _remap(p,map,stats);
+    (p.bugs||[]).forEach(function(b){_remap(b,map,stats);});
+    p.bugs=_dedupe(p.bugs,function(b){return b.airtableId||('t:'+(b.text||''));},stats);
+  });
+  (state.features||[]).forEach(function(f){_remap(f,map,stats);});
+  (state.notes||[]).forEach(function(n){_remap(n,map,stats);});
+  (state.websites||[]).forEach(function(w){_remap(w,map,stats);});
+  (state.pins||[]).forEach(function(p){_remap(p,map,stats);});
+  (state.customOrders||[]).forEach(function(o){_remap(o,map,stats);});
+  (state.calendarEvents||[]).forEach(function(e){_remap(e,map,stats);});
+  (state.testingPasses||[]).forEach(function(tp){
+    _remap(tp,map,stats);
+    (tp.items||[]).forEach(function(it){_remap(it,map,stats);});
+    tp.items=_dedupe(tp.items,function(it){return it.airtableId||('t:'+(it.text||''));},stats);
+  });
+  (state.knownIssues||[]).forEach(function(ki){
+    if(!ki.airtableIds)return;
+    var fixed={};
+    for(var k in ki.airtableIds){
+      var v=ki.airtableIds[k];
+      fixed[k]=(_isLegacyId(v)&&map[v])?map[v]:v;
+    }
+    ki.airtableIds=fixed;
+  });
+
+  // Products/notes/etc. duplicated by the mismatch. Match on remote id first,
+  // then on name/label/text so copies created before ids existed also collapse.
+  state.products     =_dedupe(state.products,     function(p){return p.airtableId||('n:'+(p.name||''));},stats);
+  state.features     =_dedupe(state.features,     function(f){return f.airtableId||('n:'+(f.name||''));},stats);
+  state.notes        =_dedupe(state.notes,        function(n){return n.airtableId||('t:'+(n.text||''));},stats);
+  state.websites     =_dedupe(state.websites,     function(w){return w.airtableId||('l:'+(w.label||''));},stats);
+  state.pins         =_dedupe(state.pins,         function(p){return p.airtableId||('t:'+(p.title||''));},stats);
+  state.customOrders =_dedupe(state.customOrders, function(o){return o.airtableId||('n:'+(o.name||''));},stats);
+  state.calendarEvents=_dedupe(state.calendarEvents,function(e){return e.airtableId||('t:'+(e.title||'')+(e.date||''));},stats);
+  state.testingPasses=_dedupe(state.testingPasses,function(t){return t.airtableId||('l:'+(t.label||''));},stats);
+
+  if(stats.remapped||stats.cleared||stats.deduped){
+    saveState();
+    console.log('Supabase id repair:',stats);
+  }
+  return stats;
 }
 
 // Cheap read-only probe so the key can be verified before anything depends on it.
@@ -2409,6 +2514,7 @@ async function reconcileWithAirtable(manual){
   var statusEl=document.getElementById('airtable-sync-status');
   if(statusEl)statusEl.textContent='Syncing…';
 
+  var _repair=await sbRepairLocalIds();
   await sbLoadLinkTables();
   var remoteProducts=await sbListAsAirtable(SB_TABLES.products);
   var getError=_sbLastError;
