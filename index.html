@@ -1952,11 +1952,12 @@ async function doSbSignIn(){
 // code tests them with .indexOf(). Supabase uses single FK columns or join
 // tables, so every link below is wrapped back into an array.
 
-var _sbLinkCache={productFeatures:null,knownIssueProducts:null};
+var _sbLinkCache={productFeatures:null,knownIssueProducts:null,bugProducts:null};
 
 async function sbLoadLinkTables(){
   _sbLinkCache.productFeatures=await sbListAll(SB_TABLES.productFeatures)||[];
   _sbLinkCache.knownIssueProducts=await sbListAll(SB_TABLES.knownIssueProducts)||[];
+  _sbLinkCache.bugProducts=await sbListAll(SB_TABLES.bugProducts)||[];
 }
 
 function _att(url,filename){
@@ -1978,7 +1979,11 @@ function sbAsAirtable(table,row){
       break;
     case 'bugs':
       f['Text']=row.text; f['Done']=!!row.done; f['High Priority']=!!row.high_priority;
-      f['Product']=row.product_id?[row.product_id]:undefined;
+      var bugLinks=(_sbLinkCache.bugProducts||[])
+        .filter(function(l){return l.bug_id===row.id;})
+        .map(function(l){return l.product_id;});
+      if(!bugLinks.length&&row.product_id)bugLinks=[row.product_id];
+      f['Product']=bugLinks.length?bugLinks:undefined;
       break;
     case 'features':
       f['Feature Name']=row.name; f['Description']=row.description;
@@ -2917,13 +2922,22 @@ async function reconcileWithAirtable(manual){
   if(typeof renderProducts==='function')renderProducts();
   if(typeof renderDashboard==='function')renderDashboard();
   if(typeof renderMatrix==='function')renderMatrix();
-  var tokenPrefix=getAirtableToken().slice(0,15);
   if(getError){
-    if(statusEl)statusEl.textContent='✕ Sync failed — '+getError+' (token used: '+tokenPrefix+'…)';
+    if(statusEl)statusEl.textContent='✕ Sync failed — '+getError+' (signed in as '+(sbUserEmail()||'nobody')+')';
     if(manual)toast('Sync failed, see error on this page');
   } else {
-    if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+')'+(newlyPulled?' — pulled '+newlyPulled+' product(s) from Supabase':' — no new products to pull (token: '+tokenPrefix+'…)');
-    if(manual)toast(newlyPulled?('Synced, pulled '+newlyPulled+' new product(s) ✓'):'Supabase sync complete ✓');
+    // Report what is actually here now, rather than a token prefix. The repair
+    // counts only appear on the sync that had something to fix.
+    var counts=(state.products||[]).length+' products, '
+      +(state.products||[]).reduce(function(n,p){return n+((p.bugs||[]).length);},0)+' bugs, '
+      +(state.notes||[]).length+' notes';
+    var repaired='';
+    if(_repair&&(_repair.remapped||_repair.deduped)){
+      repaired=' — repaired '+_repair.remapped+' id(s), removed '+_repair.deduped+' duplicate(s)';
+    }
+    if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+') — '+counts
+      +(newlyPulled?(' — pulled '+newlyPulled+' new product(s)'):'')+repaired;
+    if(manual)toast('Supabase sync complete ✓');
   }
 }
 
@@ -4982,6 +4996,144 @@ function psInit(){
   psRender();
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){psRender();});
 }
+
+// ====================================================================
+// SUPABASE WRITE PATH  (checkpoint 3)
+// These redefine the airtable* write helpers with the same names and
+// signatures, so every call site elsewhere in the file is unchanged.
+// In JavaScript the last function declaration wins, so these override
+// the Airtable versions above. Those are left in place for reference
+// and get deleted in checkpoint 5.
+//
+// Call sites pass Airtable-style field objects like {'Text':..,'Done':..},
+// so translate those names to Supabase columns here rather than editing
+// thirty call sites and risking a typo in one of them.
+// ====================================================================
+var SB_COLS={
+  products:{'Name':'name','Brand':'brand','Listed URL':'listed_url',
+            'Completed Steps':'completed_steps','Planner File Tag':'planner_file_tag',
+            'Planner File Uploaded At':'planner_file_uploaded_at'},
+  bugs:{'Text':'text','Done':'done','High Priority':'high_priority','Product':'product_id'},
+  features:{'Feature Name':'name','Description':'description'},
+  custom_orders:{'Client/Project Name':'client_name','Tier':'tier','Stage':'stage',
+            'Deposit Paid':'deposit_paid','Paid In Full':'paid_in_full','Deadline':'deadline',
+            'Problem':'problem','Who':'who','Info Tracked':'info_tracked','Pages':'pages',
+            'Features Wanted':'features_wanted','Devices':'devices','Examples':'examples'},
+  calendar_events:{'Title':'title','Date':'event_date','Notes':'notes','Product':'product_id'},
+  notes:{'Text':'text','Date':'note_date','Pinned':'pinned','Is Handoff':'is_handoff',
+            'Handoff Type':'handoff_type','Handoff Related To':'handoff_related_to',
+            'Handoff Resolved':'handoff_resolved'},
+  websites:{'Label':'label','URL':'url','Category':'category'},
+  testing_passes:{'Label':'label','Date':'pass_date'},
+  testing_items:{'Item Text':'item_text','Section':'section','Priority':'priority','Done':'done',
+            'Known Issue':'known_issue','Note':'note','Pass':'pass_id','Product':'product_id'},
+  known_issues:{'Issue':'issue','Verified':'verified','Notes':'notes'},
+  pinterest_metrics:{'Pin Title':'pin_title','Date':'pin_date','Board':'board',
+            'Link Target':'link_target','Products':'product_id','Impressions':'impressions',
+            'Saves':'saves','Outbound Clicks':'outbound_clicks','Week #':'week_number','Notes':'notes'}
+};
+// Columns that were Airtable linked-record ARRAYS but are single FK columns here.
+var SB_LINK_COLS={product_id:1,pass_id:1};
+
+function sbFromFields(table,fields){
+  var map=SB_COLS[table]||{}, out={};
+  for(var k in fields){
+    var col=map[k];
+    if(!col)continue;                       // unmapped (e.g. attachments) handled elsewhere
+    var v=fields[k];
+    if(col==='completed_steps'){
+      // Airtable stored a comma string; this column is text[].
+      out[col]=Array.isArray(v)?v:String(v||'').split(',').filter(function(x){return x!=='';});
+    } else if(SB_LINK_COLS[col]){
+      out[col]=Array.isArray(v)?(v[0]||null):(v||null);
+    } else {
+      out[col]=(v===undefined?null:v);
+    }
+  }
+  return out;
+}
+
+async function airtableUpdateProduct(id,fields){ return await sbUpdate(SB_TABLES.products,id,sbFromFields('products',fields)); }
+async function airtableDeleteProduct(id){ return await sbDelete(SB_TABLES.products,id); }
+async function airtableCreateProduct(p){ return await sbCreateProduct(p); }
+
+async function airtableCreateBug(productId,bug){ return await sbCreateBug(productId,bug); }
+async function airtableUpdateBug(id,fields){ return await sbUpdate(SB_TABLES.bugs,id,sbFromFields('bugs',fields)); }
+async function airtableDeleteBug(id){ return await sbDelete(SB_TABLES.bugs,id); }
+
+async function airtableCreateFeature(f){ return await sbCreateFeature(f); }
+
+async function airtableCreateOrder(o){ return await sbCreateOrder(o); }
+async function airtableUpdateOrder(id,fields){ return await sbUpdate(SB_TABLES.orders,id,sbFromFields('custom_orders',fields)); }
+async function airtableDeleteOrder(id){ return await sbDelete(SB_TABLES.orders,id); }
+
+async function airtableCreateEvent(e){ return await sbCreateEvent(e); }
+async function airtableUpdateEvent(id,fields){ return await sbUpdate(SB_TABLES.events,id,sbFromFields('calendar_events',fields)); }
+async function airtableDeleteEvent(id){ return await sbDelete(SB_TABLES.events,id); }
+
+async function airtableCreateNote(n){ return await sbCreateNote(n); }
+async function airtableUpdateNote(id,fields){ return await sbUpdate(SB_TABLES.notes,id,sbFromFields('notes',fields)); }
+async function airtableDeleteNote(id){ return await sbDelete(SB_TABLES.notes,id); }
+
+async function airtableCreateWebsite(w){ return await sbCreateWebsite(w); }
+async function airtableUpdateWebsite(id,fields){ return await sbUpdate(SB_TABLES.websites,id,sbFromFields('websites',fields)); }
+async function airtableDeleteWebsite(id){ return await sbDelete(SB_TABLES.websites,id); }
+
+async function airtableCreatePass(p){ return await sbCreatePass(p); }
+async function airtableCreateTestingItem(passId,item,productId){ return await sbCreateTestingItem(passId,item,productId); }
+async function airtableUpdateTestingItem(id,fields){ return await sbUpdate(SB_TABLES.testingItems,id,sbFromFields('testing_items',fields)); }
+
+async function airtableCreatePin(p){ return await sbCreatePin(p); }
+async function airtableDeletePin(id){ return await sbDelete(SB_TABLES.pins,id); }
+// The pin call site passes the whole pin object, not an Airtable field map.
+async function airtableUpdatePin(id,p){
+  if(!id)return null;
+  return await sbUpdate(SB_TABLES.pins,id,{
+    pin_title:p.title||null, pin_date:p.date||null, board:p.board||null,
+    link_target:p.target||null,
+    impressions:(p.impressions===''||p.impressions===undefined)?null:p.impressions,
+    saves:(p.saves===''||p.saves===undefined)?null:p.saves,
+    outbound_clicks:(p.clicks===''||p.clicks===undefined)?null:p.clicks,
+    week_number:(p.week===''||p.week===undefined)?null:p.week,
+    notes:p.notes||null
+  });
+}
+
+// Known Issues: Airtable held Verified per issue x product pair inside the
+// issue record's links. Supabase keeps that in known_issue_products, so a
+// "create" is really an upsert of one join row.
+async function airtableCreateKnownIssue(title,desc,productId,verified){
+  var existing=await sbRequest('GET',SB_TABLES.knownIssues+'?select=id&issue=eq.'+encodeURIComponent(title));
+  var issueId=(existing&&existing[0])?existing[0].id:null;
+  if(!issueId)issueId=await sbInsert(SB_TABLES.knownIssues,{issue:title,notes:desc||null});
+  if(!issueId)return null;
+  if(productId){
+    await sbRequest('POST',SB_TABLES.knownIssueProducts,
+      [{known_issue_id:issueId,product_id:productId,verified:!!verified}],
+      {'Prefer':'resolution=merge-duplicates,return=minimal'});
+  }
+  return issueId;
+}
+async function airtableUpdateKnownIssue(id,fields){
+  return await sbUpdate(SB_TABLES.knownIssues,id,sbFromFields('known_issues',fields));
+}
+
+// product <-> feature links now live in a join table, so replace this
+// product's rows rather than patching an array on each feature record.
+async function airtableSyncProductFeatureLinks(p){
+  if(!p||!p.airtableId)return;
+  await sbRequest('DELETE',SB_TABLES.productFeatures+'?product_id=eq.'+encodeURIComponent(p.airtableId),
+                  null,{'Prefer':'return=minimal'});
+  var rows=(state.features||[])
+    .filter(function(f){return f.airtableId&&(p.featureIds||[]).indexOf(f.id)!==-1;})
+    .map(function(f){return {product_id:p.airtableId,feature_id:f.airtableId};});
+  if(rows.length){
+    await sbRequest('POST',SB_TABLES.productFeatures,rows,
+      {'Prefer':'resolution=merge-duplicates,return=minimal'});
+  }
+}
+
+function airtableEnabled(){ return supabaseEnabled(); }
 
 // ===== BOOTSTRAP =====
 loadState();
