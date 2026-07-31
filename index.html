@@ -716,10 +716,20 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 
 <div id="page-sync" class="page">
   <div class="page-header">
-    <div><div class="page-title">Airtable Sync</div><div class="page-sub">Connect Command Center to your Airtable base so Claude can read live status without exports</div></div>
+    <div><div class="page-title">Data Sync</div><div class="page-sub">Connect Command Center to your Airtable base so Claude can read live status without exports</div></div>
   </div>
-  <div class="card" style="margin-bottom:14px;">
-    <div class="card-title" style="margin-bottom:8px;">Personal Access Token</div>
+  <div class="card" style="margin-bottom:14px;border:1px solid var(--accent,#B98D7A);">
+    <div class="card-title" style="margin-bottom:8px;">Supabase Key <span style="font-weight:400;font-size:11px;color:var(--muted);">— the new home for your data</span></div>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Supabase Dashboard &rarr; your <b>havenkept</b> project &rarr; Project Settings &rarr; API Keys &rarr; copy the <b>service_role</b> key (the secret one, not <i>anon</i>). Stored only in this browser's localStorage, never in your GitHub repo and never in an Export backup.</p>
+    <div class="form-field"><input type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="supabase-key-input" placeholder="eyJ..."/></div>
+    <button class="btn-add" onclick="saveSupabaseKey()">Save Key</button>
+    <button class="btn-ghost" onclick="sbTestConnection()">Test Connection</button>
+    <span id="supabase-key-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
+    <p id="supabase-conn-status" style="font-size:12.5px;color:var(--muted);margin:10px 0 0;"></p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;opacity:.7;">
+    <div class="card-title" style="margin-bottom:8px;">Airtable Token <span style="font-weight:400;font-size:11px;color:var(--muted);">— being retired</span></div>
     <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Generate this once at airtable.com/create/tokens, scoped to just the HavenKept Command Center base with data.records:read and data.records:write. This token is stored only in this browser's localStorage, separate from your regular Export/Import backups, so it's never included when you share a backup file.</p>
     <div class="form-field"><input type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="airtable-token-input" placeholder="pat..."/></div>
     <button class="btn-add" onclick="saveAirtableToken()">Save Token</button>
@@ -1726,6 +1736,136 @@ function todayLocalStr(){
   var d=new Date();
   var m=d.getMonth()+1, day=d.getDate();
   return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day;
+}
+
+
+// ============================================================
+// SUPABASE  (replaces Airtable — migration July 2026)
+// Column names below are the LIVE Supabase names and must not be
+// renamed: the 7 scheduled tasks query them directly.
+// ============================================================
+var SUPABASE_URL='https://ktekniuqywcvmpdmufhr.supabase.co';
+var SUPABASE_REST=SUPABASE_URL+'/rest/v1/';
+
+var SB_TABLES={
+  products:'products', bugs:'bugs', bugProducts:'bug_products',
+  features:'features', productFeatures:'product_features',
+  orders:'custom_orders', events:'calendar_events', notes:'notes',
+  websites:'websites', passes:'testing_passes', testingItems:'testing_items',
+  knownIssues:'known_issues', knownIssueProducts:'known_issue_products',
+  pins:'pinterest_metrics', competitors:'competitors'
+};
+
+// Airtable used display names ('Pin Title'); Supabase uses snake_case columns.
+var SB_FIELDS={
+  name:'name', brand:'brand', listedUrl:'listed_url', heroImage:'hero_image_url',
+  completedSteps:'completed_steps', currentStep:'current_step',
+  plannerFile:'planner_file_url', plannerFileTag:'planner_file_tag',
+  plannerFileUploadedAt:'planner_file_uploaded_at', stageEnteredAt:'stage_entered_at',
+  bugText:'text', bugDone:'done', bugProduct:'product_id', bugPriority:'high_priority',
+  featureName:'name', featureDesc:'description',
+  kiIssue:'issue', kiVerified:'verified', kiNotes:'notes',
+  pinTitle:'pin_title', pinDate:'pin_date', pinBoard:'board',
+  pinProduct:'product_id', pinTarget:'link_target',
+  noteText:'text', noteDate:'note_date', notePinned:'pinned',
+  isHandoff:'is_handoff', handoffType:'handoff_type',
+  handoffRelatedTo:'handoff_related_to', handoffResolved:'handoff_resolved',
+  eventTitle:'title', eventDate:'event_date', eventNotes:'notes',
+  itemText:'item_text', itemSection:'section', itemPriority:'priority',
+  itemDone:'done', itemKnownIssue:'known_issue', itemNote:'note',
+  passLabel:'label', passDate:'pass_date',
+  siteLabel:'label', siteUrl:'url', siteCategory:'category'
+};
+
+function getSupabaseKey(){ try{return localStorage.getItem('havenKeptStudioSupabaseKey')||'';}catch(e){return '';} }
+function supabaseEnabled(){ return !!getSupabaseKey(); }
+
+function saveSupabaseKey(){
+  var el=document.getElementById('supabase-key-input');
+  var val=el.value.trim();
+  if(!val){toast('Please paste a key first');return;}
+  try{localStorage.setItem('havenKeptStudioSupabaseKey',val);}catch(e){}
+  el.value='';
+  // Read back from localStorage, not the variable, so this confirms what was
+  // actually stored rather than what we think we sent.
+  var stored=getSupabaseKey();
+  var shown=stored.length>12?(stored.slice(0,6)+'...'+stored.slice(-4)):stored;
+  document.getElementById('supabase-key-status').textContent='Saved: '+shown+' (length: '+stored.length+')';
+  sbTestConnection();
+}
+
+var _sbLastError=null;
+async function sbRequest(method,path,body,extraHeaders){
+  var key=getSupabaseKey();
+  if(!key){_sbLastError='No Supabase key saved';return null;}
+  var headers={
+    'apikey':key,
+    'Authorization':'Bearer '+key,
+    'Content-Type':'application/json'
+  };
+  if(extraHeaders)for(var h in extraHeaders)headers[h]=extraHeaders[h];
+  try{
+    var res=await fetch(SUPABASE_REST+path,{
+      method:method, headers:headers,
+      body:body?JSON.stringify(body):undefined
+    });
+    if(!res.ok){
+      var errText=await res.text();
+      _sbLastError=res.status+' '+errText.slice(0,240);
+      console.error('Supabase request failed',res.status,errText);
+      return null;
+    }
+    _sbLastError=null;
+    if(res.status===204)return [];
+    var txt=await res.text();
+    if(!txt)return [];
+    return JSON.parse(txt);
+  }catch(e){
+    _sbLastError='Network error: '+e.message;
+    console.error('Supabase request error',e);
+    return null;
+  }
+}
+
+// PostgREST caps a response at 1000 rows by default, so page through with
+// limit/offset the same way airtableListAll followed Airtable's offset token.
+// Testing Items alone is 324 rows today and will keep growing.
+async function sbListAll(table,select){
+  var all=[], PAGE=1000, offset=0;
+  for(;;){
+    var path=table+'?select='+(select||'*')+'&limit='+PAGE+'&offset='+offset;
+    var rows=await sbRequest('GET',path,null);
+    if(!rows)break;
+    all=all.concat(rows);
+    if(rows.length<PAGE)break;
+    offset+=PAGE;
+  }
+  return all;
+}
+
+// Cheap read-only probe so the key can be verified before anything depends on it.
+async function sbTestConnection(){
+  var statusEl=document.getElementById('supabase-conn-status');
+  if(statusEl)statusEl.textContent='Testing...';
+  if(!supabaseEnabled()){
+    if(statusEl)statusEl.textContent='No key saved yet.';
+    return false;
+  }
+  var counts=[], ok=true;
+  var probes=[['products',SB_TABLES.products],['bugs',SB_TABLES.bugs],
+              ['testing items',SB_TABLES.testingItems],['notes',SB_TABLES.notes]];
+  for(var i=0;i<probes.length;i++){
+    var rows=await sbRequest('GET',probes[i][1]+'?select=id',null);
+    if(rows===null){ok=false;break;}
+    counts.push(rows.length+' '+probes[i][0]);
+  }
+  if(statusEl){
+    statusEl.textContent = ok
+      ? ('Connected. Found '+counts.join(', ')+'.')
+      : ('Could not connect: '+(_sbLastError||'unknown error'));
+    statusEl.style.color = ok ? 'var(--green,#4C7A50)' : 'var(--red,#b05a5a)';
+  }
+  return ok;
 }
 
 function getAirtableToken(){ try{return localStorage.getItem('havenKeptStudioAirtableToken')||'';}catch(e){return '';} }
@@ -4445,8 +4585,11 @@ if(state.ownerName){
   document.getElementById('setup-screen').style.display='none';
   initUI();
 }
-if(airtableEnabled()){
-  reconcileWithAirtable(false);
+// Auto-sync on load removed 31 July 2026. It fired 11 Airtable list calls on
+// EVERY app open, which is what burned through the monthly allowance. Sync is
+// now manual only, via the Sync Now button on the Data Sync page.
+if(supabaseEnabled()){
+  sbTestConnection();
 }
 </script>
 </body></html>
