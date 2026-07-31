@@ -719,12 +719,19 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     <div><div class="page-title">Data Sync</div><div class="page-sub">Connect Command Center to your Airtable base so Claude can read live status without exports</div></div>
   </div>
   <div class="card" style="margin-bottom:14px;border:1px solid var(--accent,#B98D7A);">
-    <div class="card-title" style="margin-bottom:8px;">Supabase Key <span style="font-weight:400;font-size:11px;color:var(--muted);">— the new home for your data</span></div>
-    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Supabase Dashboard &rarr; <b>havenkept</b> project &rarr; Project Settings &rarr; API Keys &rarr; under <b>Secret keys</b>, reveal and copy the key starting <b>sb_secret_</b>. (Supabase renamed this; it used to be called <i>service_role</i>.) Do <b>not</b> use the Publishable key &mdash; it cannot read your data. Stored only in this browser's localStorage, never in your GitHub repo and never in an Export backup.</p>
-    <div class="form-field"><input type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="supabase-key-input" placeholder="sb_secret_..."/></div>
-    <button class="btn-add" onclick="saveSupabaseKey()">Save Key</button>
-    <button class="btn-ghost" onclick="sbTestConnection()">Test Connection</button>
-    <span id="supabase-key-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
+    <div class="card-title" style="margin-bottom:8px;">Supabase Sign In <span style="font-weight:400;font-size:11px;color:var(--muted);">— the new home for your data</span></div>
+    <div id="sb-signed-out">
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Supabase no longer allows a single all-access key in a browser, so Command Center signs in like a normal site. Log in once per device and it stays logged in. Your password is never stored &mdash; only a session token, which expires and renews itself.</p>
+      <div class="form-field"><input type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" id="sb-email" placeholder="havenkept@gmail.com"/></div>
+      <div class="form-field"><input type="password" autocomplete="current-password" id="sb-password" placeholder="password"/></div>
+      <button class="btn-add" onclick="doSbSignIn()">Sign In</button>
+      <span id="sb-auth-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
+    </div>
+    <div id="sb-signed-in" style="display:none;">
+      <p style="font-size:13px;margin:0 0 10px;">Signed in as <b id="sb-who"></b></p>
+      <button class="btn-ghost" onclick="sbTestConnection()">Test Connection</button>
+      <button class="btn-ghost" onclick="sbSignOut()">Sign Out</button>
+    </div>
     <p id="supabase-conn-status" style="font-size:12.5px;color:var(--muted);margin:10px 0 0;"></p>
   </div>
 
@@ -1777,30 +1784,91 @@ var SB_FIELDS={
   siteLabel:'label', siteUrl:'url', siteCategory:'category'
 };
 
-function getSupabaseKey(){ try{return localStorage.getItem('havenKeptStudioSupabaseKey')||'';}catch(e){return '';} }
-function supabaseEnabled(){ return !!getSupabaseKey(); }
+var _sbLastError=null;
+// ---- Supabase auth ------------------------------------------------
+// The publishable key is PUBLIC by design and safe to commit to a public
+// repo. It grants nothing on its own: every table has RLS enabled with a
+// policy that only allows the `authenticated` role. Access comes from
+// Bailey being logged in, not from this key.
+var SB_PUBLISHABLE_KEY='sb_publishable_50Jzec1Izh9BfE275wVTPA_JlAeKKEy';
+var SB_AUTH=SUPABASE_URL+'/auth/v1/';
+var SB_SESSION_KEY='havenKeptStudioSbSession';
 
-function saveSupabaseKey(){
-  var el=document.getElementById('supabase-key-input');
-  var val=el.value.trim();
-  if(!val){toast('Please paste a key first');return;}
-  try{localStorage.setItem('havenKeptStudioSupabaseKey',val);}catch(e){}
-  el.value='';
-  // Read back from localStorage, not the variable, so this confirms what was
-  // actually stored rather than what we think we sent.
-  var stored=getSupabaseKey();
-  var shown=stored.length>12?(stored.slice(0,6)+'...'+stored.slice(-4)):stored;
-  document.getElementById('supabase-key-status').textContent='Saved: '+shown+' (length: '+stored.length+')';
-  sbTestConnection();
+function sbGetSession(){
+  try{ return JSON.parse(localStorage.getItem(SB_SESSION_KEY)||'null'); }catch(e){ return null; }
+}
+function sbSetSession(s){
+  try{
+    if(s) localStorage.setItem(SB_SESSION_KEY,JSON.stringify(s));
+    else  localStorage.removeItem(SB_SESSION_KEY);
+  }catch(e){}
+}
+function supabaseEnabled(){ var s=sbGetSession(); return !!(s&&s.refresh_token); }
+function sbUserEmail(){ var s=sbGetSession(); return s&&s.email?s.email:''; }
+
+async function sbAuthPost(grant,body){
+  try{
+    var res=await fetch(SB_AUTH+'token?grant_type='+grant,{
+      method:'POST',
+      headers:{'apikey':SB_PUBLISHABLE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    var data=await res.json().catch(function(){return null;});
+    if(!res.ok){
+      _sbLastError=(data&&(data.error_description||data.msg||data.message))||('HTTP '+res.status);
+      return null;
+    }
+    return data;
+  }catch(e){ _sbLastError='Network error: '+e.message; return null; }
 }
 
-var _sbLastError=null;
+function sbStoreToken(d,email){
+  if(!d||!d.access_token)return false;
+  sbSetSession({
+    access_token:d.access_token,
+    refresh_token:d.refresh_token,
+    // expires_at is seconds since epoch; fall back to expires_in if absent.
+    expires_at:d.expires_at||(Math.floor(Date.now()/1000)+(d.expires_in||3600)),
+    email:email||(d.user&&d.user.email)||sbUserEmail()
+  });
+  return true;
+}
+
+async function sbSignIn(email,password){
+  var d=await sbAuthPost('password',{email:email,password:password});
+  return sbStoreToken(d,email);
+}
+
+function sbSignOut(){
+  sbSetSession(null);
+  renderSbAuthUI();
+  toast('Signed out of Supabase');
+}
+
+// Access tokens last about an hour. Refresh a minute early so a long editing
+// session never fails mid-save. Refresh tokens are single use, so the new one
+// must be stored every time.
+async function sbEnsureToken(){
+  var s=sbGetSession();
+  if(!s||!s.refresh_token)return null;
+  if(s.access_token && s.expires_at && (Date.now()/1000) < (s.expires_at-60)) return s.access_token;
+  var d=await sbAuthPost('refresh_token',{refresh_token:s.refresh_token});
+  if(!d){
+    // Refresh token rejected (revoked, or already used). Force a fresh login.
+    sbSetSession(null); renderSbAuthUI();
+    _sbLastError='Session expired, please sign in again';
+    return null;
+  }
+  sbStoreToken(d,s.email);
+  return d.access_token;
+}
+
 async function sbRequest(method,path,body,extraHeaders){
-  var key=getSupabaseKey();
-  if(!key){_sbLastError='No Supabase key saved';return null;}
+  var token=await sbEnsureToken();
+  if(!token){_sbLastError=_sbLastError||'Not signed in to Supabase';return null;}
   var headers={
-    'apikey':key,
-    'Authorization':'Bearer '+key,
+    'apikey':SB_PUBLISHABLE_KEY,
+    'Authorization':'Bearer '+token,
     'Content-Type':'application/json'
   };
   if(extraHeaders)for(var h in extraHeaders)headers[h]=extraHeaders[h];
@@ -1841,6 +1909,35 @@ async function sbListAll(table,select){
     offset+=PAGE;
   }
   return all;
+}
+
+
+function renderSbAuthUI(){
+  var outEl=document.getElementById('sb-signed-out');
+  var inEl=document.getElementById('sb-signed-in');
+  if(!outEl||!inEl)return;
+  var on=supabaseEnabled();
+  outEl.style.display = on?'none':'block';
+  inEl.style.display  = on?'block':'none';
+  var who=document.getElementById('sb-who');
+  if(who)who.textContent=sbUserEmail()||'(unknown)';
+}
+
+async function doSbSignIn(){
+  var email=(document.getElementById('sb-email').value||'').trim();
+  var pw=document.getElementById('sb-password').value||'';
+  var st=document.getElementById('sb-auth-status');
+  if(!email||!pw){ if(st)st.textContent='Enter your email and password.'; return; }
+  if(st)st.textContent='Signing in...';
+  var ok=await sbSignIn(email,pw);
+  document.getElementById('sb-password').value='';
+  if(!ok){
+    if(st){st.textContent='Sign in failed: '+(_sbLastError||'unknown');st.style.color='var(--red,#b05a5a)';}
+    return;
+  }
+  if(st){st.textContent='';st.style.color='';}
+  renderSbAuthUI();
+  sbTestConnection();
 }
 
 // Cheap read-only probe so the key can be verified before anything depends on it.
@@ -4588,6 +4685,7 @@ if(state.ownerName){
 // Auto-sync on load removed 31 July 2026. It fired 11 Airtable list calls on
 // EVERY app open, which is what burned through the monthly allowance. Sync is
 // now manual only, via the Sync Now button on the Data Sync page.
+renderSbAuthUI();
 if(supabaseEnabled()){
   sbTestConnection();
 }
