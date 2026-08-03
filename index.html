@@ -62,7 +62,23 @@ input[type=file]::-webkit-file-upload-button:hover{background:var(--plum-dark);}
 input:focus,select:focus,textarea:focus{border-color:var(--rose);}
 textarea{resize:vertical;min-height:60px;}
 label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-light);margin-bottom:5px;font-weight:500;}
-.form-field{margin-bottom:12px;}
+.form-field{margin-bottom:12px;min-width:0;}
+/* Grid children default to min-width:auto, so a control with a minimum
+   intrinsic width (a native date input, notably) refuses to shrink and
+   spills over its neighbour instead. min-width:0 lets them share honestly. */
+.split-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;}
+.split-2>*{min-width:0;}
+.split-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:16px;align-items:start;}
+.split-side>*{min-width:0;}
+.field-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.field-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.field-grid-2>*,.field-grid-3>*{min-width:0;}
+input[type=date],input[type=month],select{max-width:100%;min-width:0;}
+/* Bug and note text can be several hundred characters with no spaces in a
+   file path or function name. Without this it runs straight off the screen. */
+.card,.note-card,.page{overflow-wrap:anywhere;word-break:break-word;}
+.dash-clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.dash-clamp *{display:inline;}
 
 /* ===== SETUP ===== */
 #setup-screen{position:fixed;inset:0;background:var(--plum);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -290,6 +306,10 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   .data-btn{flex-shrink:0;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
   .product-detail-grid{grid-template-columns:1fr;}
+  /* One column on a phone. These used to stay two-across, which is why the
+     Recent Notes and Upcoming Calendar cards sat on top of the bug list. */
+  .split-2,.split-side{grid-template-columns:minmax(0,1fr);}
+  .field-grid-3{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 </style>
 </head><body>
@@ -393,7 +413,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     <div class="card-title" style="margin-bottom:10px;">Quick Actions</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;" id="dash-quick-actions"></div>
   </div>
-  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;">
+  <div class="split-2">
     <div>
       <div class="card" style="margin-bottom:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -543,7 +563,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     </div>
   </div>
 
-  <div id="ps-workspace" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:16px;align-items:start;">
+  <div id="ps-workspace" class="split-side">
     <div class="card" style="min-width:0;">
       <div style="display:flex;justify-content:center;">
         <canvas id="ps-canvas" width="1000" height="1500" style="width:100%;max-width:340px;height:auto;border:1px solid var(--border);border-radius:8px;background:#fff;"></canvas>
@@ -780,7 +800,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <div class="modal-box">
     <div class="modal-title">How is it doing?</div>
     <div style="font-size:12.5px;color:var(--muted);margin:-8px 0 14px;" id="pin-stats-title"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div class="field-grid-2">
       <div class="form-field"><label>Date checked</label><input type="date" id="pin-stats-date"/></div>
       <div class="form-field"><label>Impressions</label><input type="number" min="0" id="pin-stats-impressions"/></div>
       <div class="form-field"><label>Saves</label><input type="number" min="0" id="pin-stats-saves"/></div>
@@ -827,13 +847,13 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
       <div class="form-field"><label>Date these numbers are from</label>
         <input type="date" id="etsy-entry-date"/></div>
       <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;">Ads</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <div class="field-grid-3">
         <div class="form-field"><label>Views</label><input type="number" min="0" id="etsy-ad-views"/></div>
         <div class="form-field"><label>Clicks</label><input type="number" min="0" id="etsy-ad-clicks"/></div>
         <div class="form-field"><label>Spend</label><input type="number" min="0" step="0.01" id="etsy-ad-spend"/></div>
       </div>
       <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px;">Shop</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="field-grid-2">
         <div class="form-field"><label>Visits</label><input type="number" min="0" id="etsy-visits"/></div>
         <div class="form-field"><label>Favourites</label><input type="number" min="0" id="etsy-favorites"/></div>
         <div class="form-field"><label>Orders</label><input type="number" min="0" id="etsy-orders"/></div>
@@ -854,8 +874,8 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     <div class="modal-title">Log a Search Rank</div>
       <div class="form-field"><label>Listing</label><select id="rank-product"></select></div>
       <div class="form-field"><label>Search term</label><input type="text" id="rank-keyword" placeholder="dark academia planner"/></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <div class="form-field"><label>Date</label><input type="date" id="rank-date"/></div>
+      <div class="form-field"><label>Date</label><input type="date" id="rank-date"/></div>
+      <div class="field-grid-2">
         <div class="form-field"><label>Page</label><input type="number" min="1" id="rank-page"/></div>
         <div class="form-field"><label>Position</label><input type="number" min="1" id="rank-rank"/></div>
       </div>
@@ -883,7 +903,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
       <div class="form-field"><label>Niche</label><input type="text" id="comp-niche" list="comp-niche-options" placeholder="Dark Academia"/>
         <datalist id="comp-niche-options"></datalist></div>
       <div class="form-field"><label>Listing URL</label><input type="text" id="comp-url" placeholder="https://etsy.com/listing/..."/></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="field-grid-2">
         <div class="form-field"><label>Price</label><input type="text" id="comp-price" placeholder="$8.00"/></div>
         <div class="form-field"><label>Date logged</label><input type="date" id="comp-date"/></div>
         <div class="form-field"><label>Listing reviews</label><input type="number" min="0" id="comp-listing-reviews"/></div>
@@ -1076,7 +1096,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='9';
+var CC_BUILD='10';
 var CC_BUILD_DATE='3 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -1853,7 +1873,7 @@ function renderDashboard(){
 
   var hpEl=document.getElementById('dash-high-priority');
   if(!highPriorityBugs.length){hpEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing flagged high priority right now.</div>';}
-  else{hpEl.innerHTML=highPriorityBugs.map(function(b){return '<div style="padding:5px 0;font-size:12.5px;cursor:pointer;" onclick="openProduct(\''+b.productId+'\')"><span style="color:var(--rose-dark);font-weight:600;">'+b.product+':</span> '+b.text+'</div>';}).join('');}
+  else{hpEl.innerHTML=highPriorityBugs.map(function(b){return '<div class="dash-clamp" style="padding:5px 0;font-size:12.5px;cursor:pointer;" onclick="openProduct(\''+b.productId+'\')"><span style="color:var(--rose-dark);font-weight:600;">'+b.product+':</span> '+b.text+'</div>';}).join('');}
 
   var inProgEl=document.getElementById('dash-in-progress');
   if(!active.length){inProgEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing in development. Add a product to get started.</div>';}
@@ -1871,7 +1891,10 @@ function renderDashboard(){
   var allBugs=[];
   products.forEach(function(p){(p.bugs||[]).forEach(function(b){if(!b.done)allBugs.push({product:p.name,text:b.text});});});
   if(!allBugs.length){bugsEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No open bugs.</div>';}
-  else{bugsEl.innerHTML=allBugs.slice(0,8).map(function(b){return '<div style="padding:5px 0;font-size:12.5px;"><span style="color:var(--muted);">'+b.product+':</span> '+b.text+'</div>';}).join('')+(allBugs.length>8?'<div style="font-size:11px;color:var(--muted);margin-top:4px;">+'+(allBugs.length-8)+' more</div>':'');}
+  // Bug text runs to several paragraphs, and eight of them at full length
+  // buried every other card on this page. Clamp to three lines here; the
+  // Products page still shows the whole thing.
+  else{bugsEl.innerHTML=allBugs.slice(0,8).map(function(b){return '<div class="dash-clamp" style="padding:5px 0;font-size:12.5px;" title="'+esc(b.text).slice(0,300)+'"><span style="color:var(--muted);">'+esc(b.product)+':</span> '+esc(b.text)+'</div>';}).join('')+(allBugs.length>8?'<div style="font-size:11px;color:var(--muted);margin-top:4px;">+'+(allBugs.length-8)+' more</div>':'');}
 
   var testEl=document.getElementById('dash-testing-progress');
   var passes=state.testingPasses||[];
@@ -1898,7 +1921,7 @@ function renderDashboard(){
   var notesEl=document.getElementById('dash-recent-notes');
   var recentNotes=(state.notes||[]).filter(function(n){return noteKind(n)==='note';}).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,4);
   if(!recentNotes.length){notesEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No notes yet.</div>';}
-  else{notesEl.innerHTML=recentNotes.map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px;cursor:pointer;" onclick="showPage(\'notes\',null)"><div style="color:var(--muted);font-size:10.5px;">'+fmtDateShort(n.date)+'</div><div style="max-height:36px;overflow:hidden;">'+n.text+'</div></div>';}).join('');}
+  else{notesEl.innerHTML=recentNotes.map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px;cursor:pointer;" onclick="showPage(\'notes\',null)"><div style="color:var(--muted);font-size:10.5px;">'+fmtDateShort(n.date)+'</div><div class="dash-clamp" style="max-height:36px;overflow:hidden;">'+n.text+'</div></div>';}).join('');}
 
   var upEl=document.getElementById('dash-upcoming');
   var upcoming=(state.calendarEvents||[]).filter(function(e){return e.date>=today;}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,5);
