@@ -2269,7 +2269,7 @@ async function sbTestConnection(){
   }
   if(statusEl){
     statusEl.textContent = ok
-      ? ('Connected. Found '+counts.join(', ')+'.')
+      ? ('Connected. Supabase currently holds '+counts.join(', ')+'. (checked '+new Date().toLocaleTimeString()+')')
       : ('Could not connect: '+(_sbLastError||'unknown error'));
     statusEl.style.color = ok ? 'var(--green,#4C7A50)' : 'var(--red,#b05a5a)';
   }
@@ -2600,6 +2600,30 @@ async function reconcileWithAirtable(manual){
         }
       }
     }
+
+    // Pull in any remote bugs for this product that aren't represented locally
+    // yet, matched by id first and falling back to exact text to avoid making a
+    // duplicate. Without this the loop above only ever walks bugs this browser
+    // already knows about, so anything added in Supabase -- by Claude, or from
+    // another device -- stays invisible here no matter how often Sync runs.
+    // Same fix the Testing Items section already carries for the same reason.
+    var localBugIds=p.bugs.map(function(x){return x.airtableId;}).filter(Boolean);
+    var localBugTexts=p.bugs.map(function(x){return x.text;});
+    thisProductBugs.forEach(function(rb){
+      if(localBugIds.indexOf(rb.id)!==-1)return;
+      var rbf=rb.fields||{};
+      var rtext=rbf[AIRTABLE_FIELDS.bugText]||'';
+      if(!rtext)return;
+      if(localBugTexts.indexOf(rtext)!==-1)return;
+      p.bugs.push({
+        id:uid(),
+        text:rtext,
+        done:!!rbf[AIRTABLE_FIELDS.bugDone],
+        priority:!!rbf[AIRTABLE_FIELDS.bugPriority],
+        airtableId:rb.id
+      });
+      localBugIds.push(rb.id); localBugTexts.push(rtext);
+    });
   }
 
   // Pull down any Airtable products this device doesn't have locally yet — this is what
@@ -2938,6 +2962,9 @@ async function reconcileWithAirtable(manual){
     if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+') — '+counts
       +(newlyPulled?(' — pulled '+newlyPulled+' new product(s)'):'')+repaired;
     if(manual)toast('Supabase sync complete ✓');
+    // Refresh the connection reading too. It is a snapshot from page load, and
+    // leaving it stale means two boxes on this page disagree after every sync.
+    if(typeof sbTestConnection==='function')sbTestConnection();
   }
 }
 
