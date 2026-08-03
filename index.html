@@ -77,8 +77,16 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 .sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;}
 .sidebar-logo{padding:26px 20px 18px;text-align:center;border-bottom:1px solid rgba(185,141,122,0.25);}
 .sidebar-brand{font-family:var(--font-serif);font-size:21px;font-weight:500;color:var(--sidebar-text);}
+.sidebar-build{font-size:10px;letter-spacing:.04em;color:var(--sidebar-text);opacity:.45;margin-top:3px;font-variant-numeric:tabular-nums;}
 .sidebar-subtitle{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);margin-top:2px;}
 .sidebar-nav{padding:14px 10px;flex:1;}
+.nav-section-head{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;cursor:pointer;
+  color:var(--sidebar-text);opacity:.5;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:11px 10px 5px;font-weight:600;font-family:inherit;text-align:left;}
+.nav-section-head:hover{opacity:.85;}
+.nav-section-chevron{display:inline-flex;transition:transform .16s ease;}
+.nav-section-head.open .nav-section-chevron{transform:rotate(90deg);}
+.nav-section-body{display:flex;flex-direction:column;}
 .nav-item{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--sidebar-text);opacity:0.75;padding:11px 12px;border-radius:8px;font-family:var(--font-sans);font-size:13px;cursor:pointer;text-align:left;margin-bottom:2px;transition:0.15s;}
 .nav-item:hover{opacity:1;background:rgba(185,141,122,0.15);}
 .nav-item.active{opacity:1;color:var(--sidebar-text);background:var(--sidebar-active-bg);font-weight:500;}
@@ -279,6 +287,7 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <div class="sidebar-logo">
     <div class="sidebar-brand">HavenKept</div>
     <div class="sidebar-subtitle">Command Center</div>
+    <div class="sidebar-build" id="sidebar-build"></div>
   </div>
   <div class="sidebar-nav" id="sidebar-nav"></div>
   <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleDarkMode()"></button>
@@ -582,13 +591,22 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <div id="notes-list"></div>
 </div>
 
-<!-- STANDING RULES -->
+<!-- START HERE (was Standing Rules) -->
 <div id="page-standing-rules" class="page">
   <div class="page-header">
-    <div><div class="page-title">Standing Rules</div><div class="page-sub">Brand rules, pricing, and other things that don't change often</div></div>
-    <button class="btn-add" style="margin-left:auto;" onclick="openNoteEditor(null,true)">+ New Standing Rule</button>
+    <div><div class="page-title">Start Here</div><div class="page-sub">Decisions that don't expire — brand rules, versioning, pricing</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openNoteEditor(null,'policy')">+ New Entry</button>
   </div>
   <div id="standing-rules-list"></div>
+</div>
+
+<!-- BUILD LOG -->
+<div id="page-buildlog" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Build Log</div><div class="page-sub">What Claude changed, newest first. Safe to delete once a file is shipped.</div></div>
+    <span id="build-log-count" style="margin-left:auto;font-size:12px;color:var(--muted);"></span>
+  </div>
+  <div id="build-log-list"></div>
 </div>
 
 <div id="note-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(42,36,29,0.35);z-index:900;" onclick="if(event.target===this)closeNoteEditor()">
@@ -605,7 +623,14 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
       <button class="btn-ghost" style="padding:5px 9px;" onclick="noteInsertLink()" data-tip="Insert link">⚭</button>
     </div>
     <div id="note-editor-body" contenteditable="true" style="min-height:200px;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13.5px;line-height:1.5;background:var(--ivory);outline:none;"></div>
-    <label style="margin-top:12px;"><input type="checkbox" id="note-pinned-input" style="width:auto;margin-right:6px;"/> Mark as Standing Rule (moves to the Standing Rules page)</label>
+    <div class="form-field" style="margin-top:12px;">
+      <label style="display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px;">Where does this belong?</label>
+      <select id="note-kind-input" style="width:100%;">
+        <option value="note">Note — my own notes, research, ideas</option>
+        <option value="policy">Start Here — a decision that doesn't expire</option>
+        <option value="log">Build Log — a record of what Claude changed</option>
+      </select>
+    </div>
     <div class="modal-footer" style="margin-top:14px;">
       <button class="btn-ghost" onclick="closeNoteEditor()">Cancel</button>
       <button class="btn-add" onclick="saveNoteEditor()">Save Note</button>
@@ -714,9 +739,134 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   </div>
 </div>
 
+<div class="modal-overlay" id="pin-stats-overlay">
+  <div class="modal-box">
+    <div class="modal-title">How is it doing?</div>
+    <div style="font-size:12.5px;color:var(--muted);margin:-8px 0 14px;" id="pin-stats-title"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="form-field"><label>Date checked</label><input type="date" id="pin-stats-date"/></div>
+      <div class="form-field"><label>Impressions</label><input type="number" min="0" id="pin-stats-impressions"/></div>
+      <div class="form-field"><label>Saves</label><input type="number" min="0" id="pin-stats-saves"/></div>
+      <div class="form-field"><label>Outbound clicks</label><input type="number" min="0" id="pin-stats-clicks"/></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);margin:2px 0 12px;">Log this pin as often as you like — each check is kept, so you can see whether it's still growing.</p>
+    <div style="max-height:190px;overflow-y:auto;" id="pin-stats-history"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closePinStats()">Cancel</button>
+      <button class="btn-add" onclick="savePinStats()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ETSY METRICS -->
+<div id="page-etsy" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Etsy Metrics</div><div class="page-sub">Log whenever you remember. Gaps are fine — nothing here assumes a schedule.</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openEtsyEntry()">+ Log Numbers</button>
+  </div>
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:10px;">Latest by listing</div>
+    <div id="etsy-summary"></div>
+  </div>
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;margin-bottom:10px;">
+      <div class="card-title">Search rank</div>
+      <button class="btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11.5px;" onclick="openRankEntry()">+ Log a rank</button>
+    </div>
+    <div id="etsy-rank-list"></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:10px;">History</div>
+    <div id="etsy-history"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="etsy-entry-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="etsy-entry-title">Log Etsy Numbers</div>
+      <input type="hidden" id="etsy-entry-id"/>
+      <div class="form-field"><label>Listing</label>
+        <select id="etsy-entry-product"><option value="">Whole shop (not one listing)</option></select></div>
+      <div class="form-field"><label>Date these numbers are from</label>
+        <input type="date" id="etsy-entry-date"/></div>
+      <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;">Ads</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="form-field"><label>Views</label><input type="number" min="0" id="etsy-ad-views"/></div>
+        <div class="form-field"><label>Clicks</label><input type="number" min="0" id="etsy-ad-clicks"/></div>
+        <div class="form-field"><label>Spend</label><input type="number" min="0" step="0.01" id="etsy-ad-spend"/></div>
+      </div>
+      <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px;">Shop</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="form-field"><label>Visits</label><input type="number" min="0" id="etsy-visits"/></div>
+        <div class="form-field"><label>Favourites</label><input type="number" min="0" id="etsy-favorites"/></div>
+        <div class="form-field"><label>Orders</label><input type="number" min="0" id="etsy-orders"/></div>
+        <div class="form-field"><label>Revenue</label><input type="number" min="0" step="0.01" id="etsy-revenue"/></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);margin:8px 0 0;">Leave anything blank that you don't have. Click rate and conversion are worked out for you, so they can never disagree with the numbers above.</p>
+      <div class="form-field" style="margin-top:10px;"><label>Notes</label><input type="text" id="etsy-entry-notes" placeholder="optional"/></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="etsy-entry-delete" onclick="deleteEtsyEntry()" style="margin-right:auto;color:var(--muted);display:none;">Delete</button>
+      <button class="btn-ghost" onclick="closeEtsyEntry()">Cancel</button>
+      <button class="btn-add" onclick="saveEtsyEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rank-entry-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Log a Search Rank</div>
+      <div class="form-field"><label>Listing</label><select id="rank-product"></select></div>
+      <div class="form-field"><label>Search term</label><input type="text" id="rank-keyword" placeholder="dark academia planner"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="form-field"><label>Date</label><input type="date" id="rank-date"/></div>
+        <div class="form-field"><label>Page</label><input type="number" min="1" id="rank-page"/></div>
+        <div class="form-field"><label>Position</label><input type="number" min="1" id="rank-rank"/></div>
+      </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeRankEntry()">Cancel</button>
+      <button class="btn-add" onclick="saveRankEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPETITORS -->
+<div id="page-competitors" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Competitors</div><div class="page-sub">Who else is selling into your niches</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openCompetitor()">+ Add Competitor</button>
+  </div>
+  <div id="competitors-list"></div>
+</div>
+
+<div class="modal-overlay" id="competitor-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="competitor-title">Add Competitor</div>
+      <input type="hidden" id="comp-id"/>
+      <div class="form-field"><label>Seller</label><input type="text" id="comp-seller" placeholder="Shop name"/></div>
+      <div class="form-field"><label>Niche</label><input type="text" id="comp-niche" list="comp-niche-options" placeholder="Dark Academia"/>
+        <datalist id="comp-niche-options"></datalist></div>
+      <div class="form-field"><label>Listing URL</label><input type="text" id="comp-url" placeholder="https://etsy.com/listing/..."/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="form-field"><label>Price</label><input type="text" id="comp-price" placeholder="$8.00"/></div>
+        <div class="form-field"><label>Date logged</label><input type="date" id="comp-date"/></div>
+        <div class="form-field"><label>Listing reviews</label><input type="number" min="0" id="comp-listing-reviews"/></div>
+        <div class="form-field"><label>Seller sales</label><input type="number" min="0" id="comp-seller-sales"/></div>
+        <div class="form-field"><label>Shop rating (out of 5)</label><input type="number" min="0" max="5" step="0.1" id="comp-seller-rating" placeholder="4.8"/></div>
+        <div class="form-field"><label>Shop reviews</label><input type="number" min="0" id="comp-seller-reviews"/></div>
+      </div>
+      <div class="form-field"><label>Notes</label><textarea id="comp-notes" rows="4" placeholder="Format, positioning, why they matter"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="comp-delete" onclick="deleteCompetitor()" style="margin-right:auto;color:var(--muted);display:none;">Delete</button>
+      <button class="btn-ghost" onclick="closeCompetitor()">Cancel</button>
+      <button class="btn-add" onclick="saveCompetitor()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="page-sync" class="page">
   <div class="page-header">
-    <div><div class="page-title">Data Sync</div><div class="page-sub">Connect Command Center to your Airtable base so Claude can read live status without exports</div></div>
+    <div><div class="page-title">Data Sync</div><div class="page-sub">Your data lives in Supabase. Sign in once per device and it stays signed in.</div></div>
+    <span id="sync-build-stamp" style="margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;"></span>
   </div>
   <div class="card" style="margin-bottom:14px;border:1px solid var(--accent,#B98D7A);">
     <div class="card-title" style="margin-bottom:8px;">Supabase Sign In <span style="font-weight:400;font-size:11px;color:var(--muted);">— the new home for your data</span></div>
@@ -735,13 +885,6 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
     <p id="supabase-conn-status" style="font-size:12.5px;color:var(--muted);margin:10px 0 0;"></p>
   </div>
 
-  <div class="card" style="margin-bottom:14px;opacity:.7;">
-    <div class="card-title" style="margin-bottom:8px;">Airtable Token <span style="font-weight:400;font-size:11px;color:var(--muted);">— being retired</span></div>
-    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Generate this once at airtable.com/create/tokens, scoped to just the HavenKept Command Center base with data.records:read and data.records:write. This token is stored only in this browser's localStorage, separate from your regular Export/Import backups, so it's never included when you share a backup file.</p>
-    <div class="form-field"><input type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" id="airtable-token-input" placeholder="pat..."/></div>
-    <button class="btn-add" onclick="saveAirtableToken()">Save Token</button>
-    <span id="airtable-token-status" style="font-size:12px;color:var(--muted);margin-left:10px;"></span>
-  </div>
   <div class="card">
     <div class="card-title" style="margin-bottom:8px;">Sync Status</div>
     <p id="airtable-sync-status" style="font-size:13px;color:var(--muted);">Not yet synced.</p>
@@ -887,8 +1030,23 @@ var ICONS={
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
   upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
   bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'
+  pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  trendUp:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  chevron:'<polyline points="9 18 15 12 9 6"/>'
 };
+// ---- BUILD STAMP ------------------------------------------------------
+// Bump these two on every delivered file. They show under the sidebar logo
+// and on the Data Sync page, so "is this the file I actually uploaded?"
+// is answerable at a glance instead of by reading a note that may be wrong.
+var CC_BUILD='8';
+var CC_BUILD_DATE='3 Aug 2026';
+function renderBuildStamp(){
+  var el=document.getElementById('sidebar-build');
+  if(el)el.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
+  var el2=document.getElementById('sync-build-stamp');
+  if(el2)el2.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
+}
 function svgIcon(key,size){
   size=size||17;
   return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[key]||'')+'</svg>';
@@ -900,8 +1058,9 @@ var NAV_ITEMS=[
   {id:'matrix',icon:'layers',label:'Features'},
   {id:'orders',icon:'clipboard',label:'Custom Orders'},
   {id:'calendar',icon:'calendar',label:'Calendar'},
+  {id:'standing-rules',icon:'bookmark',label:'Start Here'},
   {id:'notes',icon:'edit',label:'Notes'},
-  {id:'standing-rules',icon:'bookmark',label:'Standing Rules'},
+  {id:'buildlog',icon:'clock',label:'Build Log'},
   {id:'websites',icon:'link',label:'Websites'},
   {id:'testing',icon:'checkCircle',label:'Testing'},
   {id:'upload',icon:'uploadCloud',label:'Upload Zone'},
@@ -910,7 +1069,18 @@ var NAV_ITEMS=[
   {id:'pins',icon:'pin',label:'Pins'},
   {id:'pinstudio',icon:'penTool',label:'Pin Studio'},
   {id:'colors',icon:'droplet',label:'Colors'},
+  {id:'etsy',icon:'trendUp',label:'Etsy Metrics'},
+  {id:'competitors',icon:'eye',label:'Competitors'},
   {id:'sync',icon:'refresh',label:'Data Sync'}
+];
+// Sidebar grouping. Dashboard sits above the sections and is always visible.
+// The bottom bar on mobile stays flat - collapsible groups don't work there.
+var NAV_SECTIONS=[
+  {id:'build',    label:'Build',     items:['products','pipeline','matrix','orders','calendar']},
+  {id:'quality',  label:'Quality',   items:['testing','knownissues','handoffs']},
+  {id:'growth',   label:'Growth',    items:['etsy','pins','pinstudio','competitors']},
+  {id:'reference',label:'Reference', items:['standing-rules','notes','buildlog','websites','colors']},
+  {id:'system',   label:'System',    items:['upload','sync']}
 ];
 var DEFAULT_WEBSITES=[
   {label:'Etsy Shop Manager',url:'https://www.etsy.com/your/shops/me/dashboard',category:'Selling'},
@@ -1075,20 +1245,20 @@ async function addNewPalette(){
   if(!name||!name.trim())return;
   if(!state.colorPalettes)state.colorPalettes=[];
   state.colorPalettes.push({id:uid(),name:name.trim(),colors:[]});
-  saveState();renderColorReference();toast('Palette created ✓');
+  saveState();queuePaletteSync();renderColorReference();toast('Palette created ✓');
 }
 async function renamePalette(palId){
   var pal=(state.colorPalettes||[]).find(function(p){return p.id===palId;});if(!pal)return;
   var newName=await styledPrompt('Rename Palette','',pal.name);
   if(!newName||!newName.trim())return;
   pal.name=newName.trim();
-  saveState();renderColorReference();
+  saveState();queuePaletteSync();renderColorReference();
 }
 async function removePalette(palId){
   var pal=(state.colorPalettes||[]).find(function(p){return p.id===palId;});if(!pal)return;
   if(!await styledConfirm('Delete Palette','Delete the entire "'+pal.name+'" palette? This can\'t be undone.'))return;
   state.colorPalettes=(state.colorPalettes||[]).filter(function(p){return p.id!==palId;});
-  saveState();renderColorReference();toast('Palette deleted ✓');
+  saveState();queuePaletteSync();renderColorReference();toast('Palette deleted ✓');
 }
 var _colorEditorContext=null; // {palId, colorId|null}
 function addColorToPalette(palId){
@@ -1128,12 +1298,12 @@ function saveColorEditor(){
   } else {
     pal.colors.push({id:uid(),name:name,hex:hex,usedFor:usedFor});
   }
-  saveState();closeColorEditor();renderColorReference();runColorCheck();toast('Color saved ✓');
+  saveState();queuePaletteSync();closeColorEditor();renderColorReference();runColorCheck();toast('Color saved ✓');
 }
 async function removeColorFromPalette(palId,colorId){
   var pal=(state.colorPalettes||[]).find(function(p){return p.id===palId;});if(!pal)return;
   pal.colors=(pal.colors||[]).filter(function(c){return c.id!==colorId;});
-  saveState();renderColorReference();runColorCheck();toast('Color removed ✓');
+  saveState();queuePaletteSync();renderColorReference();runColorCheck();toast('Color removed ✓');
 }
 function renderColorReference(){
   var grid=document.getElementById('color-reference-grid');
@@ -1215,7 +1385,7 @@ async function quickCaptureAs(type){
   var text=document.getElementById('quick-capture-text').value.trim();
   if(!text){toast('Write something first');return;}
   if(type==='note'){
-    var n={id:uid(),text:text,date:new Date().toISOString().slice(0,10),pinned:false};
+    var n={id:uid(),text:text,date:todayLocalStr(),pinned:false};
     if(!state.notes)state.notes=[];
     state.notes.unshift(n);
     saveState();renderNotes();renderDashboard();toast('Saved as note ✓');
@@ -1239,7 +1409,7 @@ async function quickCaptureAs(type){
     saveState();renderWebsites();toast('Saved as website link ✓');
     if(airtableEnabled())airtableCreateWebsite(w);
   } else if(type==='event'){
-    var date=await styledPrompt('Event Date','YYYY-MM-DD',new Date().toISOString().slice(0,10));
+    var date=await styledPrompt('Event Date','YYYY-MM-DD',todayLocalStr());
     if(!date){toast('Cancelled');return;}
     var ev={id:uid(),title:text,date:date,notes:''};
     if(!state.calendarEvents)state.calendarEvents=[];
@@ -1351,15 +1521,39 @@ function saveSetup(){
 function buildNav(){
   var sidebar=document.getElementById('sidebar-nav');
   var bottom=document.getElementById('bottom-nav-inner');
-  sidebar.innerHTML=NAV_ITEMS.map(function(n){
+  var byId={};NAV_ITEMS.forEach(function(n){byId[n.id]=n;});
+  if(!state.navOpen)state.navOpen={};
+  function itemBtn(n){
+    if(!n)return '';
     var active=n.id==='dashboard'?' active':'';
     return '<button class="nav-item'+active+'" data-navid="'+n.id+'" onclick="showPage(\''+n.id+'\',this)"><span class="nav-icon">'+svgIcon(n.icon)+'</span><span>'+n.label+'</span></button>';
-  }).join('')
-  +'<a class="nav-item" href="https://havenkept.com/studio.html" target="_blank" rel="noopener"><span class="nav-icon">'+svgIcon('penTool')+'</span><span>Design Studio ↗</span></a>';
+  }
+  var html=itemBtn(byId['dashboard']);
+  NAV_SECTIONS.forEach(function(sec){
+    // Sections default to open; only an explicit false collapses one.
+    var open=state.navOpen[sec.id]!==false;
+    html+='<button class="nav-section-head'+(open?' open':'')+'" data-section="'+sec.id+'" onclick="toggleNavSection(\''+sec.id+'\')">'
+      +'<span class="nav-section-chevron">'+svgIcon('chevron',12)+'</span><span>'+sec.label+'</span></button>'
+      +'<div class="nav-section-body" data-section-body="'+sec.id+'"'+(open?'':' style="display:none;"')+'>'
+      +sec.items.map(function(id){return itemBtn(byId[id]);}).join('')
+      +'</div>';
+  });
+  html+='<a class="nav-item" href="https://havenkept.com/studio.html" target="_blank" rel="noopener"><span class="nav-icon">'+svgIcon('penTool')+'</span><span>Design Studio ↗</span></a>';
+  sidebar.innerHTML=html;
   bottom.innerHTML=NAV_ITEMS.map(function(n){
     var active=n.id==='dashboard'?' active':'';
     return '<button class="bottom-nav-item'+active+'" data-navid="'+n.id+'" onclick="showPage(\''+n.id+'\',this)"><span>'+svgIcon(n.icon)+'</span><span>'+n.label+'</span></button>';
   }).join('');
+}
+function toggleNavSection(secId){
+  if(!state.navOpen)state.navOpen={};
+  var open=state.navOpen[secId]!==false;
+  state.navOpen[secId]=!open;
+  saveState();
+  var body=document.querySelector('[data-section-body="'+secId+'"]');
+  var head=document.querySelector('[data-section="'+secId+'"]');
+  if(body)body.style.display=open?'none':'';
+  if(head)head.classList.toggle('open',!open);
 }
 function showPage(id,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -1375,6 +1569,9 @@ function showPage(id,el){
   if(id==='calendar')renderCalendar();
   if(id==='notes')renderNotes();
   if(id==='standing-rules')renderStandingRules();
+  if(id==='buildlog')renderBuildLog();
+  if(id==='competitors'){renderCompetitors();loadCompetitors();}
+  if(id==='etsy'){renderEtsy();loadEtsy();}
   if(id==='websites')renderWebsites();
   if(id==='testing')renderTesting();
   if(id==='upload')renderUploadZone();
@@ -1384,7 +1581,7 @@ function showPage(id,el){
   if(id==='pinstudio')psRender();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderBuildLog();renderBuildStamp();renderCompetitors();renderEtsy();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -1455,20 +1652,14 @@ function renderPins(){
     if(p.board)meta.push(p.board);
     if(prod)meta.push(prod);
     if(p.target)meta.push(p.target);
-    var stats='';
-    if(p.impressions||p.saves||p.clicks){
-      stats='<div style="font-size:11px;color:var(--muted);margin-top:6px;">'
-        +(p.impressions?('👁 '+p.impressions+'  '):'')
-        +(p.saves?('🔖 '+p.saves+'  '):'')
-        +(p.clicks?('↗ '+p.clicks):'')
-      +'</div>';
-    }
+    var stats=pinStatsHtml(p);
     return '<div class="card" style="margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;">'
       +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13.5px;font-weight:500;color:var(--plum);margin-bottom:4px;">'+(p.title||'Untitled pin')+'</div>'
         +'<div style="font-size:11px;color:var(--muted);">'+meta.join(' · ')+'</div>'
         +stats
       +'</div>'
+      +'<button class="btn-ghost" onclick="openPinStats(\''+p.id+'\')" data-tip="Log how this pin is doing">Stats</button>'
       +'<button class="btn-ghost" onclick="openAddPinModal(\''+p.id+'\')" data-tip="Edit this pin">Edit</button>'
       +'<button class="btn-ghost" onclick="removePin(\''+p.id+'\')" data-tip="Delete this pin">✕</button>'
     +'</div>';
@@ -1608,7 +1799,7 @@ function renderDashboard(){
   }
 
   var ordersEl=document.getElementById('dash-order-deadlines');
-  var today=new Date().toISOString().slice(0,10);
+  var today=todayLocalStr();
   var withDeadlines=(state.customOrders||[]).filter(function(o){return o.deadline&&o.stage!=='Delivered';}).sort(function(a,b){return a.deadline.localeCompare(b.deadline);});
   if(!withDeadlines.length){ordersEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No upcoming order deadlines.</div>';}
   else{ordersEl.innerHTML=withDeadlines.slice(0,5).map(function(o){
@@ -1617,7 +1808,7 @@ function renderDashboard(){
   }).join('');}
 
   var notesEl=document.getElementById('dash-recent-notes');
-  var recentNotes=(state.notes||[]).filter(function(n){return !n.pinned;}).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,4);
+  var recentNotes=(state.notes||[]).filter(function(n){return noteKind(n)==='note';}).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,4);
   if(!recentNotes.length){notesEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No notes yet.</div>';}
   else{notesEl.innerHTML=recentNotes.map(function(n){return '<div style="padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px;cursor:pointer;" onclick="showPage(\'notes\',null)"><div style="color:var(--muted);font-size:10.5px;">'+fmtDateShort(n.date)+'</div><div style="max-height:36px;overflow:hidden;">'+n.text+'</div></div>';}).join('');}
 
@@ -1643,7 +1834,7 @@ function renderDashboardNextActions(highPriorityBugs){
       actions.push({title:'Unstick "'+p.name+'" — stuck '+daysInStage(p)+' days in '+currentStepLabel(p),meta:p.name+' · Pipeline',onclick:"openProduct('"+p.id+"')"});
     }
   });
-  var today=new Date().toISOString().slice(0,10);
+  var today=todayLocalStr();
   (state.customOrders||[]).filter(function(o){return o.deadline&&o.stage!=='Delivered';}).sort(function(a,b){return a.deadline.localeCompare(b.deadline);}).forEach(function(o){
     actions.push({title:'Custom order deadline — '+o.name,meta:fmtDateShort(o.deadline)+(o.deadline<today?' (overdue)':''),onclick:"showPage('orders',null)"});
   });
@@ -1675,7 +1866,7 @@ function renderDashboardPipelineTeaser(){
 }
 function renderDashboardTagLocks(){
   var el=document.getElementById('dash-tag-locks');
-  var today=new Date().toISOString().slice(0,10);
+  var today=todayLocalStr();
   var tagEvents=(state.calendarEvents||[]).filter(function(e){return e.date>=today&&/tag/i.test(e.title);}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
   if(!tagEvents.length){el.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No upcoming tag unlocks on the calendar. Add one with "tag" in the title.</div>';return;}
   el.innerHTML=tagEvents.map(function(e){
@@ -1713,18 +1904,6 @@ function fmtDateShort(iso){
 
 // ===== PRODUCTS =====
 // ===== AIRTABLE SYNC =====
-var AIRTABLE_BASE_ID='apprGigHrciqZiN2V';
-var AIRTABLE_PRODUCTS_TABLE='tblhWJyVS2ua4aBnq';
-var AIRTABLE_BUGS_TABLE='tblS0wvF2yPyKw0nX';
-var AIRTABLE_FEATURES_TABLE='tbl9jEIdQJjgXUuL3';
-var AIRTABLE_ORDERS_TABLE='tbltEa43auDklaNpq';
-var AIRTABLE_EVENTS_TABLE='tblL21vpua3Ou7t8B';
-var AIRTABLE_NOTES_TABLE='tblG3CMvgjukWGvbx';
-var AIRTABLE_WEBSITES_TABLE='tblS2ffbUo5vmJQKd';
-var AIRTABLE_PASSES_TABLE='tblgQKfabEqiV0KmU';
-var AIRTABLE_TESTING_ITEMS_TABLE='tblyxZ1CteC4EwL9l';
-var AIRTABLE_KNOWN_ISSUES_TABLE='tblJtL6nHT11sjXNn';
-var AIRTABLE_PINS_TABLE='tblFvHmLFEiw0Jalq';
 var AIRTABLE_FIELDS={
   name:'Name', brand:'Brand', listedUrl:'Listed URL', heroImage:'Hero Image', completedSteps:'Completed Steps',
   bugText:'Text', bugDone:'Done', bugProduct:'Product', bugPriority:'High Priority',
@@ -1734,11 +1913,18 @@ var AIRTABLE_FIELDS={
   pinTitle:'Pin Title', pinDate:'Date', pinBoard:'Board', pinProducts:'Products', pinTarget:'Link Target'
 };
 
-// The rest of this file computes "today" with new Date().toISOString().slice(0,10),
-// which is UTC-based and rolls over a day early for anyone west of UTC (Bailey is
-// Eastern, so anything logged after ~8pm gets stamped tomorrow). That's the same
-// timezone bug already fixed inside the BTS planner. Pin logging is date-critical —
-// a pin logged Wednesday night must count for Wednesday — so it uses this instead.
+// "Today" must be the local date, not the UTC one. new Date().toISOString()
+// rolls over a day early for anyone west of UTC (Bailey is Eastern, so anything
+// logged after ~8pm was getting stamped tomorrow). Every place in this file that
+// needs today's date now goes through here. Same timezone bug that was fixed
+// inside the BTS planner. Do not reintroduce toISOString() for date stamping.
+// Escape user-entered text before it goes into an HTML string. Competitor
+// notes and search terms are free text and must not be able to inject markup.
+function esc(v){
+  if(v==null)return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function todayLocalStr(){
   var d=new Date();
   var m=d.getMonth()+1, day=d.getDate();
@@ -1754,13 +1940,23 @@ function todayLocalStr(){
 var SUPABASE_URL='https://ktekniuqywcvmpdmufhr.supabase.co';
 var SUPABASE_REST=SUPABASE_URL+'/rest/v1/';
 
+/* Naming note: a lot of things below still start with "airtable" -- the
+   airtableCreate and airtableUpdate helpers, and the airtableId field on every
+   local record. Nothing here talks to Airtable any more; those all read and
+   write Supabase. The names were kept deliberately during the migration
+   because renaming them meant touching ~180 call sites for no behavioural
+   gain, and a rename is exactly the kind of change that breaks one caller
+   silently. airtableId now holds a Supabase uuid. AIRTABLE_FIELDS is the key
+   vocabulary the Supabase-to-local adapter speaks, not an Airtable schema. */
 var SB_TABLES={
   products:'products', bugs:'bugs', bugProducts:'bug_products',
   features:'features', productFeatures:'product_features',
   orders:'custom_orders', events:'calendar_events', notes:'notes',
   websites:'websites', passes:'testing_passes', testingItems:'testing_items',
   knownIssues:'known_issues', knownIssueProducts:'known_issue_products',
-  pins:'pinterest_metrics', competitors:'competitors'
+  pins:'pinterest_metrics', competitors:'competitors',
+  pinStats:'pin_stats', etsyStats:'etsy_stats', etsySearchRank:'etsy_search_rank',
+  colorPalettes:'color_palettes', paletteColors:'palette_colors'
 };
 
 // Airtable used display names ('Pin Title'); Supabase uses snake_case columns.
@@ -1774,7 +1970,7 @@ var SB_FIELDS={
   kiIssue:'issue', kiVerified:'verified', kiNotes:'notes',
   pinTitle:'pin_title', pinDate:'pin_date', pinBoard:'board',
   pinProduct:'product_id', pinTarget:'link_target',
-  noteText:'text', noteDate:'note_date', notePinned:'pinned',
+  noteText:'text', noteDate:'note_date', notePinned:'pinned', noteKind:'kind',
   isHandoff:'is_handoff', handoffType:'handoff_type',
   handoffRelatedTo:'handoff_related_to', handoffResolved:'handoff_resolved',
   eventTitle:'title', eventDate:'event_date', eventNotes:'notes',
@@ -2006,6 +2202,7 @@ function sbAsAirtable(table,row){
       break;
     case 'notes':
       f['Text']=row.text; f['Date']=row.note_date; f['Pinned']=!!row.pinned;
+      f['Kind']=row.kind||'note';
       f['Is Handoff']=!!row.is_handoff; f['Handoff Type']=row.handoff_type;
       f['Handoff Related To']=row.handoff_related_to;
       f['Handoff Resolved']=!!row.handoff_resolved;
@@ -2108,7 +2305,7 @@ async function sbCreateEvent(e){
 }
 async function sbCreateNote(n){
   var id=await sbInsert(SB_TABLES.notes,{
-    text:n.text||'', note_date:n.date||null, pinned:!!n.pinned,
+    text:n.text||'', note_date:n.date||null, pinned:!!n.pinned, kind:noteKind(n),
     is_handoff:!!n.isHandoff, handoff_type:n.handoffType||null,
     handoff_related_to:n.handoffRelatedTo||null, handoff_resolved:!!n.handoffResolved
   });
@@ -2276,182 +2473,45 @@ async function sbTestConnection(){
   return ok;
 }
 
-function getAirtableToken(){ try{return localStorage.getItem('havenKeptStudioAirtableToken')||'';}catch(e){return '';} }
-function saveAirtableToken(){
-  var val=document.getElementById('airtable-token-input').value.trim();
-  if(!val){toast('Please paste a token first');return;}
-  try{localStorage.setItem('havenKeptStudioAirtableToken',val);}catch(e){}
-  document.getElementById('airtable-token-input').value='';
-  // Read back from localStorage itself (not the JS variable) so this is a true
-  // confirmation of what actually got stored, not just what we think we sent.
-  var stored=getAirtableToken();
-  var shown=stored.length>10?(stored.slice(0,6)+'...'+stored.slice(-2)):stored;
-  document.getElementById('airtable-token-status').textContent='Saved: '+shown+' (length: '+stored.length+')';
-  reconcileWithAirtable(true);
-}
-function airtableEnabled(){ return !!getAirtableToken(); }
 
-var _airtableLastError=null;
-async function airtableRequest(method,path,body){
-  var token=getAirtableToken();
-  if(!token){_airtableLastError='No token saved';return null;}
-  try{
-    var res=await fetch('https://api.airtable.com/v0/'+AIRTABLE_BASE_ID+path,{
-      method:method,
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:body?JSON.stringify(body):undefined
-    });
-    if(!res.ok){
-      var errText=await res.text();
-      _airtableLastError=res.status+' '+errText.slice(0,200);
-      console.error('Airtable request failed',res.status,errText);
-      return null;
-    }
-    _airtableLastError=null;
-    return await res.json();
-  }catch(e){
-    _airtableLastError='Network error: '+e.message;
-    console.error('Airtable request error',e);
-    return null;
-  }
-}
 
-// Airtable's list endpoint caps each response at 100 records and returns an
-// `offset` token when more exist. The direct airtableRequest('GET',...) calls
-// below only ever fetched page 1, so any table that grew past 100 records
-// silently dropped everything after it (this is what caused newly-created
-// Testing Items/Passes to go missing from Studio once the base had enough
-// history). This helper follows the offset token until every record is in.
-async function airtableListAll(tableId){
-  var all=[];
-  var offset=null;
-  do{
-    var path='/'+tableId+(offset?('?offset='+encodeURIComponent(offset)):'');
-    var res=await airtableRequest('GET',path,null);
-    if(!res)break;
-    all=all.concat(res.records||[]);
-    offset=res.offset||null;
-  }while(offset);
-  return all;
-}
-async function airtableCreateProduct(p){
-  var fields={};
-  fields[AIRTABLE_FIELDS.name]=p.name; fields[AIRTABLE_FIELDS.brand]=p.brand||'HavenKept';
-  fields[AIRTABLE_FIELDS.listedUrl]=p.listedUrl||'';
-  fields[AIRTABLE_FIELDS.completedSteps]=(p.completedSteps||[]).join(',');
-  var res=await airtableRequest('POST','/'+AIRTABLE_PRODUCTS_TABLE,{records:[{fields:fields}]});
-  return res&&res.records&&res.records[0]?res.records[0].id:null;
-}
-async function airtableUpdateProduct(airtableId,fields){
-  if(!airtableId)return;
-  await airtableRequest('PATCH','/'+AIRTABLE_PRODUCTS_TABLE,{records:[{id:airtableId,fields:fields}]});
-}
-async function airtableDeleteProduct(airtableId){
-  if(!airtableId)return;
-  await airtableRequest('DELETE','/'+AIRTABLE_PRODUCTS_TABLE+'?records[]='+airtableId,null);
-}
-async function airtableCreateBug(productAirtableId,bug){
-  var fields={};
-  fields[AIRTABLE_FIELDS.bugText]=bug.text; fields[AIRTABLE_FIELDS.bugDone]=!!bug.done; fields[AIRTABLE_FIELDS.bugPriority]=!!bug.priority;
-  if(productAirtableId)fields[AIRTABLE_FIELDS.bugProduct]=[productAirtableId];
-  var res=await airtableRequest('POST','/'+AIRTABLE_BUGS_TABLE,{records:[{fields:fields}]});
-  return res&&res.records&&res.records[0]?res.records[0].id:null;
-}
-async function airtableCreateKnownIssue(title,desc,productAirtableId,verified){
-  var fields={};
-  fields[AIRTABLE_FIELDS.kiIssue]=title;
-  if(productAirtableId)fields[AIRTABLE_FIELDS.kiProducts]=[productAirtableId];
-  fields[AIRTABLE_FIELDS.kiVerified]=!!verified;
-  var res=await airtableRequest('POST','/'+AIRTABLE_KNOWN_ISSUES_TABLE,{records:[{fields:fields}]});
-  return res&&res.records&&res.records[0]?res.records[0].id:null;
-}
-async function airtableUpdateKnownIssue(airtableId,fields){
-  if(!airtableId)return;
-  await airtableRequest('PATCH','/'+AIRTABLE_KNOWN_ISSUES_TABLE,{records:[{id:airtableId,fields:fields}]});
-}
-async function airtableUpdateBug(airtableId,fields){
-  if(!airtableId)return;
-  await airtableRequest('PATCH','/'+AIRTABLE_BUGS_TABLE,{records:[{id:airtableId,fields:fields}]});
-}
-async function airtableDeleteBug(airtableId){
-  if(!airtableId)return;
-  await airtableRequest('DELETE','/'+AIRTABLE_BUGS_TABLE+'?records[]='+airtableId,null);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Uploads a file directly to Airtable's attachment storage (base64, 5MB cap) and
 // returns the resulting hosted URL for local display. fieldName defaults to the
 // legacy Hero Image field so existing call sites keep working unchanged.
-async function airtableUploadAttachment(productAirtableId,filename,contentType,base64,fieldName){
-  var token=getAirtableToken();
-  if(!token)return null;
-  fieldName=fieldName||AIRTABLE_FIELDS.heroImage;
-  try{
-    var res=await fetch('https://content.airtable.com/v0/'+AIRTABLE_BASE_ID+'/'+productAirtableId+'/'+encodeURIComponent(fieldName)+'/uploadAttachment',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({contentType:contentType,file:base64,filename:filename})
-    });
-    if(!res.ok){console.error('Attachment upload failed',res.status,await res.text());return null;}
-    var data=await res.json();
-    var atts=data&&data.fields&&data.fields[fieldName];
-    return atts&&atts.length?atts[atts.length-1]:null; // return the full attachment object (id, url, filename)
-  }catch(e){console.error('Attachment upload error',e);return null;}
-}
+
 // uploadAttachment always APPENDS to an attachment field. For Upload Zone we only
 // ever want to keep the latest file, so after uploading we PATCH the record's
 // attachment field down to just the one new attachment (by its Airtable attachment id).
-async function airtableReplaceAttachment(productAirtableId,fieldName,newAttachment){
-  if(!productAirtableId||!newAttachment)return;
-  var fields={};fields[fieldName]=[{id:newAttachment.id}];
-  await airtableRequest('PATCH','/'+AIRTABLE_PRODUCTS_TABLE,{records:[{id:productAirtableId,fields:fields}]});
-}
 
-async function airtableCreateFeature(f){
-  var fields={};fields[AIRTABLE_FIELDS.featureName]=f.name;fields[AIRTABLE_FIELDS.featureDesc]=f.description||'';
-  var res=await airtableRequest('POST','/'+AIRTABLE_FEATURES_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){f.airtableId=res.records[0].id;saveState();}
-}
-async function airtableSyncProductFeatureLinks(p){
-  // Re-derives the full set of feature records that should link to this product,
-  // then PATCHes each feature's Products field. Simple and correct, if slightly
-  // more chatty than a true diff — acceptable given how rarely this is toggled.
-  var features=state.features||[];
-  for(var i=0;i<features.length;i++){
-    var f=features[i];
-    if(!f.airtableId)continue;
-    var linkedProductIds=(state.products||[]).filter(function(pp){return (pp.featureIds||[]).indexOf(f.id)!==-1&&pp.airtableId;}).map(function(pp){return pp.airtableId;});
-    var fields={};fields[AIRTABLE_FIELDS.featureProducts]=linkedProductIds;
-    await airtableRequest('PATCH','/'+AIRTABLE_FEATURES_TABLE,{records:[{id:f.airtableId,fields:fields}]});
-  }
-}
+
+
+
 
 // ===== SECONDARY TABLES: one-way push sync (local -> Airtable) =====
 // Reconciliation/pull-down for these is a good follow-up; for now every add/edit/delete
 // made locally pushes to Airtable so nothing is lost, matching the core goal of this
 // whole project (get Bailey's data off just-one-device localStorage).
-async function airtableCreateOrder(o){
-  var stageMap={'inquiry':'Inquiry','deposit paid':'Intake','building':'In Progress','delivered':'Delivered'};
-  var fields={};
-  fields['Client/Project Name']=o.name;fields['Tier']=o.tier||'';fields['Stage']=stageMap[o.stage]||'Inquiry';
-  fields['Deposit Paid']=!!o.depositPaid;fields['Paid In Full']=!!o.paidInFull;
-  if(o.deadline)fields['Deadline']=o.deadline;
-  fields['Problem']=(o.intake&&o.intake.problem)||'';fields['Who']=(o.intake&&o.intake.who)||'';
-  fields['Info Tracked']=(o.intake&&o.intake.info)||'';fields['Pages']=(o.intake&&o.intake.pages)||'';
-  fields['Features Wanted']=(o.intake&&o.intake.features)||'';fields['Devices']=(o.intake&&o.intake.devices)||'';
-  fields['Examples']=(o.intake&&o.intake.examples)||'';
-  var res=await airtableRequest('POST','/'+AIRTABLE_ORDERS_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){o.airtableId=res.records[0].id;saveState();}
-}
-async function airtableUpdateOrder(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_ORDERS_TABLE,{records:[{id:airtableId,fields:fields}]});}
-async function airtableDeleteOrder(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_ORDERS_TABLE+'?records[]='+airtableId,null);}
 
-async function airtableCreateEvent(e){
-  var fields={'Title':e.title,'Date':e.date,'Notes':e.notes||''};
-  var res=await airtableRequest('POST','/'+AIRTABLE_EVENTS_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){e.airtableId=res.records[0].id;saveState();}
-}
-async function airtableUpdateEvent(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_EVENTS_TABLE,{records:[{id:airtableId,fields:fields}]});}
-async function airtableDeleteEvent(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_EVENTS_TABLE+'?records[]='+airtableId,null);}
+
+
+
+
+
+
 
 // ----- PINS -----
 // Board and Link Target are singleSelect fields with no choices defined yet, so
@@ -2466,46 +2526,21 @@ function pinFieldsFor(p){
   if(p.productAirtableId)fields[AIRTABLE_FIELDS.pinProducts]=[p.productAirtableId];
   return fields;
 }
-async function airtableCreatePin(p){
-  var res=await airtableRequest('POST','/'+AIRTABLE_PINS_TABLE,{records:[{fields:pinFieldsFor(p)}],typecast:true});
-  var id=res&&res.records&&res.records[0]?res.records[0].id:null;
-  if(id){p.airtableId=id;saveState();}
-  return id;
-}
-async function airtableUpdatePin(airtableId,p){
-  if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_PINS_TABLE,{records:[{id:airtableId,fields:pinFieldsFor(p)}],typecast:true});
-}
-async function airtableDeletePin(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_PINS_TABLE+'?records[]='+airtableId,null);}
 
-async function airtableCreateNote(n){
-  var fields={'Text':n.text,'Date':n.date,'Pinned':!!n.pinned,'Is Handoff':!!n.isHandoff,'Handoff Type':n.handoffType||'','Handoff Related To':n.handoffRelatedTo||'','Handoff Resolved':!!n.handoffResolved};
-  var res=await airtableRequest('POST','/'+AIRTABLE_NOTES_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){n.airtableId=res.records[0].id;saveState();}
-}
-async function airtableUpdateNote(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_NOTES_TABLE,{records:[{id:airtableId,fields:fields}]});}
-async function airtableDeleteNote(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_NOTES_TABLE+'?records[]='+airtableId,null);}
 
-async function airtableCreateWebsite(w){
-  var fields={'Label':w.label,'URL':w.url,'Category':w.category||''};
-  var res=await airtableRequest('POST','/'+AIRTABLE_WEBSITES_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){w.airtableId=res.records[0].id;saveState();}
-}
-async function airtableUpdateWebsite(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_WEBSITES_TABLE,{records:[{id:airtableId,fields:fields}]});}
-async function airtableDeleteWebsite(airtableId){if(airtableId)await airtableRequest('DELETE','/'+AIRTABLE_WEBSITES_TABLE+'?records[]='+airtableId,null);}
 
-async function airtableCreatePass(pass){
-  var fields={'Label':pass.label,'Date':pass.date};
-  var res=await airtableRequest('POST','/'+AIRTABLE_PASSES_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){pass.airtableId=res.records[0].id;saveState();}
-}
-async function airtableCreateTestingItem(passAirtableId,productAirtableId,item){
-  var fields={'Item Text':item.text,'Section':item.section||'','Priority':!!item.priority,'Done':!!item.done,'Note':item.note||'','Known Issue':!!item.knownIssue};
-  if(passAirtableId)fields['Pass']=[passAirtableId];
-  if(productAirtableId)fields['Product']=[productAirtableId];
-  var res=await airtableRequest('POST','/'+AIRTABLE_TESTING_ITEMS_TABLE,{records:[{fields:fields}]});
-  if(res&&res.records&&res.records[0]){item.airtableId=res.records[0].id;saveState();}
-}
-async function airtableUpdateTestingItem(airtableId,fields){if(airtableId)await airtableRequest('PATCH','/'+AIRTABLE_TESTING_ITEMS_TABLE,{records:[{id:airtableId,fields:fields}]});}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // One-time (and re-runnable) reconciliation: matches existing local products/bugs to
 // their Airtable counterparts by Name/Text, so pre-existing local data (like the initial
@@ -2736,6 +2771,7 @@ async function reconcileWithAirtable(manual){
       if(mm&&mm.fields){
         n.text=mm.fields['Text']||n.text;
         n.pinned=!!mm.fields['Pinned'];
+        n.kind=mm.fields['Kind']||n.kind||'note';
         n.isHandoff=!!mm.fields['Is Handoff'];
         n.handoffType=mm.fields['Handoff Type']||n.handoffType||'';
         n.handoffRelatedTo=mm.fields['Handoff Related To']||n.handoffRelatedTo||'';
@@ -2752,7 +2788,7 @@ async function reconcileWithAirtable(manual){
   remoteNotes.forEach(function(r){
     if(localNoteIds.indexOf(r.id)===-1){
       var f=r.fields||{};
-      state.notes.push({id:uid(),text:f['Text']||'',date:f['Date']||new Date().toISOString().slice(0,10),pinned:!!f['Pinned'],isHandoff:!!f['Is Handoff'],handoffType:f['Handoff Type']||'',handoffRelatedTo:f['Handoff Related To']||'',handoffResolved:!!f['Handoff Resolved'],airtableId:r.id});
+      state.notes.push({id:uid(),text:f['Text']||'',date:f['Date']||todayLocalStr(),pinned:!!f['Pinned'],kind:f['Kind']||'note',isHandoff:!!f['Is Handoff'],handoffType:f['Handoff Type']||'',handoffRelatedTo:f['Handoff Related To']||'',handoffResolved:!!f['Handoff Resolved'],airtableId:r.id});
     }
   });
   for(var ni=0;ni<state.notes.length;ni++){
@@ -2883,7 +2919,7 @@ async function reconcileWithAirtable(manual){
         var rf=ri.fields||{};
         return {id:uid(),section:rf['Section']||'General',text:rf['Item Text']||'',priority:!!rf['Priority'],done:!!rf['Done'],note:rf['Note']||'',knownIssue:!!rf['Known Issue'],airtableId:ri.id};
       });
-      state.testingPasses.push({id:uid(),label:f['Label']||'Untitled pass',date:f['Date']||new Date().toISOString().slice(0,10),items:pulledItems,airtableId:r.id});
+      state.testingPasses.push({id:uid(),label:f['Label']||'Untitled pass',date:f['Date']||todayLocalStr(),items:pulledItems,airtableId:r.id});
     }
   });
   for(var pi=0;pi<state.testingPasses.length;pi++){
@@ -2976,6 +3012,13 @@ async function reconcileWithAirtable(manual){
     if(statusEl)statusEl.textContent='Synced ✓ ('+new Date().toLocaleString()+') — '+counts
       +(newlyPulled?(' — pulled '+newlyPulled+' new product(s)'):'')+repaired;
     if(manual)toast('Supabase sync complete ✓');
+    // The newer tables aren't part of the legacy reconcile, so pull them
+    // here. Failures are logged, not thrown - a competitor list that didn't
+    // load must never take the whole sync down with it.
+    try{ await sbLoadPalettes(); }catch(e){console.warn('palettes',e);}
+    try{ await loadCompetitors(); }catch(e){console.warn('competitors',e);}
+    try{ await loadEtsy(); }catch(e){console.warn('etsy',e);}
+    try{ await loadPinStats(); }catch(e){console.warn('pin stats',e);}
     // Refresh the connection reading too. It is a snapshot from page load, and
     // leaving it stale means two boxes on this page disagree after every sync.
     if(typeof sbTestConnection==='function')sbTestConnection();
@@ -3305,9 +3348,11 @@ function uploadHeroImage(productId,inputEl){
       inputEl.value='';return;
     }
     var okBox=document.getElementById('hero-upload-error'); if(okBox)okBox.style.display='none';
+    var priorHero=p.heroImagePath;
     p.heroImageUrl=sbPublicUrl(SB_BUCKET_HERO,path);
     p.heroImagePath=path;
     saveState();
+    if(priorHero&&priorHero!==path)await sbDeleteFile(SB_BUCKET_HERO,priorHero);
     var f={};f[AIRTABLE_FIELDS.heroImage]=p.heroImageUrl;
     await sbUpdate(SB_TABLES.products,p.airtableId,{hero_image_url:p.heroImageUrl});
     renderProductDetail();
@@ -3315,9 +3360,43 @@ function uploadHeroImage(productId,inputEl){
     inputEl.value='';
   })();
 }
-function removeHeroImage(productId){
+async function removeHeroImage(productId){
   var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
-  p.heroImageUrl='';saveState();renderProductDetail();
+  if(!confirm('Remove this hero image? The file will be deleted.'))return;
+  // Previously this only cleared the value on this device, so the next sync
+  // pulled the old image straight back and the file stayed in storage for good.
+  if(p.heroImagePath)await sbDeleteFile(SB_BUCKET_HERO,p.heroImagePath);
+  if(p.airtableId)await sbUpdate(SB_TABLES.products,p.airtableId,{hero_image_url:null});
+  p.heroImageUrl='';p.heroImagePath='';
+  saveState();renderProductDetail();
+  toast('Image removed');
+}
+
+// The Upload Zone had no way to remove a file at all -- only replace it by
+// uploading another. Deleting the object and clearing the columns keeps the
+// private bucket from holding products Bailey thinks she has removed.
+async function removePlannerFile(productId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
+  if(!confirm('Remove "'+(p.plannerFileName||'this file')+'"? It will be deleted from storage.'))return;
+  if(p.plannerFilePath)await sbDeleteFile(SB_BUCKET_PLANNER,p.plannerFilePath);
+  if(p.airtableId)await sbUpdate(SB_TABLES.products,p.airtableId,{
+    planner_file_url:null, planner_file_tag:null, planner_file_uploaded_at:null});
+  p.plannerFilePath='';p.plannerFileUrl='';p.plannerFileName='';
+  p.plannerFileTag='';p.plannerFileUploadedAt='';
+  saveState();renderUploadZone();
+  toast('File removed');
+}
+
+// Renaming the note attached to a file, without re-uploading it.
+async function editPlannerFileTag(productId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
+  var next=prompt('Note for this file (what changed?)',p.plannerFileTag||'');
+  if(next===null)return;
+  next=next.trim();
+  if(p.airtableId)await sbUpdate(SB_TABLES.products,p.airtableId,{planner_file_tag:next});
+  p.plannerFileTag=next;
+  saveState();renderUploadZone();
+  toast('Note updated');
 }
 function updateProductField(id,field,val){
   var p=(state.products||[]).find(function(x){return x.id===id;});if(!p)return;
@@ -3401,7 +3480,7 @@ async function editFeatureName(id){
   if(!newName||!newName.trim())return;
   f.name=newName.trim();
   saveState();renderMatrix();renderProductDetail();toast('Feature renamed ✓');
-  if(airtableEnabled()&&f.airtableId)airtableRequest('PATCH','/'+AIRTABLE_FEATURES_TABLE,{records:[{id:f.airtableId,fields:{'Feature Name':f.name}}]});
+  if(supabaseEnabled()&&f.airtableId)await sbUpdate(SB_TABLES.features,f.airtableId,{name:f.name});
 }
 async function removeFeature(id){
   var f=(state.features||[]).find(function(x){return x.id===id;});if(!f)return;
@@ -3412,7 +3491,9 @@ async function removeFeature(id){
     if(p.featureIds)p.featureIds=p.featureIds.filter(function(fid){return fid!==id;});
   });
   saveState();renderMatrix();renderProductDetail();toast('Feature removed ✓');
-  if(airtableEnabled()&&removedAirtableId)await airtableRequest('DELETE','/'+AIRTABLE_FEATURES_TABLE+'?records[]='+removedAirtableId,null);
+  // The product_features join rows go with it: the foreign key is ON DELETE
+  // CASCADE, so removing the feature clears every product link in one step.
+  if(supabaseEnabled()&&removedAirtableId)await sbDelete(SB_TABLES.features,removedAirtableId);
 }
 var MATRIX_VIEWS=[
   {id:'compact',label:'Compact Matrix'},
@@ -3619,7 +3700,7 @@ function renderCalendar(){
   label.textContent=_calViewDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
   var firstDay=new Date(year,month,1).getDay();
   var daysInMonth=new Date(year,month+1,0).getDate();
-  var todayStr=new Date().toISOString().slice(0,10);
+  var todayStr=todayLocalStr();
   var events=state.calendarEvents||[];
   var html='';
   ['S','M','T','W','T','F','S'].forEach(function(d){html+='<div style="text-align:center;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:4px 0;">'+d+'</div>';});
@@ -3706,11 +3787,13 @@ async function noteInsertLink(){
   document.getElementById('note-editor-body').focus();
   document.execCommand('createLink',false,url);
 }
-function openNoteEditor(id,defaultPinned){
+function openNoteEditor(id,defaultKind){
   var n=id?(state.notes||[]).find(function(x){return x.id===id;}):null;
   _editingNoteId=id;
   document.getElementById('note-editor-body').innerHTML=n?n.text:'';
-  document.getElementById('note-pinned-input').checked=n?!!n.pinned:!!defaultPinned;
+  // defaultKind may arrive as the old boolean `true` meaning "standing rule".
+  if(defaultKind===true)defaultKind='policy';
+  document.getElementById('note-kind-input').value=n?noteKind(n):(defaultKind||'note');
   document.getElementById('note-editor-overlay').style.display='block';
   setTimeout(function(){document.getElementById('note-editor-body').focus();},50);
 }
@@ -3722,71 +3805,562 @@ function saveNoteEditor(){
   var html=document.getElementById('note-editor-body').innerHTML.trim();
   var textOnly=document.getElementById('note-editor-body').textContent.trim();
   if(!textOnly){toast('Write something first');return;}
-  var pinned=document.getElementById('note-pinned-input').checked;
+  var kind=document.getElementById('note-kind-input').value||'note';
+  var pinned=(kind==='policy');
   if(!state.notes)state.notes=[];
   var n;
   if(_editingNoteId){
     n=state.notes.find(function(x){return x.id===_editingNoteId;});
-    if(n){n.text=html;n.pinned=pinned;}
+    if(n){n.text=html;n.kind=kind;n.pinned=pinned;}
   } else {
-    n={id:uid(),text:html,date:new Date().toISOString().slice(0,10),pinned:pinned};
+    n={id:uid(),text:html,date:todayLocalStr(),kind:kind,pinned:pinned};
     state.notes.unshift(n);
   }
-  saveState();closeNoteEditor();renderNotes();renderStandingRules();renderDashboard();toast('Note saved ✓');
+  saveState();closeNoteEditor();renderNotes();renderStandingRules();renderBuildLog();renderDashboard();toast('Note saved ✓');
   if(airtableEnabled()&&n){
-    if(n.airtableId){airtableUpdateNote(n.airtableId,{'Text':n.text,'Pinned':!!n.pinned});}
+    if(n.airtableId){airtableUpdateNote(n.airtableId,{'Text':n.text,'Kind':kind,'Pinned':!!n.pinned});}
     else{airtableCreateNote(n);}
   }
 }
+// Kept for any older call site: bookmarking now just means kind='policy'.
 function togglePinNote(id,ev){
+  var n=(state.notes||[]).find(function(x){return x.id===id;});
+  if(!n)return;
+  setNoteKind(id,noteKind(n)==='policy'?'note':'policy',ev);
+}
+// ---- Note kinds -------------------------------------------------------
+// 'note'   = Bailey's own notes and research      -> Notes page
+// 'policy' = standing decisions that don't expire -> Start Here page
+// 'log'    = Claude build logs                    -> Build Log page
+// Legacy local rows have no kind; fall back to the old `pinned` flag so
+// nothing disappears on a browser that hasn't synced yet.
+function noteKind(n){
+  if(!n)return 'note';
+  if(n.kind==='note'||n.kind==='policy'||n.kind==='log')return n.kind;
+  return n.pinned?'policy':'note';
+}
+var NOTE_KIND_LABEL={note:'Note',policy:'Start Here',log:'Build Log'};
+
+function notesOfKind(k){
+  return (state.notes||[]).filter(function(n){return noteKind(n)===k;}).slice().sort(function(a,b){
+    return (b.date||'').localeCompare(a.date||'');
+  });
+}
+// Shared card renderer so the three pages can't drift apart.
+function noteCardHtml(n,opts){
+  opts=opts||{};
+  var moves=['note','policy','log'].filter(function(k){return k!==noteKind(n);});
+  var moveBtns=moves.map(function(k){
+    return '<button onclick="setNoteKind(\''+n.id+'\',\''+k+'\',event)" data-tip="Move to '+NOTE_KIND_LABEL[k]+'" '
+      +'style="background:none;border:none;cursor:pointer;font-size:10px;letter-spacing:.02em;color:var(--muted-light);padding:2px 5px;border:1px solid var(--border);border-radius:5px;">'
+      +'→ '+NOTE_KIND_LABEL[k]+'</button>';
+  }).join('');
+  return '<div class="note-card" style="position:relative;cursor:pointer;'+(opts.border?'border-color:'+opts.border+';':'')+'" onclick="openNoteEditor(\''+n.id+'\')">'
+    +'<div class="note-actions" style="display:flex;gap:6px;align-items:center;">'
+      +moveBtns
+      +'<button onclick="event.stopPropagation();removeNote(\''+n.id+'\')" data-tip="Delete">×</button>'
+    +'</div>'
+    +'<div class="note-date">'+fmtDateShort(n.date)+'</div>'
+    +'<div class="note-text">'+n.text+'</div>'
+  +'</div>';
+}
+function renderNoteList(elId,kind,emptyMsg,border){
+  var list=document.getElementById(elId);
+  if(!list)return;
+  var notes=notesOfKind(kind);
+  if(!notes.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">'+emptyMsg+'</div>';
+    return;
+  }
+  list.innerHTML=notes.map(function(n){return noteCardHtml(n,{border:border});}).join('');
+}
+function renderNotes(){
+  renderNoteList('notes-list','note','No notes yet.');
+}
+function renderStandingRules(){
+  renderNoteList('standing-rules-list','policy',
+    'Nothing here yet. This page is for decisions that don\'t expire — brand rules, versioning, pricing.','var(--rose)');
+}
+function renderBuildLog(){
+  var list=document.getElementById('build-log-list');
+  if(!list)return;
+  var notes=notesOfKind('log');
+  var count=document.getElementById('build-log-count');
+  if(count)count.textContent=notes.length+(notes.length===1?' entry':' entries');
+  if(!notes.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No build log entries.</div>';
+    return;
+  }
+  list.innerHTML=notes.map(function(n){return noteCardHtml(n,{border:'var(--border)'});}).join('');
+}
+// Move a note between the three pages. Keeps the legacy `pinned` flag in
+// step so anything still reading it keeps working.
+function setNoteKind(id,kind,ev){
   if(ev)ev.stopPropagation();
   var n=(state.notes||[]).find(function(x){return x.id===id;});
   if(!n)return;
-  n.pinned=!n.pinned;
-  saveState();renderNotes();renderStandingRules();renderDashboard();
-  if(airtableEnabled()&&n.airtableId)airtableUpdateNote(n.airtableId,{'Pinned':n.pinned});
-}
-function renderNotes(){
-  var list=document.getElementById('notes-list');
-  var notes=(state.notes||[]).filter(function(n){return !n.pinned;}).slice().sort(function(a,b){
-    return (b.date||'').localeCompare(a.date||'');
-  });
-  if(!notes.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No notes yet.</div>';return;}
-  list.innerHTML=notes.map(function(n){
-    return '<div class="note-card" style="position:relative;cursor:pointer;" onclick="openNoteEditor(\''+n.id+'\')">'
-      +'<div class="note-actions" style="display:flex;gap:6px;">'
-        +'<button onclick="togglePinNote(\''+n.id+'\',event)" data-tip="Move to Standing Rules" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted-light);">'+svgIcon('bookmark',14)+'</button>'
-        +'<button onclick="event.stopPropagation();removeNote(\''+n.id+'\')" data-tip="Delete note">×</button>'
-      +'</div>'
-      +'<div class="note-date">'+fmtDateShort(n.date)+'</div>'
-      +'<div class="note-text">'+n.text+'</div>'
-    +'</div>';
-  }).join('');
-}
-function renderStandingRules(){
-  var list=document.getElementById('standing-rules-list');
-  if(!list)return;
-  var notes=(state.notes||[]).filter(function(n){return n.pinned;}).slice().sort(function(a,b){
-    return (b.date||'').localeCompare(a.date||'');
-  });
-  if(!notes.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No standing rules yet. Anything marked "Standing Rule" shows up here instead of Notes.</div>';return;}
-  list.innerHTML=notes.map(function(n){
-    return '<div class="note-card" style="position:relative;cursor:pointer;border-color:var(--rose);" onclick="openNoteEditor(\''+n.id+'\')">'
-      +'<div class="note-actions" style="display:flex;gap:6px;">'
-        +'<button onclick="togglePinNote(\''+n.id+'\',event)" data-tip="Move back to Notes" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--rose-dark);">'+svgIcon('bookmark',14)+'</button>'
-        +'<button onclick="event.stopPropagation();removeNote(\''+n.id+'\')" data-tip="Delete">×</button>'
-      +'</div>'
-      +'<div class="note-date">'+fmtDateShort(n.date)+'</div>'
-      +'<div class="note-text">'+n.text+'</div>'
-    +'</div>';
-  }).join('');
+  n.kind=kind;
+  n.pinned=(kind==='policy');
+  saveState();renderNotes();renderStandingRules();renderBuildLog();renderDashboard();
+  toast('Moved to '+NOTE_KIND_LABEL[kind]+' ✓');
+  if(airtableEnabled()&&n.airtableId)airtableUpdateNote(n.airtableId,{'Kind':kind,'Pinned':!!n.pinned});
 }
 function removeNote(id){
   var n=(state.notes||[]).find(function(x){return x.id===id;});
   var removedAirtableId=n?n.airtableId:null;
   state.notes=(state.notes||[]).filter(function(n){return n.id!==id;});
-  saveState();renderNotes();renderStandingRules();renderDashboard();
+  saveState();renderNotes();renderStandingRules();renderBuildLog();renderDashboard();
   if(airtableEnabled()&&removedAirtableId)airtableDeleteNote(removedAirtableId);
+}
+
+// =====================================================================
+// COLOUR PALETTES -> SUPABASE
+// These used to live only in localStorage, so a cleared browser or a new
+// device lost them. The UI above is unchanged; this just makes it durable.
+// Local palette/colour objects gain a `remoteId` once saved.
+// =====================================================================
+var _paletteSyncTimer=null;
+function queuePaletteSync(){
+  if(!airtableEnabled())return;
+  clearTimeout(_paletteSyncTimer);
+  _paletteSyncTimer=setTimeout(function(){sbSavePalettes();},800);
+}
+async function sbSavePalettes(){
+  if(!airtableEnabled())return;
+  try{
+    var pals=state.colorPalettes||[];
+    var remotePals=await sbListAll(SB_TABLES.colorPalettes,'id');
+    var remoteCols=await sbListAll(SB_TABLES.paletteColors,'id,palette_id');
+    var keepPal={},keepCol={};
+    for(var i=0;i<pals.length;i++){
+      var p=pals[i], row={name:p.name||'Untitled',sort_order:i};
+      if(p.remoteId){await sbUpdate(SB_TABLES.colorPalettes,p.remoteId,row);}
+      else{p.remoteId=await sbInsert(SB_TABLES.colorPalettes,row);}
+      if(!p.remoteId)continue;
+      keepPal[p.remoteId]=1;
+      var cols=p.colors||[];
+      for(var j=0;j<cols.length;j++){
+        var c=cols[j], crow={palette_id:p.remoteId,name:c.name||null,hex:c.hex,used_for:c.usedFor||null,sort_order:j};
+        if(c.remoteId){await sbUpdate(SB_TABLES.paletteColors,c.remoteId,crow);}
+        else{c.remoteId=await sbInsert(SB_TABLES.paletteColors,crow);}
+        if(c.remoteId)keepCol[c.remoteId]=1;
+      }
+    }
+    // Anything remote that is no longer local was deleted here.
+    for(var a=0;a<remoteCols.length;a++){if(!keepCol[remoteCols[a].id])await sbDelete(SB_TABLES.paletteColors,remoteCols[a].id);}
+    for(var b=0;b<remotePals.length;b++){if(!keepPal[remotePals[b].id])await sbDelete(SB_TABLES.colorPalettes,remotePals[b].id);}
+    saveState();
+  }catch(e){console.warn('palette sync failed',e);}
+}
+async function sbLoadPalettes(){
+  if(!airtableEnabled())return;
+  var pals=await sbListAll(SB_TABLES.colorPalettes,'*');
+  // First run: nothing remote yet, so push what this browser already has
+  // rather than wiping it.
+  if(!pals||!pals.length){
+    if((state.colorPalettes||[]).length){await sbSavePalettes();}
+    return;
+  }
+  var cols=await sbListAll(SB_TABLES.paletteColors,'*');
+  pals.sort(function(x,y){return (x.sort_order||0)-(y.sort_order||0);});
+  state.colorPalettes=pals.map(function(p){
+    return {
+      id:uid(), remoteId:p.id, name:p.name,
+      colors:cols.filter(function(c){return c.palette_id===p.id;})
+                 .sort(function(x,y){return (x.sort_order||0)-(y.sort_order||0);})
+                 .map(function(c){return {id:uid(),remoteId:c.id,name:c.name||'',hex:c.hex,usedFor:c.used_for||''};})
+    };
+  });
+  saveState();
+  if(typeof renderColorReference==='function')renderColorReference();
+}
+
+// =====================================================================
+// PIN STATS
+// A pin's numbers change every week it stays alive, so one row per pin
+// can only ever hold one snapshot. pinterest_metrics stays the record of
+// the PIN; pin_stats holds the repeated readings.
+// =====================================================================
+async function loadPinStats(){
+  if(!airtableEnabled())return;
+  state.pinStats=await sbListAll(SB_TABLES.pinStats,'*')||[];
+  saveState();
+  if(typeof renderPins==='function')renderPins();
+}
+function statsForPin(p){
+  var pid=p&&p.airtableId;
+  if(!pid)return [];
+  return (state.pinStats||[]).filter(function(s){return s.pin_id===pid;})
+    .sort(function(a,b){return (b.stat_date||'').localeCompare(a.stat_date||'');});
+}
+function pinStatsHtml(p){
+  var rows=statsForPin(p);
+  if(!rows.length)return '<div style="font-size:11px;color:var(--muted-light);margin-top:6px;font-style:italic;">No numbers logged yet</div>';
+  var cur=rows[0], prev=rows[1];
+  function cell(icon,key){
+    var v=cur[key];
+    if(v==null)return '';
+    var d='';
+    if(prev&&prev[key]!=null){
+      var diff=v-prev[key];
+      if(diff!==0)d='<span style="color:'+(diff>0?'var(--plum)':'var(--muted-light)')+';font-size:10px;"> '+(diff>0?'+':'')+diff+'</span>';
+    }
+    return '<span style="margin-right:10px;">'+icon+' '+v+d+'</span>';
+  }
+  return '<div style="font-size:11px;color:var(--muted);margin-top:6px;">'
+    +cell('👁','impressions')+cell('🔖','saves')+cell('↗','outbound_clicks')
+    +'<span style="color:var(--muted-light);">as of '+fmtDateShort(cur.stat_date)
+    +(rows.length>1?(' · '+rows.length+' readings'):'')+'</span>'
+  +'</div>';
+}
+var _pinStatsPinId=null;
+function openPinStats(pinId){
+  var p=(state.pins||[]).find(function(x){return x.id===pinId;});
+  if(!p)return;
+  if(!p.airtableId){toast('Sync this pin first, then log its numbers');return;}
+  _pinStatsPinId=pinId;
+  document.getElementById('pin-stats-title').textContent=p.title||'Pin';
+  document.getElementById('pin-stats-date').value=todayLocalStr();
+  document.getElementById('pin-stats-impressions').value='';
+  document.getElementById('pin-stats-saves').value='';
+  document.getElementById('pin-stats-clicks').value='';
+  var hist=document.getElementById('pin-stats-history');
+  var rows=statsForPin(p);
+  hist.innerHTML=rows.length
+    ? rows.map(function(s){
+        return '<div style="border-top:1px solid var(--border-light);padding:6px 0;font-size:12px;display:flex;gap:10px;align-items:baseline;">'
+          +'<span style="color:var(--muted);min-width:76px;">'+fmtDateShort(s.stat_date)+'</span>'
+          +'<span>👁 '+(s.impressions==null?'—':s.impressions)+'</span>'
+          +'<span>🔖 '+(s.saves==null?'—':s.saves)+'</span>'
+          +'<span>↗ '+(s.outbound_clicks==null?'—':s.outbound_clicks)+'</span>'
+          +'<span style="margin-left:auto;color:var(--muted);font-size:11px;">'+fmtPct(pct(s.outbound_clicks,s.impressions))+' CTR</span>'
+        +'</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--muted);font-style:italic;padding:6px 0;">Nothing logged yet.</div>';
+  document.getElementById('pin-stats-overlay').classList.add('open');
+}
+function closePinStats(){document.getElementById('pin-stats-overlay').classList.remove('open');_pinStatsPinId=null;}
+async function savePinStats(){
+  var p=(state.pins||[]).find(function(x){return x.id===_pinStatsPinId;});
+  if(!p||!p.airtableId)return;
+  var date=document.getElementById('pin-stats-date').value||todayLocalStr();
+  var row={
+    pin_id:p.airtableId, stat_date:date,
+    impressions:numOrNull('pin-stats-impressions'),
+    saves:numOrNull('pin-stats-saves'),
+    outbound_clicks:numOrNull('pin-stats-clicks')
+  };
+  if(row.impressions==null&&row.saves==null&&row.outbound_clicks==null){toast('Enter at least one number');return;}
+  if(!state.pinStats)state.pinStats=[];
+  // Logging the same pin twice on one day edits that reading, not a duplicate.
+  var existing=(state.pinStats||[]).find(function(s){return s.pin_id===row.pin_id&&s.stat_date===date;});
+  if(existing){
+    await sbUpdate(SB_TABLES.pinStats,existing.id,row);
+    Object.assign(existing,row);
+  } else {
+    var newId=await sbInsert(SB_TABLES.pinStats,row);
+    if(newId){row.id=newId;state.pinStats.push(row);}
+  }
+  saveState();closePinStats();renderPins();toast('Numbers saved ✓');
+}
+
+// =====================================================================
+// COMPETITORS
+// =====================================================================
+// Shop rating as stars. Rounds to the nearest half so 4.8 doesn't read as
+// a flat 5 — the gap between 4.5 and 5.0 is the whole point of tracking it.
+function starsHtml(rating,reviewCount){
+  if(rating==null||isNaN(rating))return '';
+  var r=Math.max(0,Math.min(5,Number(rating)));
+  // Round DOWN to the half star. Rounding up made 4.8 draw five full stars,
+  // indistinguishable from a genuine 5.0 - and only a real 5.0 should look perfect.
+  var half=Math.floor(r*2)/2, s='';
+  for(var i=1;i<=5;i++){
+    if(half>=i)s+='★';
+    else if(half>=i-0.5)s+='⯪';
+    else s+='☆';
+  }
+  return '<span style="font-size:11.5px;color:var(--rose-dark);letter-spacing:.5px;" '
+    +'data-tip="'+r.toFixed(1)+' out of 5'+(reviewCount!=null?(' from '+reviewCount+' shop reviews'):'')+'">'
+    +s+'<span style="color:var(--muted);margin-left:4px;">'+r.toFixed(1)+'</span>'
+    +(reviewCount!=null?'<span style="color:var(--muted-light);"> ('+reviewCount+')</span>':'')
+  +'</span>';
+}
+function compRows(){return (state.competitors||[]).slice();}
+async function loadCompetitors(){
+  if(!airtableEnabled())return;
+  state.competitors=await sbListAll(SB_TABLES.competitors,'*')||[];
+  saveState();renderCompetitors();
+}
+function renderCompetitors(){
+  var el=document.getElementById('competitors-list');
+  if(!el)return;
+  var rows=compRows();
+  var dl=document.getElementById('comp-niche-options');
+  if(dl){
+    var niches={};rows.forEach(function(r){if(r.niche)niches[r.niche]=1;});
+    dl.innerHTML=Object.keys(niches).map(function(n){return '<option value="'+esc(n)+'">';}).join('');
+  }
+  if(!rows.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No competitors logged yet.</div>';return;}
+  var groups={};
+  rows.forEach(function(r){var k=r.niche||'Unsorted';(groups[k]=groups[k]||[]).push(r);});
+  el.innerHTML=Object.keys(groups).sort().map(function(niche){
+    var list=groups[niche].slice().sort(function(a,b){return (b.logged_on||'').localeCompare(a.logged_on||'');});
+    return '<div class="card" style="margin-bottom:14px;">'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">'
+        +'<div class="card-title">'+esc(niche)+'</div>'
+        +'<span style="font-size:11.5px;color:var(--muted);">'+list.length+(list.length===1?' seller':' sellers')+'</span>'
+      +'</div>'
+      +list.map(function(r){
+        var bits=[];
+        if(r.price)bits.push(esc(r.price));
+        if(r.listing_reviews!=null)bits.push(r.listing_reviews+' listing reviews');
+        if(r.seller_sales!=null)bits.push(r.seller_sales+' sales');
+        if(r.logged_on)bits.push(fmtDateShort(r.logged_on));
+        return '<div style="border-top:1px solid var(--border-light);padding:9px 0;cursor:pointer;" onclick="openCompetitor(\''+r.id+'\')">'
+          +'<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;">'
+            +'<span style="font-weight:600;font-size:13px;">'+esc(r.seller||'(no name)')+'</span>'
+            +starsHtml(r.seller_rating,r.seller_reviews)
+            +(r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="font-size:11px;">open ↗</a>':'')
+            +'<span style="margin-left:auto;font-size:11.5px;color:var(--muted);">'+bits.join(' · ')+'</span>'
+          +'</div>'
+          +(r.notes?'<div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45;">'+esc(r.notes)+'</div>':'')
+        +'</div>';
+      }).join('')
+    +'</div>';
+  }).join('');
+}
+function openCompetitor(id){
+  var r=id?compRows().find(function(x){return x.id===id;}):null;
+  document.getElementById('competitor-title').textContent=r?'Edit Competitor':'Add Competitor';
+  document.getElementById('comp-id').value=r?r.id:'';
+  document.getElementById('comp-seller').value=r?(r.seller||''):'';
+  document.getElementById('comp-niche').value=r?(r.niche||''):'';
+  document.getElementById('comp-url').value=r?(r.url||''):'';
+  document.getElementById('comp-price').value=r?(r.price||''):'';
+  document.getElementById('comp-date').value=r?(r.logged_on||''):todayLocalStr();
+  document.getElementById('comp-listing-reviews').value=(r&&r.listing_reviews!=null)?r.listing_reviews:'';
+  document.getElementById('comp-seller-sales').value=(r&&r.seller_sales!=null)?r.seller_sales:'';
+  document.getElementById('comp-seller-rating').value=(r&&r.seller_rating!=null)?r.seller_rating:'';
+  document.getElementById('comp-seller-reviews').value=(r&&r.seller_reviews!=null)?r.seller_reviews:'';
+  document.getElementById('comp-notes').value=r?(r.notes||''):'';
+  document.getElementById('comp-delete').style.display=r?'':'none';
+  document.getElementById('competitor-overlay').classList.add('open');
+}
+function closeCompetitor(){document.getElementById('competitor-overlay').classList.remove('open');}
+function numOrNull(id){var v=document.getElementById(id).value;return v===''?null:Number(v);}
+async function saveCompetitor(){
+  var seller=document.getElementById('comp-seller').value.trim();
+  if(!seller){toast('Enter a seller name');return;}
+  var row={
+    seller:seller,
+    niche:document.getElementById('comp-niche').value.trim()||null,
+    url:document.getElementById('comp-url').value.trim()||null,
+    price:document.getElementById('comp-price').value.trim()||null,
+    logged_on:document.getElementById('comp-date').value||null,
+    listing_reviews:numOrNull('comp-listing-reviews'),
+    seller_sales:numOrNull('comp-seller-sales'),
+    seller_rating:numOrNull('comp-seller-rating'),
+    seller_reviews:numOrNull('comp-seller-reviews'),
+    notes:document.getElementById('comp-notes').value.trim()||null
+  };
+  if(row.seller_rating!=null&&(row.seller_rating<0||row.seller_rating>5)){toast('Shop rating must be between 0 and 5');return;}
+  var id=document.getElementById('comp-id').value;
+  if(!state.competitors)state.competitors=[];
+  if(id){
+    await sbUpdate(SB_TABLES.competitors,id,row);
+    var ex=state.competitors.find(function(x){return x.id===id;});
+    if(ex)Object.assign(ex,row);
+  } else {
+    var newId=await sbInsert(SB_TABLES.competitors,row);
+    if(newId){row.id=newId;state.competitors.push(row);}
+  }
+  saveState();closeCompetitor();renderCompetitors();toast('Saved ✓');
+}
+async function deleteCompetitor(){
+  var id=document.getElementById('comp-id').value;
+  if(!id)return;
+  if(!await styledConfirm('Delete Competitor','Remove this competitor? This can\'t be undone.'))return;
+  await sbDelete(SB_TABLES.competitors,id);
+  state.competitors=(state.competitors||[]).filter(function(x){return x.id!==id;});
+  saveState();closeCompetitor();renderCompetitors();toast('Deleted ✓');
+}
+
+// =====================================================================
+// ETSY METRICS
+// One row per listing per reading date. Rates are always derived from
+// the stored numbers, never stored themselves, so they cannot drift.
+// =====================================================================
+function pct(n,d){
+  if(n==null||d==null||!d)return null;
+  return Math.round((n/d)*1000)/10;
+}
+function fmtPct(v){return v==null?'—':v.toFixed(1)+'%';}
+function fmtMoney(v){return v==null?'—':'$'+Number(v).toFixed(2);}
+function productName(pid){
+  if(!pid)return 'Whole shop';
+  var p=(state.products||[]).find(function(x){return x.airtableId===pid||x.id===pid;});
+  return p?p.name:'(unknown listing)';
+}
+async function loadEtsy(){
+  if(!airtableEnabled())return;
+  state.etsyStats=await sbListAll(SB_TABLES.etsyStats,'*')||[];
+  state.etsyRank=await sbListAll(SB_TABLES.etsySearchRank,'*')||[];
+  saveState();renderEtsy();
+}
+function fillProductSelect(elId,includeShop){
+  var sel=document.getElementById(elId);
+  if(!sel)return;
+  var opts=includeShop?'<option value="">Whole shop (not one listing)</option>':'';
+  opts+=(state.products||[]).slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');})
+    .map(function(p){return '<option value="'+esc(p.airtableId||p.id)+'">'+esc(p.name)+'</option>';}).join('');
+  sel.innerHTML=opts;
+}
+function renderEtsy(){
+  var rows=(state.etsyStats||[]).slice().sort(function(a,b){return (b.stat_date||'').localeCompare(a.stat_date||'');});
+  // ---- latest reading per listing ----
+  var sum=document.getElementById('etsy-summary');
+  if(sum){
+    var seen={},latest=[];
+    rows.forEach(function(r){
+      var k=r.product_id||'_shop';
+      if(!seen[k]){seen[k]=1;latest.push(r);}
+    });
+    if(!latest.length){sum.innerHTML='<div style="color:var(--muted);font-style:italic;font-size:12.5px;">Nothing logged yet. Hit “Log Numbers”.</div>';}
+    else{
+      sum.innerHTML='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+        +'<tr style="text-align:left;color:var(--muted);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;">'
+        +'<th style="padding:5px 8px 5px 0;">Listing</th><th>As of</th><th>Ad views</th><th>Clicks</th><th>Click rate</th><th>Spend</th><th>Visits</th><th>Orders</th><th>Conv.</th><th>Revenue</th></tr>'
+        +latest.map(function(r){
+          return '<tr style="border-top:1px solid var(--border-light);">'
+            +'<td style="padding:7px 8px 7px 0;font-weight:600;">'+esc(productName(r.product_id))+'</td>'
+            +'<td style="color:var(--muted);">'+fmtDateShort(r.stat_date)+'</td>'
+            +'<td>'+(r.ad_views==null?'—':r.ad_views)+'</td>'
+            +'<td>'+(r.ad_clicks==null?'—':r.ad_clicks)+'</td>'
+            +'<td>'+fmtPct(pct(r.ad_clicks,r.ad_views))+'</td>'
+            +'<td>'+fmtMoney(r.ad_spend)+'</td>'
+            +'<td>'+(r.visits==null?'—':r.visits)+'</td>'
+            +'<td>'+(r.orders==null?'—':r.orders)+'</td>'
+            +'<td>'+fmtPct(pct(r.orders,r.visits))+'</td>'
+            +'<td>'+fmtMoney(r.revenue)+'</td>'
+          +'</tr>';
+        }).join('')+'</table></div>';
+    }
+  }
+  // ---- full history ----
+  var hist=document.getElementById('etsy-history');
+  if(hist){
+    if(!rows.length){hist.innerHTML='<div style="color:var(--muted);font-style:italic;font-size:12.5px;">No history yet.</div>';}
+    else{
+      hist.innerHTML=rows.map(function(r){
+        var bits=[];
+        if(r.ad_views!=null||r.ad_clicks!=null)bits.push('ads '+(r.ad_views==null?'—':r.ad_views)+' views / '+(r.ad_clicks==null?'—':r.ad_clicks)+' clicks ('+fmtPct(pct(r.ad_clicks,r.ad_views))+')');
+        if(r.ad_spend!=null)bits.push('spend '+fmtMoney(r.ad_spend));
+        if(r.visits!=null)bits.push(r.visits+' visits');
+        if(r.favorites!=null)bits.push(r.favorites+' favs');
+        if(r.orders!=null)bits.push(r.orders+' orders');
+        if(r.revenue!=null)bits.push(fmtMoney(r.revenue));
+        return '<div style="border-top:1px solid var(--border-light);padding:8px 0;cursor:pointer;" onclick="openEtsyEntry(\''+r.id+'\')">'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;">'
+            +'<span style="font-weight:600;font-size:12.5px;">'+esc(productName(r.product_id))+'</span>'
+            +'<span style="font-size:11px;color:var(--muted);">'+fmtDateShort(r.stat_date)+'</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(bits.join(' · ')||'no numbers')+(r.notes?' — '+esc(r.notes):'')+'</div>'
+        +'</div>';
+      }).join('');
+    }
+  }
+  // ---- search rank ----
+  var rk=document.getElementById('etsy-rank-list');
+  if(rk){
+    var rr=(state.etsyRank||[]).slice().sort(function(a,b){return (b.checked_on||'').localeCompare(a.checked_on||'');});
+    if(!rr.length){rk.innerHTML='<div style="color:var(--muted);font-style:italic;font-size:12.5px;">No rank checks logged.</div>';}
+    else{
+      rk.innerHTML=rr.map(function(r){
+        var where=(r.page?'page '+r.page:'')+(r.rank?(r.page?', ':'')+'position '+r.rank:'');
+        return '<div style="border-top:1px solid var(--border-light);padding:7px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;font-size:12.5px;">'
+          +'<span style="font-weight:600;">“'+esc(r.keyword)+'”</span>'
+          +'<span style="color:var(--muted);">'+esc(productName(r.product_id))+'</span>'
+          +'<span style="margin-left:auto;color:var(--muted);font-size:11.5px;">'+esc(where||'—')+' · '+fmtDateShort(r.checked_on)+'</span>'
+        +'</div>';
+      }).join('');
+    }
+  }
+}
+function openEtsyEntry(id){
+  fillProductSelect('etsy-entry-product',true);
+  var r=id?(state.etsyStats||[]).find(function(x){return x.id===id;}):null;
+  document.getElementById('etsy-entry-title').textContent=r?'Edit Entry':'Log Etsy Numbers';
+  document.getElementById('etsy-entry-id').value=r?r.id:'';
+  document.getElementById('etsy-entry-product').value=r?(r.product_id||''):'';
+  document.getElementById('etsy-entry-date').value=r?(r.stat_date||''):todayLocalStr();
+  [['etsy-ad-views','ad_views'],['etsy-ad-clicks','ad_clicks'],['etsy-ad-spend','ad_spend'],
+   ['etsy-visits','visits'],['etsy-favorites','favorites'],['etsy-orders','orders'],['etsy-revenue','revenue']]
+   .forEach(function(p){document.getElementById(p[0]).value=(r&&r[p[1]]!=null)?r[p[1]]:'';});
+  document.getElementById('etsy-entry-notes').value=r?(r.notes||''):'';
+  document.getElementById('etsy-entry-delete').style.display=r?'':'none';
+  document.getElementById('etsy-entry-overlay').classList.add('open');
+}
+function closeEtsyEntry(){document.getElementById('etsy-entry-overlay').classList.remove('open');}
+async function saveEtsyEntry(){
+  var date=document.getElementById('etsy-entry-date').value;
+  if(!date){toast('Pick a date');return;}
+  var row={
+    product_id:document.getElementById('etsy-entry-product').value||null,
+    stat_date:date,
+    ad_views:numOrNull('etsy-ad-views'), ad_clicks:numOrNull('etsy-ad-clicks'), ad_spend:numOrNull('etsy-ad-spend'),
+    visits:numOrNull('etsy-visits'), favorites:numOrNull('etsy-favorites'),
+    orders:numOrNull('etsy-orders'), revenue:numOrNull('etsy-revenue'),
+    notes:document.getElementById('etsy-entry-notes').value.trim()||null
+  };
+  if(!state.etsyStats)state.etsyStats=[];
+  var id=document.getElementById('etsy-entry-id').value;
+  // One row per listing per date. Logging the same day twice edits the
+  // existing row instead of quietly creating a duplicate.
+  if(!id){
+    var dupe=state.etsyStats.find(function(x){return (x.product_id||null)===row.product_id&&x.stat_date===date;});
+    if(dupe)id=dupe.id;
+  }
+  if(id){
+    await sbUpdate(SB_TABLES.etsyStats,id,row);
+    var ex=state.etsyStats.find(function(x){return x.id===id;});
+    if(ex)Object.assign(ex,row);
+  } else {
+    var newId=await sbInsert(SB_TABLES.etsyStats,row);
+    if(newId){row.id=newId;state.etsyStats.push(row);}
+  }
+  saveState();closeEtsyEntry();renderEtsy();toast('Saved ✓');
+}
+async function deleteEtsyEntry(){
+  var id=document.getElementById('etsy-entry-id').value;
+  if(!id)return;
+  if(!await styledConfirm('Delete Entry','Remove this reading?'))return;
+  await sbDelete(SB_TABLES.etsyStats,id);
+  state.etsyStats=(state.etsyStats||[]).filter(function(x){return x.id!==id;});
+  saveState();closeEtsyEntry();renderEtsy();toast('Deleted ✓');
+}
+function openRankEntry(){
+  fillProductSelect('rank-product',false);
+  document.getElementById('rank-keyword').value='';
+  document.getElementById('rank-date').value=todayLocalStr();
+  document.getElementById('rank-page').value='';
+  document.getElementById('rank-rank').value='';
+  document.getElementById('rank-entry-overlay').classList.add('open');
+}
+function closeRankEntry(){document.getElementById('rank-entry-overlay').classList.remove('open');}
+async function saveRankEntry(){
+  var kw=document.getElementById('rank-keyword').value.trim();
+  if(!kw){toast('Enter a search term');return;}
+  var row={
+    product_id:document.getElementById('rank-product').value||null,
+    keyword:kw,
+    checked_on:document.getElementById('rank-date').value||todayLocalStr(),
+    page:numOrNull('rank-page'), rank:numOrNull('rank-rank')
+  };
+  var newId=await sbInsert(SB_TABLES.etsySearchRank,row);
+  if(!state.etsyRank)state.etsyRank=[];
+  if(newId){row.id=newId;state.etsyRank.push(row);}
+  saveState();closeRankEntry();renderEtsy();toast('Saved ✓');
 }
 
 // ===== WEBSITES =====
@@ -3865,7 +4439,7 @@ function saveNewPass(){
   });
   items=seeded.concat(items);
   if(!state.testingPasses)state.testingPasses=[];
-  var pass={id:uid(),label:label,date:new Date().toISOString().slice(0,10),items:items};
+  var pass={id:uid(),label:label,date:todayLocalStr(),items:items};
   state.testingPasses.push(pass);
   _currentPassId=pass.id;
   saveState();closeModal('new-pass-modal');renderTesting();renderDashboard();toast('Testing pass created ✓ (seeded with '+seeded.length+' known-issue checks)');
@@ -3885,11 +4459,11 @@ async function removeTestingPass(){
   state.testingPasses=(state.testingPasses||[]).filter(function(p){return p.id!==pass.id;});
   _currentPassId=null;
   saveState();renderTesting();renderDashboard();toast('Testing pass deleted ✓');
-  if(airtableEnabled()){
+  if(supabaseEnabled()){
     for(var i=0;i<itemAirtableIds.length;i++){
-      await airtableRequest('DELETE','/'+AIRTABLE_TESTING_ITEMS_TABLE+'?records[]='+itemAirtableIds[i],null);
+      await sbDelete(SB_TABLES.testingItems,itemAirtableIds[i]);
     }
-    if(removedAirtableId)await airtableRequest('DELETE','/'+AIRTABLE_PASSES_TABLE+'?records[]='+removedAirtableId,null);
+    if(removedAirtableId)await sbDelete(SB_TABLES.passes,removedAirtableId);
   }
 }
 function toggleTestingItem(itemId){
@@ -4015,6 +4589,8 @@ function renderUploadZone(){
             +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+(p.plannerFileTag?'"'+p.plannerFileTag+'"':'No tag added')+' · '+fmtDateTime(p.plannerFileUploadedAt)+'</div>'
           +'</div>'
           +(p.plannerFilePath?'<button class="btn-ghost" onclick="openPlannerFile(\''+p.id+'\')" style="font-size:11px;">Open</button>':(p.plannerFileUrl?'<a class="btn-ghost" href="'+p.plannerFileUrl+'" target="_blank" rel="noopener" style="font-size:11px;">Open</a>':''))
+          +'<button class="btn-ghost" onclick="editPlannerFileTag(\''+p.id+'\')" style="font-size:11px;" title="Change the note on this file">Edit note</button>'
+          +'<button class="btn-ghost" onclick="removePlannerFile(\''+p.id+'\')" style="font-size:11px;color:#C4553F;" title="Delete this file">Remove</button>'
         +'</div>'
         :'<div style="font-size:12px;color:var(--muted-light);font-style:italic;margin-top:8px;">Nothing uploaded yet</div>')
       +'</div>';
@@ -4138,7 +4714,7 @@ function addHandoff(){
   var related=document.getElementById('ho-related').value.trim();
   if(!title){toast('What\'s needed?');return;}
   if(!state.notes)state.notes=[];
-  var n={id:uid(),text:title,date:new Date().toISOString().slice(0,10),pinned:false,isHandoff:true,handoffType:type,handoffRelatedTo:related,handoffResolved:false,airtableId:null};
+  var n={id:uid(),text:title,date:todayLocalStr(),pinned:false,isHandoff:true,handoffType:type,handoffRelatedTo:related,handoffResolved:false,airtableId:null};
   state.notes.push(n);
   saveState();
   document.getElementById('ho-title').value='';document.getElementById('ho-related').value='';
@@ -5083,7 +5659,7 @@ var SB_COLS={
             'Problem':'problem','Who':'who','Info Tracked':'info_tracked','Pages':'pages',
             'Features Wanted':'features_wanted','Devices':'devices','Examples':'examples'},
   calendar_events:{'Title':'title','Date':'event_date','Notes':'notes','Product':'product_id'},
-  notes:{'Text':'text','Date':'note_date','Pinned':'pinned','Is Handoff':'is_handoff',
+  notes:{'Text':'text','Date':'note_date','Pinned':'pinned','Kind':'kind','Is Handoff':'is_handoff',
             'Handoff Type':'handoff_type','Handoff Related To':'handoff_related_to',
             'Handoff Resolved':'handoff_resolved'},
   websites:{'Label':'label','URL':'url','Category':'category'},
