@@ -202,6 +202,14 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .matrix-table th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:500;}
 .matrix-yes{color:var(--sage-dark);font-weight:600;}
 .matrix-no{color:var(--muted-light);}
+/* This × was 9x11 pixels, sitting next to the name (which renames). On a phone
+   a near-miss renamed the feature instead of deleting it, so it read as "there
+   is no way to delete". 28px on desktop, 44px on touch - the usual minimum. */
+.matrix-x{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;
+  cursor:pointer;color:var(--muted-light);font-weight:400;font-size:15px;line-height:1;border-radius:6px;
+  vertical-align:middle;}
+.matrix-x:hover{background:var(--rose-light);color:var(--rose-dark);}
+@media(max-width:900px){ .matrix-x{min-width:44px;min-height:44px;font-size:17px;} }
 .matrix-view-btn{background:none;border:none;border-radius:6px;padding:6px 12px;font-family:var(--font-sans);font-size:11.5px;font-weight:500;cursor:pointer;color:var(--muted);transition:0.15s;}
 .matrix-view-btn.active{background:var(--warm-white);color:var(--plum);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
 .matrix-scroll-wrap{overflow-x:auto;max-height:560px;}
@@ -654,6 +662,15 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
     <div><div class="page-title">Start Here</div><div class="page-sub">Decisions that don't expire — brand rules, versioning, pricing</div></div>
     <button class="btn-add" style="margin-left:auto;" onclick="openNoteEditor(null,'policy')">+ New Entry</button>
   </div>
+  <div style="border:1px solid var(--border);border-left:3px solid var(--rose);border-radius:8px;padding:10px 13px;margin-bottom:14px;background:var(--ivory);">
+    <div style="font-size:12.5px;line-height:1.55;color:var(--muted);">
+      <b style="color:var(--plum);">If doing it finishes it, it's a task. If only another decision replaces it, it belongs here.</b><br>
+      Entries here don't have to be permanent — they're dated, and a decision can be overruled later
+      by a new one. What they can't be is <i>completed</i>. Anything with a finish line goes elsewhere:
+      a defect is a <b>Bug</b>, a fix other planners still need is a <b>Known Issue</b>,
+      and “this is deliberate, don't change it” about one product is a <b>Decision</b> on that product's page.
+    </div>
+  </div>
   <div id="standing-rules-list"></div>
 </div>
 
@@ -796,6 +813,39 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
   </div>
 </div>
 
+<div class="modal-overlay" id="scan-overlay">
+  <div class="modal-box">
+    <div class="modal-title">What the file actually says</div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px;">Reads <span id="scan-product-name" style="font-weight:600;"></span> and reports what is genuinely in it, rather than what was ticked.</p>
+    <div class="form-field"><label>Read from the live site</label>
+      <input type="text" id="scan-url" placeholder="https://havenkept.com/planners/..."/></div>
+    <button class="btn-ghost" onclick="scanFromUrl()">Fetch from the web</button>
+    <div class="form-field" style="margin-top:14px;"><label>…or choose the file</label>
+      <input type="file" id="scan-file" accept=".html,.htm,text/html" onchange="scanFromFile(this)"/></div>
+    <p style="font-size:11px;color:var(--muted);margin:0;">Reading the live site proves customers have it. Reading a file on your device only proves it is fixed.</p>
+    <div id="scan-result"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeScan()">Cancel</button>
+      <button class="btn-add" onclick="saveScan()">Save Scan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="decision-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="decision-title">Record a Decision</div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px;">Something about this product that is deliberate. A future chat reads these before changing anything here.</p>
+    <input type="hidden" id="decision-id"/>
+    <div class="form-field"><label>The decision</label><textarea id="decision-text" rows="4" placeholder="Guest List badges mix theme-reactive backgrounds with fixed semantic colours on purpose - not a bug."></textarea></div>
+    <div class="form-field"><label>Decided on</label><input type="date" id="decision-date"/></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="decision-delete" onclick="deleteDecision()" style="margin-right:auto;color:var(--muted);display:none;">Delete</button>
+      <button class="btn-ghost" onclick="closeDecision()">Cancel</button>
+      <button class="btn-add" onclick="saveDecision()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="pin-stats-overlay">
   <div class="modal-box">
     <div class="modal-title">How is it doing?</div>
@@ -882,6 +932,39 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeRankEntry()">Cancel</button>
       <button class="btn-add" onclick="saveRankEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- IDEAS -->
+<div id="page-ideas" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Ideas</div><div class="page-sub">Things you might build. Not a to-do list.</div></div>
+    <button class="btn-add" style="margin-left:auto;" onclick="openIdea()">+ New Idea</button>
+  </div>
+  <div style="border:1px solid var(--border);border-left:3px solid var(--rose);border-radius:8px;padding:10px 13px;margin-bottom:14px;background:var(--ivory);">
+    <div style="font-size:12.5px;line-height:1.55;color:var(--muted);">
+      <b style="color:var(--plum);">An idea leaves here by becoming a bug, not by being ticked off.</b><br>
+      When you decide to actually build one, hit <b>Promote</b> — it turns into a real entry on that planner's bug list
+      and stops cluttering this page. Ticking things done here is how Notes turned into a dump zone.
+    </div>
+  </div>
+  <div id="ideas-list"></div>
+</div>
+
+<div class="modal-overlay" id="idea-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="idea-title">New Idea</div>
+    <input type="hidden" id="idea-id"/>
+    <div class="form-field"><label>The idea</label>
+      <textarea id="idea-text" rows="3" placeholder="Comparison page for vendors — side by side"></textarea></div>
+    <div class="form-field"><label>Which planner?</label>
+      <select id="idea-product"><option value="">The whole shop, not one planner</option></select></div>
+    <div class="form-field"><label>Logged on</label><input type="date" id="idea-date"/></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="idea-delete" onclick="deleteIdea()" style="margin-right:auto;color:var(--muted);display:none;">Delete</button>
+      <button class="btn-ghost" onclick="closeIdea()">Cancel</button>
+      <button class="btn-add" onclick="saveIdea()">Save</button>
     </div>
   </div>
 </div>
@@ -1090,13 +1173,14 @@ var ICONS={
   pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   trendUp:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
   eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
-  chevron:'<polyline points="9 18 15 12 9 6"/>'
+  chevron:'<polyline points="9 18 15 12 9 6"/>',
+  sparkle:'<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/>'
 };
 // ---- BUILD STAMP ------------------------------------------------------
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='10';
+var CC_BUILD='16';
 var CC_BUILD_DATE='3 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -1131,6 +1215,7 @@ var NAV_ITEMS=[
   {id:'colors',icon:'droplet',label:'Colors'},
   {id:'etsy',icon:'trendUp',label:'Etsy Metrics'},
   {id:'competitors',icon:'eye',label:'Competitors'},
+  {id:'ideas',icon:'sparkle',label:'Ideas'},
   {id:'sync',icon:'refresh',label:'Data Sync'}
 ];
 // Sidebar grouping. Dashboard sits above the sections and is always visible.
@@ -1141,6 +1226,7 @@ var NAV_SECTIONS=[
   {id:'build',    label:'Build',     items:['products','pipeline','matrix','orders','calendar']},
   {id:'quality',  label:'Quality',   items:['testing','knownissues','handoffs']},
   {id:'growth',   label:'Growth',    items:['etsy','pins','pinstudio','competitors']},
+  {id:'plan',     label:'Planning',  items:['ideas']},
   {id:'reference',label:'Reference', items:['standing-rules','notes','buildlog','websites','colors']},
   {id:'system',   label:'System',    items:['upload','sync']}
 ];
@@ -1680,6 +1766,7 @@ function showPage(id,el){
   if(id==='buildlog')renderBuildLog();
   if(id==='competitors'){renderCompetitors();loadCompetitors();}
   if(id==='etsy'){renderEtsy();loadEtsy();}
+  if(id==='ideas'){renderIdeas();loadIdeas();}
   if(id==='websites')renderWebsites();
   if(id==='testing')renderTesting();
   if(id==='upload')renderUploadZone();
@@ -1689,7 +1776,7 @@ function showPage(id,el){
   if(id==='pinstudio')psRender();
 }
 function initUI(){
-  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderBuildLog();renderBuildStamp();renderCompetitors();renderEtsy();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
+  renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderBuildLog();renderBuildStamp();renderCompetitors();renderEtsy();renderIdeas();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -2067,7 +2154,8 @@ var SB_TABLES={
   knownIssues:'known_issues', knownIssueProducts:'known_issue_products',
   pins:'pinterest_metrics', competitors:'competitors',
   pinStats:'pin_stats', etsyStats:'etsy_stats', etsySearchRank:'etsy_search_rank',
-  colorPalettes:'color_palettes', paletteColors:'palette_colors'
+  colorPalettes:'color_palettes', paletteColors:'palette_colors',
+  decisions:'product_decisions', fileScans:'file_scans', ideas:'ideas'
 };
 
 // Airtable used display names ('Pin Title'); Supabase uses snake_case columns.
@@ -2415,11 +2503,17 @@ async function sbCreateEvent(e){
   return id;
 }
 async function sbCreateNote(n){
+  var kind=noteKind(n);
+  // The database refuses to CREATE a Start Here entry outright - that's the
+  // guard stopping other chats dumping into it. The legitimate route is to
+  // insert a plain note and then promote it, which is what this does.
+  var insertKind=(kind==='policy')?'note':kind;
   var id=await sbInsert(SB_TABLES.notes,{
-    text:n.text||'', note_date:n.date||null, pinned:!!n.pinned, kind:noteKind(n),
+    text:n.text||'', note_date:n.date||null, pinned:!!n.pinned, kind:insertKind,
     is_handoff:!!n.isHandoff, handoff_type:n.handoffType||null,
     handoff_related_to:n.handoffRelatedTo||null, handoff_resolved:!!n.handoffResolved
   });
+  if(id&&kind==='policy'){await sbUpdate(SB_TABLES.notes,id,{kind:'policy'});}
   if(id){n.airtableId=id;saveState();}
   return id;
 }
@@ -3130,6 +3224,9 @@ async function reconcileWithAirtable(manual){
     try{ await loadCompetitors(); }catch(e){console.warn('competitors',e);}
     try{ await loadEtsy(); }catch(e){console.warn('etsy',e);}
     try{ await loadPinStats(); }catch(e){console.warn('pin stats',e);}
+    try{ await loadDecisions(); }catch(e){console.warn('decisions',e);}
+    try{ await loadFileScans(); }catch(e){console.warn('file scans',e);}
+    try{ await loadIdeas(); }catch(e){console.warn('ideas',e);}
     // Refresh the connection reading too. It is a snapshot from page load, and
     // leaving it stale means two boxes on this page disagree after every sync.
     if(typeof sbTestConnection==='function')sbTestConnection();
@@ -3281,6 +3378,19 @@ function renderProductDetail(){
   var contentEl=document.getElementById('product-detail-content');
   if(!p){contentEl.innerHTML='';return;}
 
+  var scanBlockHtml=scanHtml(p);
+  var decs=decisionsForProduct(p);
+  var decisionsHtml=decs.length
+    ? decs.map(function(d){
+        return '<div style="border-top:1px solid var(--border-light);padding:8px 0;display:flex;gap:8px;align-items:flex-start;">'
+          +'<div style="flex:1;min-width:0;font-size:12.5px;line-height:1.5;">'+esc(d.text)
+            +'<div style="font-size:10.5px;color:var(--muted-light);margin-top:3px;">'+fmtDateShort(d.decided_on)+'</div>'
+          +'</div>'
+          +'<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="openDecision(\''+p.id+'\',\''+d.id+'\')">Edit</button>'
+        +'</div>';
+      }).join('')
+    : '<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing recorded yet.</div>';
+
   var steps=state.workflowSteps||[];
   var stepChecklist='<div class="card"><div class="card-title" style="margin-bottom:10px;">Workflow</div>'
     +'<div id="workflow-step-list">'
@@ -3340,6 +3450,15 @@ function renderProductDetail(){
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="card-title">Features Built</div></div>'
       +featuresHtml
       +'<div style="margin-top:10px;display:flex;gap:6px;"><input type="text" id="new-feature-name" placeholder="Add a new feature to track…" style="flex:1;font-size:12px;"/><button class="btn-ghost" onclick="addNewFeature()">+ Add Feature</button></div>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:14px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div class="card-title">What the file actually says</div><button class="btn-ghost" onclick="openScan(\''+p.id+'\')">Scan</button></div>'
+      +scanBlockHtml
+    +'</div>'
+    +'<div class="card" style="margin-bottom:14px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div class="card-title">Decisions</div><button class="btn-ghost" onclick="openDecision(\''+p.id+'\')">+ Add</button></div>'
+      +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">Things that are deliberate. A future chat should read these before "fixing" anything here.</div>'
+      +decisionsHtml
     +'</div>'
     +'<div class="card">'
       +'<div class="card-title" style="margin-bottom:8px;">Etsy Readiness</div>'+etsyHtml
@@ -3636,7 +3755,7 @@ function renderMatrix(){
 function renderMatrixCompact(wrap,products,features){
   var html='<div class="matrix-scroll-wrap"><table class="matrix-table"><thead><tr><th>Product</th>'+features.map(function(f){
     return '<th data-tip="'+(f.description||'Click name to rename')+'"><span style="cursor:pointer;" onclick="editFeatureName(\''+f.id+'\')">'+f.name+'</span> '
-      +'<span onclick="removeFeature(\''+f.id+'\')" data-tip="Remove this feature" style="cursor:pointer;color:var(--muted-light);font-weight:400;">×</span></th>';
+      +'<span class="matrix-x" onclick="removeFeature(\''+f.id+'\')" data-tip="Remove this feature">×</span></th>';
   }).join('')+'<th>% Complete</th></tr></thead><tbody>';
   html+=products.map(function(p){
     var onCount=0;
@@ -3661,7 +3780,7 @@ function renderMatrixAccordion(wrap,products,features){
       return '<div class="acc-feature-row">'
         +'<span class="'+(on?'matrix-yes':'matrix-no')+'" style="cursor:pointer;width:16px;" onclick="toggleProductFeature(\''+p.id+'\',\''+f.id+'\');renderMatrix();" data-tip="'+(on?'Click to remove':'Click to mark as built')+'">'+(on?'✓':'—')+'</span>'
         +'<span style="flex:1;cursor:pointer;" onclick="editFeatureName(\''+f.id+'\')" data-tip="Click to rename">'+f.name+'</span>'
-        +'<span onclick="removeFeature(\''+f.id+'\')" data-tip="Remove this feature" style="cursor:pointer;color:var(--muted-light);font-size:11px;">×</span>'
+        +'<span class="matrix-x" onclick="removeFeature(\''+f.id+'\')" data-tip="Remove this feature">×</span>'
       +'</div>';
     }).join('');
     return '<div class="acc-item'+(isOpen?' open':'')+'" data-prodid="'+p.id+'">'
@@ -4175,6 +4294,371 @@ async function savePinStats(){
     row.id=newId;state.pinStats.push(row);
   }
   saveState();closePinStats();renderPins();toast('Numbers saved ✓');
+}
+
+// =====================================================================
+// PLANNER FILE SCANNER
+// Reads what a planner file ACTUALLY contains instead of trusting a tick.
+//
+// The first version of these detectors was wrong 3 times out of 7 - it
+// reported "no search" on three planners that have search, because it didn't
+// know the name searchBox. So every check records the patterns it looked for
+// and the text it matched. A bare cross would have sent Bailey chasing three
+// problems that don't exist, which is worse than having no scanner at all.
+// =====================================================================
+var SCAN_CHECKS=[
+  {key:'ics_export',  label:'ICS export',
+   patterns:['BEGIN:VCALENDAR','text/calendar','downloadICS','exportToCalendar']},
+  {key:'pdf_export',  label:'PDF export',
+   patterns:['jsPDF','jspdf','window.print()','exportPdf','savePdf']},
+  {key:'pwa_install', label:'PWA install',
+   patterns:['serviceWorker.register','manifest.json','rel="manifest"']},
+  {key:'search',      label:'Search',
+   patterns:['searchBox','globalSearch','searchAll','id="search-','placeholder="Search']},
+  {key:'voice_capture',label:'Voice capture',
+   patterns:['webkitSpeechRecognition','SpeechRecognition','mediaDevices.getUserMedia']},
+  {key:'version_check',label:'Version check',
+   patterns:['PLANNER_VERSION)>0','checkForUpdate','version-check','versionCheck']}
+];
+function scanPlannerText(txt){
+  var out={planner_version:null, build:null, bytes:txt.length, findings:{}};
+  var pv=txt.match(/PLANNER_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  if(pv)out.planner_version=pv[1];
+  // Your files declare INTERNAL_BUILD, not BUILD. A \b word boundary does NOT
+  // match between "L_" and "BUILD" because underscore counts as a word
+  // character, so the obvious regex silently found nothing on all eight files.
+  var bd=txt.match(/(?:^|[^\w$])[A-Z_]*BUILD\s*=\s*['"]([^'"]+)['"]/);
+  if(bd)out.build=bd[1];
+  // The planner carries its own address. This is the one value guaranteed
+  // correct, because if it were wrong the update check would break - which
+  // beats any list kept by hand.
+  var vc=txt.match(/VERSION_CHECK_URL\s*=\s*['"]([^'"]+)['"]/);
+  if(vc){out.version_check_url=vc[1];out.live_url=vc[1].replace(/\.json$/,'.html');}
+  // maximum-scale blocks pinch-zoom on phones. A real accessibility defect,
+  // and invisible unless you go looking for it.
+  var vp=txt.match(/name=["']viewport["']\s+content=["']([^"']+)/);
+  if(vp)out.blocks_pinch_zoom=/maximum-scale/.test(vp[1]);
+  SCAN_CHECKS.forEach(function(c){
+    var matched=c.patterns.filter(function(p){return txt.indexOf(p)!==-1;});
+    out.findings[c.key]={found:matched.length>0, matched:matched, searched:c.patterns};
+  });
+  return out;
+}
+function latestScan(p){
+  var pid=p&&(p.airtableId||p.id);
+  if(!pid)return null;
+  var rows=(state.fileScans||[]).filter(function(s){return s.product_id===pid;})
+    .sort(function(a,b){return (b.scanned_at||'').localeCompare(a.scanned_at||'');});
+  return rows[0]||null;
+}
+async function loadFileScans(){
+  if(!airtableEnabled())return;
+  state.fileScans=await sbListAll(SB_TABLES.fileScans,'*')||[];
+  saveState();
+  if(currentProductId&&typeof renderProductDetail==='function')renderProductDetail();
+}
+function scanHtml(p){
+  var s=latestScan(p);
+  if(!s){
+    return '<div style="font-size:12.5px;color:var(--muted);font-style:italic;">'
+      +'Never scanned. Every tick below is someone\'s belief, not a checked fact.</div>';
+  }
+  var srcLabel=(s.source==='live')
+    ? '<b style="color:var(--plum);">live site</b> — customers have this'
+    : '<b>a file on your device</b> — fixed, but not proof it\'s shipped';
+  var rows=SCAN_CHECKS.map(function(c){
+    var f=(s.findings||{})[c.key]||{};
+    var claimed=!!p[({ics_export:'icsExport',pdf_export:'pdfExport',pwa_install:'pwaInstall',
+                      search:'search',voice_capture:'voiceCapture',version_check:'versionCheck'})[c.key]];
+    var agree=(!!f.found===claimed);
+    var evidence=f.found
+      ? 'found: '+esc((f.matched||[]).slice(0,3).join(', '))
+      : 'not found. searched for: '+esc((f.searched||[]).join(', '));
+    return '<div style="border-top:1px solid var(--border-light);padding:6px 0;font-size:12px;">'
+      +'<div style="display:flex;gap:8px;align-items:baseline;">'
+        +'<span style="min-width:104px;font-weight:'+(agree?'400':'600')+';">'+c.label+'</span>'
+        +'<span style="color:var(--muted);">ticked '+(claimed?'yes':'no')+' · file says '+(f.found?'yes':'no')+'</span>'
+        +(agree?'':'<span style="margin-left:auto;color:var(--rose-dark);font-weight:600;">disagrees</span>')
+      +'</div>'
+      +'<div style="color:var(--muted-light);font-size:10.5px;margin-top:2px;">'+evidence+'</div>'
+    +'</div>';
+  }).join('');
+  var f_=s.findings||{};
+  return (f_._blocks_pinch_zoom?'<div style="border:1px solid var(--rose);border-radius:7px;padding:7px 9px;margin-bottom:8px;font-size:12px;color:var(--rose-dark);"><b>Pinch-zoom is blocked on phones.</b> This file carries maximum-scale, so customers cannot zoom in.</div>':'')
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">'
+      +'Scanned '+fmtDateShort(String(s.scanned_at).slice(0,10))+' from '+srcLabel+'.'
+      +(f_._live_url?'<br>Lives at '+esc(f_._live_url):'')
+      +(s.source_detail?'<br><span style="font-size:10.5px;color:var(--muted-light);">'+esc(s.source_detail)+'</span>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:12.5px;">'
+      +'<span><b>Customer version</b> '+(s.planner_version?esc(s.planner_version):'—')+'</span>'
+      +'<span><b>Internal build</b> '+(s.build?esc(s.build):'—')+'</span>'
+    +'</div>'
+    +rows
+    +'<div style="font-size:10.5px;color:var(--muted-light);margin-top:8px;line-height:1.5;">'
+      +'“Disagrees” can mean the tick is wrong <i>or</i> that this scanner looked for the wrong thing — '
+      +'that happened on 3 of its first 7 findings. The evidence line tells you which.</div>';
+}
+var _scanProductId=null;
+function openScan(productId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});
+  if(!p)return;
+  if(!p.airtableId){toast('Sync this product first');return;}
+  _scanProductId=productId;
+  document.getElementById('scan-product-name').textContent=p.name;
+  document.getElementById('scan-url').value=p.listedUrl&&/havenkept\.com/.test(p.listedUrl)?p.listedUrl:'';
+  document.getElementById('scan-result').innerHTML='';
+  document.getElementById('scan-file').value='';
+  document.getElementById('scan-overlay').classList.add('open');
+}
+function closeScan(){document.getElementById('scan-overlay').classList.remove('open');_scanProductId=null;}
+function showScanPreview(res,srcLabel){
+  document.getElementById('scan-result').innerHTML=
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;">'
+    +'<div style="margin-bottom:6px;color:var(--muted);">Read from '+esc(srcLabel)+' ('+res.bytes.toLocaleString()+' bytes)</div>'
+    +'<div><b>Customer version</b> '+(res.planner_version||'not found')
+    +' &nbsp;·&nbsp; <b>Internal build</b> '+(res.build||'not found')+'</div>'
+    +(res.live_url?'<div style="margin-top:4px;color:var(--muted);">Lives at '+esc(res.live_url)+'</div>':'')
+    +(res.blocks_pinch_zoom?'<div style="margin-top:4px;color:var(--rose-dark);font-weight:600;">Pinch-zoom is blocked on phones (maximum-scale)</div>':'')
+    +'<div style="margin-top:6px;">'+SCAN_CHECKS.map(function(c){
+        var f=res.findings[c.key];
+        return '<span style="display:inline-block;margin:2px 8px 2px 0;">'+c.label+': <b>'+(f.found?'yes':'no')+'</b></span>';
+      }).join('')+'</div></div>';
+}
+var _pendingScan=null;
+async function scanFromUrl(){
+  var url=document.getElementById('scan-url').value.trim();
+  if(!url){toast('Paste the planner\'s address first');return;}
+  toast('Fetching…');
+  try{
+    var res=await fetch(url,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var txt=await res.text();
+    _pendingScan={data:scanPlannerText(txt),source:'live',detail:url};
+    showScanPreview(_pendingScan.data,'the live site');
+  }catch(e){
+    // Almost always the browser refusing a cross-site read, which no amount of
+    // retrying fixes. Say so plainly and point at the path that does work.
+    document.getElementById('scan-result').innerHTML=
+      '<div style="border:1px solid var(--rose);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;">'
+      +'<b>Couldn\'t read it from the web.</b><br>Your site doesn\'t allow this page to read its files directly '
+      +'(that\'s a browser security rule, not something broken). <b>Use “Choose file” below instead</b> — '
+      +'it works the same, it just records the result as a file copy rather than as live.</div>';
+  }
+}
+function scanFromFile(input){
+  var f=input.files&&input.files[0];
+  if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    _pendingScan={data:scanPlannerText(String(rd.result)),source:'file',detail:f.name};
+    showScanPreview(_pendingScan.data,f.name);
+  };
+  rd.readAsText(f);
+}
+async function saveScan(){
+  if(!requireSignedIn())return;
+  if(!_pendingScan){toast('Read a file first');return;}
+  var p=(state.products||[]).find(function(x){return x.id===_scanProductId;});
+  if(!p||!p.airtableId)return;
+  var d=_pendingScan.data;
+  var row={product_id:p.airtableId, source:_pendingScan.source, source_detail:_pendingScan.detail,
+           planner_version:d.planner_version, build:d.build, bytes:d.bytes,
+           findings:Object.assign({},d.findings,{_live_url:d.live_url||null,_blocks_pinch_zoom:!!d.blocks_pinch_zoom})};
+  // The file knows where it lives; record it on the product so no list is kept by hand.
+  if(d.live_url&&p.liveUrl!==d.live_url){
+    try{ await sbUpdate(SB_TABLES.products,p.airtableId,{live_url:d.live_url}); p.liveUrl=d.live_url; }catch(e){}
+  }
+  try{
+    var id=await sbInsert(SB_TABLES.fileScans,row);
+    if(!id){toast('Couldn\'t save — check your connection on Data Sync');return;}
+    row.id=id; row.scanned_at=new Date().toISOString();
+    if(!state.fileScans)state.fileScans=[];
+    state.fileScans.push(row);
+  }catch(e){toast('Couldn\'t save — '+(e&&e.message?e.message:'try again'));return;}
+  _pendingScan=null;
+  saveState();closeScan();renderProductDetail();toast('Scan saved ✓');
+}
+
+// =====================================================================
+// PER-PRODUCT DECISIONS
+// "This is deliberate, don't change it." These used to land in Notes and
+// then Start Here, because products had nowhere to record a ruling.
+// =====================================================================
+async function loadDecisions(){
+  if(!airtableEnabled())return;
+  state.decisions=await sbListAll(SB_TABLES.decisions,'*')||[];
+  saveState();
+  if(currentProductId&&typeof renderProductDetail==='function')renderProductDetail();
+}
+function decisionsForProduct(p){
+  var pid=p&&(p.airtableId||p.id);
+  if(!pid)return [];
+  return (state.decisions||[]).filter(function(d){return d.product_id===pid;})
+    .sort(function(a,b){return (b.decided_on||'').localeCompare(a.decided_on||'');});
+}
+var _decisionProductId=null;
+function openDecision(productId,decisionId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});
+  if(!p)return;
+  if(!p.airtableId){toast('Sync this product first, then record a decision');return;}
+  _decisionProductId=productId;
+  var d=decisionId?(state.decisions||[]).find(function(x){return x.id===decisionId;}):null;
+  document.getElementById('decision-title').textContent=d?'Edit Decision':'Record a Decision';
+  document.getElementById('decision-id').value=d?d.id:'';
+  document.getElementById('decision-text').value=d?d.text:'';
+  document.getElementById('decision-date').value=d?d.decided_on:todayLocalStr();
+  document.getElementById('decision-delete').style.display=d?'':'none';
+  document.getElementById('decision-overlay').classList.add('open');
+}
+function closeDecision(){document.getElementById('decision-overlay').classList.remove('open');_decisionProductId=null;}
+async function saveDecision(){
+  if(!requireSignedIn())return;
+  var p=(state.products||[]).find(function(x){return x.id===_decisionProductId;});
+  if(!p||!p.airtableId)return;
+  var text=document.getElementById('decision-text').value.trim();
+  if(!text){toast('Write the decision first');return;}
+  var row={product_id:p.airtableId,text:text,decided_on:document.getElementById('decision-date').value||todayLocalStr()};
+  if(!state.decisions)state.decisions=[];
+  var id=document.getElementById('decision-id').value;
+  try{
+    if(id){
+      await sbUpdate(SB_TABLES.decisions,id,row);
+      var ex=state.decisions.find(function(x){return x.id===id;});
+      if(ex)Object.assign(ex,row);
+    } else {
+      var newId=await sbInsert(SB_TABLES.decisions,row);
+      if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
+      row.id=newId;state.decisions.push(row);
+    }
+  }catch(e){toast('Couldn\'t save — '+(e&&e.message?e.message:'try again'));return;}
+  saveState();closeDecision();renderProductDetail();toast('Decision recorded ✓');
+}
+async function deleteDecision(){
+  if(!requireSignedIn())return;
+  var id=document.getElementById('decision-id').value;
+  if(!id)return;
+  if(!await styledConfirm('Delete Decision','Remove this decision? A future chat will no longer see it.'))return;
+  await sbDelete(SB_TABLES.decisions,id);
+  state.decisions=(state.decisions||[]).filter(function(x){return x.id!==id;});
+  saveState();closeDecision();renderProductDetail();toast('Deleted ✓');
+}
+
+// =====================================================================
+// IDEAS — the V2 wishlist
+// Deliberately three fields. An idea you can't log in ten seconds doesn't
+// get logged. And an idea leaves by being PROMOTED into a bug, never by
+// being ticked done here — ticking things done is what turned Notes into a
+// dump zone, and it would do the same to this page.
+// =====================================================================
+async function loadIdeas(){
+  if(!airtableEnabled())return;
+  state.ideas=await sbListAll(SB_TABLES.ideas,'*')||[];
+  saveState();renderIdeas();
+}
+function renderIdeas(){
+  var el=document.getElementById('ideas-list');
+  if(!el)return;
+  var rows=(state.ideas||[]).filter(function(i){return i.status==='open';})
+    .sort(function(a,b){return (b.logged_on||'').localeCompare(a.logged_on||'');});
+  var done=(state.ideas||[]).filter(function(i){return i.status!=='open';});
+  if(!rows.length&&!done.length){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No ideas yet. Put the half-formed ones here too — that\'s what it\'s for.</div>';
+    return;
+  }
+  var groups={};
+  rows.forEach(function(i){
+    var k=i.product_id?productName(i.product_id):'The whole shop';
+    (groups[k]=groups[k]||[]).push(i);
+  });
+  var html=Object.keys(groups).sort().map(function(g){
+    return '<div class="card" style="margin-bottom:14px;">'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">'
+        +'<div class="card-title">'+esc(g)+'</div>'
+        +'<span style="font-size:11.5px;color:var(--muted);">'+groups[g].length+(groups[g].length===1?' idea':' ideas')+'</span>'
+      +'</div>'
+      +groups[g].map(function(i){
+        return '<div style="border-top:1px solid var(--border-light);padding:9px 0;display:flex;gap:8px;align-items:flex-start;">'
+          +'<div style="flex:1;min-width:0;cursor:pointer;font-size:12.5px;line-height:1.5;" onclick="openIdea(\''+i.id+'\')">'
+            +esc(i.text)
+            +'<div style="font-size:10.5px;color:var(--muted-light);margin-top:3px;">'+fmtDateShort(i.logged_on)+'</div>'
+          +'</div>'
+          +'<button class="btn-ghost" style="padding:4px 9px;font-size:11px;" onclick="promoteIdea(\''+i.id+'\')" data-tip="Turn this into a real task on that planner\'s bug list">Promote</button>'
+        +'</div>';
+      }).join('')
+    +'</div>';
+  }).join('');
+  if(done.length){
+    html+='<div class="card"><div class="card-title" style="margin-bottom:8px;">Already dealt with</div>'
+      +done.sort(function(a,b){return (b.logged_on||'').localeCompare(a.logged_on||'');}).map(function(i){
+        return '<div style="border-top:1px solid var(--border-light);padding:7px 0;font-size:12px;color:var(--muted);">'
+          +'<b style="color:'+(i.status==='promoted'?'var(--plum)':'var(--muted-light)')+';">'
+          +(i.status==='promoted'?'Promoted':'Dropped')+'</b> · '+esc(i.text)+'</div>';
+      }).join('')+'</div>';
+  }
+  el.innerHTML=html;
+}
+function openIdea(id){
+  fillProductSelect('idea-product',true);
+  var i=id?(state.ideas||[]).find(function(x){return x.id===id;}):null;
+  document.getElementById('idea-title').textContent=i?'Edit Idea':'New Idea';
+  document.getElementById('idea-id').value=i?i.id:'';
+  document.getElementById('idea-text').value=i?i.text:'';
+  document.getElementById('idea-product').value=i?(i.product_id||''):'';
+  document.getElementById('idea-date').value=i?i.logged_on:todayLocalStr();
+  document.getElementById('idea-delete').style.display=i?'':'none';
+  document.getElementById('idea-overlay').classList.add('open');
+}
+function closeIdea(){document.getElementById('idea-overlay').classList.remove('open');}
+async function saveIdea(){
+  if(!requireSignedIn())return;
+  var text=document.getElementById('idea-text').value.trim();
+  if(!text){toast('Write the idea first');return;}
+  var row={text:text, product_id:document.getElementById('idea-product').value||null,
+           logged_on:document.getElementById('idea-date').value||todayLocalStr()};
+  if(!state.ideas)state.ideas=[];
+  var id=document.getElementById('idea-id').value;
+  try{
+    if(id){
+      await sbUpdate(SB_TABLES.ideas,id,row);
+      var ex=state.ideas.find(function(x){return x.id===id;});
+      if(ex)Object.assign(ex,row);
+    } else {
+      row.status='open';
+      var newId=await sbInsert(SB_TABLES.ideas,row);
+      if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
+      row.id=newId;state.ideas.push(row);
+    }
+  }catch(e){toast('Couldn\'t save — '+(e&&e.message?e.message:'try again'));return;}
+  saveState();closeIdea();renderIdeas();toast('Idea saved ✓');
+}
+async function deleteIdea(){
+  if(!requireSignedIn())return;
+  var id=document.getElementById('idea-id').value;
+  if(!id)return;
+  if(!await styledConfirm('Delete Idea','Remove this idea? If you might still want it, use Promote or just leave it.'))return;
+  await sbDelete(SB_TABLES.ideas,id);
+  state.ideas=(state.ideas||[]).filter(function(x){return x.id!==id;});
+  saveState();closeIdea();renderIdeas();toast('Deleted ✓');
+}
+// Promote: the idea becomes a real bug on that planner, and is marked here
+// rather than deleted, so you can still see that you'd had the thought.
+async function promoteIdea(id){
+  if(!requireSignedIn())return;
+  var i=(state.ideas||[]).find(function(x){return x.id===id;});
+  if(!i)return;
+  var where=i.product_id?productName(i.product_id):'the whole shop';
+  if(!await styledConfirm('Build this?','This becomes a real task on '+where+'\'s bug list, and moves out of Ideas.'))return;
+  try{
+    var bugId=await sbInsert(SB_TABLES.bugs,{
+      text:'[FROM IDEAS, logged '+fmtDateShort(i.logged_on)+'] '+i.text,
+      done:false, high_priority:false, product_id:i.product_id||null});
+    if(!bugId){toast('Couldn\'t create the task — check your connection');return;}
+    if(i.product_id){try{await sbInsert(SB_TABLES.bugProducts,{bug_id:bugId,product_id:i.product_id});}catch(e){}}
+    await sbUpdate(SB_TABLES.ideas,id,{status:'promoted',promoted_bug_id:bugId});
+    i.status='promoted'; i.promoted_bug_id=bugId;
+  }catch(e){toast('Couldn\'t promote — '+(e&&e.message?e.message:'try again'));return;}
+  saveState();renderIdeas();toast('Now on the bug list ✓');
 }
 
 // =====================================================================
