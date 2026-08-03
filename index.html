@@ -3174,6 +3174,7 @@ function renderProductDetail(){
       +'<div class="card-title" style="margin-bottom:8px;">Quote & Hero Image</div>'
       +heroImg
       +'<input type="file" accept="image/*" id="hero-upload-input" style="font-size:12px;margin-bottom:8px;" onchange="uploadHeroImage(\''+p.id+'\',this)" data-tip="Uploads to Supabase Storage, max 5MB"/>'
+          +'<div id="hero-upload-error" style="display:none;font-size:12px;color:#C4553F;margin:6px 0 8px;line-height:1.45;"></div>'
       +(p.heroImageUrl?'<button class="btn-ghost" style="font-size:11px;margin-bottom:8px;" onclick="removeHeroImage(\''+p.id+'\')">Remove image</button>':'')
       +'<div class="form-field"><input type="text" value="'+(p.quote||'').replace(/"/g,'&quot;')+'" placeholder="The quote you\'re using" onchange="updateProductField(\''+p.id+'\',\'quote\',this.value)"/></div>'
     +'</div>'
@@ -3296,7 +3297,14 @@ function uploadHeroImage(productId,inputEl){
   (async function(){
     var path=sbStoragePath(p.airtableId,file.name);
     var ok=await sbUploadFile(SB_BUCKET_HERO,path,file,file.type);
-    if(!ok){toast('Upload failed: '+(_sbLastError||'try again'));inputEl.value='';return;}
+    if(!ok){
+      toast('Upload failed: '+(_sbLastError||'try again'));
+      // Toasts disappear before you can read them, so leave the reason on screen.
+      var box=document.getElementById('hero-upload-error');
+      if(box){box.textContent='Upload failed: '+(_sbLastError||'unknown reason');box.style.display='block';}
+      inputEl.value='';return;
+    }
+    var okBox=document.getElementById('hero-upload-error'); if(okBox)okBox.style.display='none';
     p.heroImageUrl=sbPublicUrl(SB_BUCKET_HERO,path);
     p.heroImagePath=path;
     saveState();
@@ -5226,7 +5234,13 @@ async function sbUploadFile(bucket,path,file,contentType){
     });
     if(!res.ok){
       var t=await res.text();
-      _sbLastError='Upload failed: '+res.status+' '+t.slice(0,200);
+      var why=res.status+'';
+      try{ var j=JSON.parse(t); why=(j.message||j.error||j.statusCode||t).toString(); }catch(e){ why=res.status+' '+t.slice(0,160); }
+      // Translate the ones that actually happen into something actionable.
+      if(res.status===413) why='File is too large for the bucket limit';
+      else if(res.status===401||res.status===403) why='Not authorised — try Sign Out then Sign In on the Data Sync page';
+      else if(res.status===400 && /mime|content.type/i.test(t)) why='That file type is not accepted';
+      _sbLastError=why;
       console.error('Storage upload failed',res.status,t);
       return null;
     }
