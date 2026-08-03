@@ -2568,8 +2568,10 @@ async function reconcileWithAirtable(manual){
       if(heroAtt&&heroAtt[0])p.heroImageUrl=heroAtt[0].url;
       var plannerAtt2=rf2[AIRTABLE_FIELDS.plannerFile];
       if(plannerAtt2&&plannerAtt2[0]){
-        p.plannerFileName=plannerAtt2[0].filename||p.plannerFileName;
-        p.plannerFileUrl=plannerAtt2[0].url;
+        // planner_file_url holds a private-bucket PATH now, not a URL.
+        p.plannerFilePath=plannerAtt2[0].url;
+        p.plannerFileUrl='';
+        if(!p.plannerFileName)p.plannerFileName=(plannerAtt2[0].url||'').split('/').pop().replace(/^\d+-/,'');
       }
       if(rf2[AIRTABLE_FIELDS.plannerFileTag]!==undefined)p.plannerFileTag=rf2[AIRTABLE_FIELDS.plannerFileTag];
       if(rf2[AIRTABLE_FIELDS.plannerFileUploadedAt])p.plannerFileUploadedAt=rf2[AIRTABLE_FIELDS.plannerFileUploadedAt];
@@ -2651,7 +2653,8 @@ async function reconcileWithAirtable(manual){
       listedUrl:rf[AIRTABLE_FIELDS.listedUrl]||'',
       heroImageUrl:(heroAttPulled&&heroAttPulled[0])?heroAttPulled[0].url:'',
       plannerFileName:(plannerAttPulled&&plannerAttPulled[0])?plannerAttPulled[0].filename:'',
-      plannerFileUrl:(plannerAttPulled&&plannerAttPulled[0])?plannerAttPulled[0].url:'',
+      plannerFilePath:(plannerAttPulled&&plannerAttPulled[0])?plannerAttPulled[0].url:'',
+      plannerFileUrl:'',
       plannerFileTag:rf[AIRTABLE_FIELDS.plannerFileTag]||'',
       plannerFileUploadedAt:rf[AIRTABLE_FIELDS.plannerFileUploadedAt]||'',
       quote:'',heroNote:'',etsy:{},stepNotes:{},
@@ -2952,8 +2955,19 @@ async function reconcileWithAirtable(manual){
   } else {
     // Report what is actually here now, rather than a token prefix. The repair
     // counts only appear on the sync that had something to fix.
+    // Count DISTINCT bugs, not bug-entries. A bug affecting three planners is
+    // stored under each of them locally, so a naive sum reads much higher than
+    // the number Supabase reports and looks like a duplication problem.
+    var _seenBugs={}, _distinct=0, _entries=0;
+    (state.products||[]).forEach(function(p){
+      (p.bugs||[]).forEach(function(b){
+        _entries++;
+        var k=b.airtableId||('t:'+(b.text||''));
+        if(!_seenBugs[k]){_seenBugs[k]=1;_distinct++;}
+      });
+    });
     var counts=(state.products||[]).length+' products, '
-      +(state.products||[]).reduce(function(n,p){return n+((p.bugs||[]).length);},0)+' bugs, '
+      +_distinct+' bugs'+(_entries!==_distinct?(' ('+_entries+' entries across products)'):'')+', '
       +(state.notes||[]).length+' notes';
     var repaired='';
     if(_repair&&(_repair.remapped||_repair.deduped)){
@@ -3159,7 +3173,7 @@ function renderProductDetail(){
     +'<div class="card" style="margin-bottom:14px;">'
       +'<div class="card-title" style="margin-bottom:8px;">Quote & Hero Image</div>'
       +heroImg
-      +'<input type="file" accept="image/*" id="hero-upload-input" style="font-size:12px;margin-bottom:8px;" onchange="uploadHeroImage(\''+p.id+'\',this)" data-tip="Uploads directly to Airtable, max 5MB"/>'
+      +'<input type="file" accept="image/*" id="hero-upload-input" style="font-size:12px;margin-bottom:8px;" onchange="uploadHeroImage(\''+p.id+'\',this)" data-tip="Uploads to Supabase Storage, max 5MB"/>'
       +(p.heroImageUrl?'<button class="btn-ghost" style="font-size:11px;margin-bottom:8px;" onclick="removeHeroImage(\''+p.id+'\')">Remove image</button>':'')
       +'<div class="form-field"><input type="text" value="'+(p.quote||'').replace(/"/g,'&quot;')+'" placeholder="The quote you\'re using" onchange="updateProductField(\''+p.id+'\',\'quote\',this.value)"/></div>'
     +'</div>'
@@ -3273,19 +3287,25 @@ function toggleBugPriority(productId,bugId){
 function uploadHeroImage(productId,inputEl){
   var file=inputEl.files[0];
   if(!file)return;
-  if(file.size>5*1024*1024){toast('Image is over 5MB, Airtable\'s upload limit');inputEl.value='';return;}
+  if(file.size>5*1024*1024){toast('Image is over 5MB');inputEl.value='';return;}
   var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
-  var reader=new FileReader();
-  reader.onload=function(){
-    var base64=reader.result.split(',')[1];
-    if(!airtableEnabled()||!p.airtableId){toast('Connect Airtable first to upload images');return;}
-    toast('Uploading…');
-    airtableUploadAttachment(p.airtableId,file.name,file.type,base64).then(function(att){
-      if(att&&att.url){p.heroImageUrl=att.url;saveState();renderProductDetail();toast('Image uploaded ✓');}
-      else{toast('Upload failed, try again');}
-    });
-  };
-  reader.readAsDataURL(file);
+  if(!supabaseEnabled()||!p.airtableId){toast('Sign in to Supabase first to upload images');return;}
+  toast('Uploading…');
+  // Straight to Storage, no base64 step. Hero images live in the public bucket
+  // so the URL can be used directly wherever the image is shown.
+  (async function(){
+    var path=sbStoragePath(p.airtableId,file.name);
+    var ok=await sbUploadFile(SB_BUCKET_HERO,path,file,file.type);
+    if(!ok){toast('Upload failed: '+(_sbLastError||'try again'));inputEl.value='';return;}
+    p.heroImageUrl=sbPublicUrl(SB_BUCKET_HERO,path);
+    p.heroImagePath=path;
+    saveState();
+    var f={};f[AIRTABLE_FIELDS.heroImage]=p.heroImageUrl;
+    await sbUpdate(SB_TABLES.products,p.airtableId,{hero_image_url:p.heroImageUrl});
+    renderProductDetail();
+    toast('Image uploaded ✓');
+    inputEl.value='';
+  })();
 }
 function removeHeroImage(productId){
   var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
@@ -3957,7 +3977,7 @@ function uzHandleFileChange(inputEl){
   var file=inputEl.files[0];
   var preview=document.getElementById('uz-file-preview');
   if(!file){preview.style.display='none';return;}
-  if(file.size>5*1024*1024){toast('That file is over 5MB, Airtable\'s upload limit');inputEl.value='';preview.style.display='none';return;}
+  if(file.size>5*1024*1024){toast('That file is over 5MB, the upload limit');inputEl.value='';preview.style.display='none';return;}
   preview.style.display='block';
   preview.textContent=file.name+' ('+Math.round(file.size/1024)+' KB)';
 }
@@ -3986,7 +4006,7 @@ function renderUploadZone(){
             +'<div style="font-size:12.5px;font-weight:500;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+p.plannerFileName+'</div>'
             +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+(p.plannerFileTag?'"'+p.plannerFileTag+'"':'No tag added')+' · '+fmtDateTime(p.plannerFileUploadedAt)+'</div>'
           +'</div>'
-          +(p.plannerFileUrl?'<a class="btn-ghost" href="'+p.plannerFileUrl+'" target="_blank" rel="noopener" style="font-size:11px;">Open</a>':'')
+          +(p.plannerFilePath?'<button class="btn-ghost" onclick="openPlannerFile(\''+p.id+'\')" style="font-size:11px;">Open</button>':(p.plannerFileUrl?'<a class="btn-ghost" href="'+p.plannerFileUrl+'" target="_blank" rel="noopener" style="font-size:11px;">Open</a>':''))
         +'</div>'
         :'<div style="font-size:12px;color:var(--muted-light);font-style:italic;margin-top:8px;">Nothing uploaded yet</div>')
       +'</div>';
@@ -4001,12 +4021,12 @@ async function uzUploadFile(){
 
   if(!productId){toast('Add a product first, then come back to upload its file');return;}
   if(!file){toast('Choose a file first');return;}
-  if(file.size>5*1024*1024){toast('That file is over 5MB, Airtable\'s upload limit');return;}
-  if(!airtableEnabled()){toast('Connect Airtable first (see Airtable Sync page)');return;}
+  if(file.size>5*1024*1024){toast('That file is over 5MB, the upload limit');return;}
+  if(!airtableEnabled()){toast('Sign in to Supabase first (see Data Sync page)');return;}
 
   var p=(state.products||[]).find(function(x){return x.id===productId;});
   if(!p){toast('Could not find that product');return;}
-  if(!p.airtableId){toast('This product hasn\'t synced to Airtable yet — open Airtable Sync to sync it first');return;}
+  if(!p.airtableId){toast('This product hasn\'t synced to Supabase yet — open Data Sync and press Sync Now first');return;}
 
   if(p.plannerFileName){
     var ok=await styledConfirm('Replace existing file?','"'+p.name+'" already has a file on record ('+p.plannerFileName+'). Uploading will replace it — the old version won\'t be kept, since Testing Passes already track what changed.');
@@ -4014,35 +4034,44 @@ async function uzUploadFile(){
   }
 
   statusEl.textContent='Uploading…';
-  var reader=new FileReader();
-  reader.onload=async function(){
-    var base64=reader.result.split(',')[1];
-
-    var beforeRec=await airtableRequest('GET','/'+AIRTABLE_PRODUCTS_TABLE+'/'+p.airtableId,null);
-    var beforeCount=((beforeRec&&beforeRec.fields&&beforeRec.fields[AIRTABLE_FIELDS.plannerFile])||[]).length;
-
-    await airtableUploadAttachment(p.airtableId,file.name,file.type,base64,AIRTABLE_FIELDS.plannerFile);
-    // Don't trust the upload response alone — on a slow connection the POST can succeed
-    // in Airtable while the client fails to read the reply back, which used to report a
-    // false "failed" here. Check the record directly instead, and while we're at it,
-    // collapse the field down to just the newest file in case earlier retries piled up.
-    var afterRec=await airtableRequest('GET','/'+AIRTABLE_PRODUCTS_TABLE+'/'+p.airtableId,null);
-    var afterAtts=(afterRec&&afterRec.fields&&afterRec.fields[AIRTABLE_FIELDS.plannerFile])||[];
-    if(afterAtts.length<=beforeCount){
-      statusEl.textContent='';toast('Upload failed, try again');return;
+  (async function(){
+    // Planner files are the products themselves, so they go to the PRIVATE
+    // bucket. Nothing here is publicly reachable: what gets stored is a path,
+    // and a signed link is minted on demand when Bailey opens the file.
+    var path=sbStoragePath(p.airtableId,file.name);
+    var ok=await sbUploadFile(SB_BUCKET_PLANNER,path,file,file.type||'text/html');
+    if(!ok){
+      statusEl.textContent='';
+      toast('Upload failed: '+(_sbLastError||'try again'));
+      return;
     }
-    var newest=afterAtts[afterAtts.length-1];
-    await airtableReplaceAttachment(p.airtableId,AIRTABLE_FIELDS.plannerFile,newest);
+
+    // Verify by reading it back rather than trusting the response, the same
+    // reason the Airtable version did: a POST can land while the reply is lost,
+    // which used to report a false failure.
+    var check=await sbSignedUrl(SB_BUCKET_PLANNER,path,60);
+    if(!check){
+      statusEl.textContent='';
+      toast('Upload could not be verified, try again');
+      return;
+    }
 
     var uploadedAt=new Date().toISOString();
-    var tagFields={};
-    tagFields[AIRTABLE_FIELDS.plannerFileTag]=tagText;
-    tagFields[AIRTABLE_FIELDS.plannerFileUploadedAt]=uploadedAt;
-    await airtableRequest('PATCH','/'+AIRTABLE_PRODUCTS_TABLE,{records:[{id:p.airtableId,fields:tagFields}]});
+    await sbUpdate(SB_TABLES.products,p.airtableId,{
+      planner_file_url:path,
+      planner_file_tag:tagText,
+      planner_file_uploaded_at:uploadedAt
+    });
 
-    p.plannerFileName=newest.filename||file.name;
+    // Remove the file this one replaces, so old builds do not accumulate.
+    if(p.plannerFilePath&&p.plannerFilePath!==path){
+      await sbDeleteFile(SB_BUCKET_PLANNER,p.plannerFilePath);
+    }
+
+    p.plannerFileName=file.name;
     p.plannerFileTag=tagText;
-    p.plannerFileUrl=newest.url;
+    p.plannerFilePath=path;
+    p.plannerFileUrl='';   // no permanent URL exists for a private object
     p.plannerFileUploadedAt=uploadedAt;
     saveState();
 
@@ -4052,8 +4081,7 @@ async function uzUploadFile(){
     statusEl.textContent='';
     toast('Uploaded ✓');
     renderUploadZone();
-  };
-  reader.readAsDataURL(file);
+  })();
 }
 
 // ===== PENDING HANDOFFS =====
@@ -5161,6 +5189,101 @@ async function airtableSyncProductFeatureLinks(p){
 }
 
 function airtableEnabled(){ return supabaseEnabled(); }
+
+// ---- Supabase Storage (checkpoint 4) --------------------------------
+// Two buckets, deliberately different:
+//   hero-images   PUBLIC  - listing artwork, safe for anyone to fetch
+//   planner-files PRIVATE - the actual products Bailey sells. Never publicly
+//                           readable; reached only via a short-lived signed URL
+//                           minted while she is signed in.
+var SB_STORAGE=SUPABASE_URL+'/storage/v1/';
+var SB_BUCKET_HERO='hero-images';
+var SB_BUCKET_PLANNER='planner-files';
+
+function sbStoragePath(productId,filename){
+  // Keep the original name (it is meaningful to Bailey) but strip anything
+  // that would break a URL, and namespace by product so names cannot collide.
+  var safe=String(filename||'file').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'');
+  return encodeURIComponent(productId||'unfiled')+'/'+Date.now()+'-'+safe;
+}
+
+/* Uploads a File/Blob straight through, no base64 round trip. Airtable needed
+   base64 in a JSON body; Storage takes the raw bytes, which is faster and
+   avoids the ~33% size inflation base64 adds. */
+async function sbUploadFile(bucket,path,file,contentType){
+  var token=await sbEnsureToken();
+  if(!token){_sbLastError=_sbLastError||'Not signed in';return null;}
+  try{
+    var res=await fetch(SB_STORAGE+'object/'+bucket+'/'+path,{
+      method:'POST',
+      headers:{
+        'apikey':SB_PUBLISHABLE_KEY,
+        'Authorization':'Bearer '+token,
+        'Content-Type':contentType||file.type||'application/octet-stream',
+        'x-upsert':'true'
+      },
+      body:file
+    });
+    if(!res.ok){
+      var t=await res.text();
+      _sbLastError='Upload failed: '+res.status+' '+t.slice(0,200);
+      console.error('Storage upload failed',res.status,t);
+      return null;
+    }
+    return path;
+  }catch(e){
+    _sbLastError='Upload error: '+e.message;
+    console.error('Storage upload error',e);
+    return null;
+  }
+}
+
+function sbPublicUrl(bucket,path){
+  return SB_STORAGE+'object/public/'+bucket+'/'+path;
+}
+
+/* Private bucket: mint a URL that works for a limited window. Default an hour,
+   which is plenty to click a download and nowhere near long enough to be worth
+   passing around. */
+async function sbSignedUrl(bucket,path,seconds){
+  var token=await sbEnsureToken();
+  if(!token)return null;
+  try{
+    var res=await fetch(SB_STORAGE+'object/sign/'+bucket+'/'+path,{
+      method:'POST',
+      headers:{'apikey':SB_PUBLISHABLE_KEY,'Authorization':'Bearer '+token,
+               'Content-Type':'application/json'},
+      body:JSON.stringify({expiresIn:seconds||3600})
+    });
+    if(!res.ok){_sbLastError='Could not sign URL: '+res.status;return null;}
+    var d=await res.json();
+    return d&&d.signedURL?(SUPABASE_URL+'/storage/v1'+d.signedURL):null;
+  }catch(e){_sbLastError='Sign error: '+e.message;return null;}
+}
+
+async function sbDeleteFile(bucket,path){
+  var token=await sbEnsureToken();
+  if(!token)return false;
+  try{
+    var res=await fetch(SB_STORAGE+'object/'+bucket+'/'+path,{
+      method:'DELETE',
+      headers:{'apikey':SB_PUBLISHABLE_KEY,'Authorization':'Bearer '+token}
+    });
+    return res.ok;
+  }catch(e){return false;}
+}
+
+/* Opens a planner file. Stored as a bucket path rather than a URL, because a
+   private object has no permanent address -- the link has to be minted each
+   time it is used. */
+async function openPlannerFile(productId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});
+  if(!p||!p.plannerFilePath){toast('No planner file uploaded yet');return;}
+  toast('Preparing download…');
+  var url=await sbSignedUrl(SB_BUCKET_PLANNER,p.plannerFilePath,3600);
+  if(!url){toast('Could not open file: '+(_sbLastError||'unknown'));return;}
+  window.open(url,'_blank');
+}
 
 // ===== BOOTSTRAP =====
 loadState();
