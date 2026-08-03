@@ -87,6 +87,25 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 .nav-section-chevron{display:inline-flex;transition:transform .16s ease;}
 .nav-section-head.open .nav-section-chevron{transform:rotate(90deg);}
 .nav-section-body{display:flex;flex-direction:column;}
+
+/* ===== MOBILE NAV SHEET ===== */
+.mobile-nav-sheet{display:none;position:fixed;inset:0;background:rgba(30,26,22,0.45);z-index:950;align-items:flex-end;}
+.mobile-nav-sheet.open{display:flex;}
+.mobile-nav-panel{background:var(--warm-white);width:100%;max-height:82vh;overflow-y:auto;
+  border-radius:16px 16px 0 0;padding:6px 12px calc(18px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling:touch;}
+.mobile-nav-head{display:flex;align-items:center;gap:8px;padding:12px 6px 8px;position:sticky;top:0;
+  background:var(--warm-white);border-bottom:1px solid var(--border-light);margin-bottom:4px;z-index:1;}
+.mobile-nav-section{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;cursor:pointer;
+  color:var(--muted);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  padding:14px 8px 6px;font-family:inherit;text-align:left;}
+.mobile-nav-section .nav-section-chevron{display:inline-flex;transition:transform .16s ease;}
+.mobile-nav-section.open .nav-section-chevron{transform:rotate(90deg);}
+.mobile-nav-item{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;cursor:pointer;
+  color:var(--plum);font-size:15px;font-family:inherit;text-align:left;padding:13px 10px;border-radius:9px;
+  text-decoration:none;}
+.mobile-nav-item:active{background:var(--rose-light);}
+.mobile-nav-item .nav-icon{display:inline-flex;color:var(--muted);}
 .nav-item{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--sidebar-text);opacity:0.75;padding:11px 12px;border-radius:8px;font-family:var(--font-sans);font-size:13px;cursor:pointer;text-align:left;margin-bottom:2px;transition:0.15s;}
 .nav-item:hover{opacity:1;background:rgba(185,141,122,0.15);}
 .nav-item.active{opacity:1;color:var(--sidebar-text);background:var(--sidebar-active-bg);font-weight:500;}
@@ -256,7 +275,12 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
 .product-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;}
 @media(max-width:900px){
   .sidebar{display:none;}
-  .main{margin-left:0;padding:18px 16px 140px;}
+  /* The page ran ~30px wider than the screen, so everything could be nudged
+     sideways and the left edge of headings/labels sat off-screen. Pre-existing;
+     nothing here scrolls horizontally on purpose except the data bar. */
+  html,body{overflow-x:hidden;max-width:100%;}
+  .main{margin-left:0;padding:18px 16px 140px;width:100%;max-width:100%;min-width:0;overflow-x:hidden;}
+  .page{max-width:100%;}
   .bottom-nav{display:flex;position:fixed;bottom:44px;left:0;right:0;background:var(--warm-white);border-top:1px solid var(--border);z-index:90;overflow-x:auto;}
   .bottom-nav-inner{display:flex;width:100%;}
   .bottom-nav-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:none;border:none;color:var(--muted);font-size:9px;cursor:pointer;}
@@ -293,6 +317,19 @@ label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase
   <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleDarkMode()"></button>
 </nav>
 <nav class="bottom-nav"><div class="bottom-nav-inner" id="bottom-nav-inner"></div></nav>
+
+<div id="mobile-nav-sheet" class="mobile-nav-sheet" onclick="if(event.target===this)closeMobileNav()">
+  <div class="mobile-nav-panel">
+    <div class="mobile-nav-head">
+      <div>
+        <div style="font-family:var(--font-serif);font-size:18px;color:var(--plum);">Go to</div>
+        <div id="mobile-nav-build" style="font-size:10px;color:var(--muted);letter-spacing:.04em;"></div>
+      </div>
+      <button onclick="closeMobileNav()" style="margin-left:auto;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px;">×</button>
+    </div>
+    <div id="mobile-nav-body"></div>
+  </div>
+</div>
 
 <main class="main">
 <div style="display:flex;gap:8px;margin-bottom:16px;position:relative;">
@@ -1039,13 +1076,16 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='8';
+var CC_BUILD='9';
 var CC_BUILD_DATE='3 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
   if(el)el.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
   var el2=document.getElementById('sync-build-stamp');
   if(el2)el2.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
+  // The sidebar is hidden on mobile, so the stamp needs a home there too.
+  var el3=document.getElementById('mobile-nav-build');
+  if(el3)el3.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
 }
 function svgIcon(key,size){
   size=size||17;
@@ -1075,6 +1115,8 @@ var NAV_ITEMS=[
 ];
 // Sidebar grouping. Dashboard sits above the sections and is always visible.
 // The bottom bar on mobile stays flat - collapsible groups don't work there.
+// What stays on the mobile bottom bar. Everything else lives behind More.
+var MOBILE_PRIMARY=['dashboard','products','testing','notes'];
 var NAV_SECTIONS=[
   {id:'build',    label:'Build',     items:['products','pipeline','matrix','orders','calendar']},
   {id:'quality',  label:'Quality',   items:['testing','knownissues','handoffs']},
@@ -1540,11 +1582,57 @@ function buildNav(){
   });
   html+='<a class="nav-item" href="https://havenkept.com/studio.html" target="_blank" rel="noopener"><span class="nav-icon">'+svgIcon('penTool')+'</span><span>Design Studio ↗</span></a>';
   sidebar.innerHTML=html;
-  bottom.innerHTML=NAV_ITEMS.map(function(n){
+  // The bottom bar used to hold all 21 items in a horizontal scroller, so
+  // anything past the sixth was invisible unless you knew to swipe. Now it
+  // carries four you actually reach for, plus More - which opens the same
+  // collapsible sections as the sidebar, sharing their open/closed state.
+  bottom.innerHTML=MOBILE_PRIMARY.map(function(id){
+    var n=byId[id];if(!n)return '';
     var active=n.id==='dashboard'?' active':'';
     return '<button class="bottom-nav-item'+active+'" data-navid="'+n.id+'" onclick="showPage(\''+n.id+'\',this)"><span>'+svgIcon(n.icon)+'</span><span>'+n.label+'</span></button>';
-  }).join('');
+  }).join('')
+  +'<button class="bottom-nav-item" id="mobile-more-btn" onclick="openMobileNav()"><span>'+svgIcon('layers')+'</span><span>More</span></button>';
+  buildMobileNavSheet();
 }
+function buildMobileNavSheet(){
+  var el=document.getElementById('mobile-nav-body');
+  if(!el)return;
+  var byId={};NAV_ITEMS.forEach(function(n){byId[n.id]=n;});
+  if(!state.navOpen)state.navOpen={};
+  var html='<button class="mobile-nav-item" onclick="showPageFromSheet(\'dashboard\')"><span class="nav-icon">'+svgIcon('home')+'</span><span>Dashboard</span></button>';
+  NAV_SECTIONS.forEach(function(sec){
+    var open=state.navOpen[sec.id]!==false;
+    html+='<button class="mobile-nav-section'+(open?' open':'')+'" data-msection="'+sec.id+'" onclick="toggleMobileSection(\''+sec.id+'\')">'
+      +'<span class="nav-section-chevron">'+svgIcon('chevron',12)+'</span><span>'+sec.label+'</span></button>'
+      +'<div data-msection-body="'+sec.id+'"'+(open?'':' style="display:none;"')+'>'
+      +sec.items.map(function(id){
+        var n=byId[id];if(!n)return '';
+        return '<button class="mobile-nav-item" onclick="showPageFromSheet(\''+n.id+'\')"><span class="nav-icon">'+svgIcon(n.icon)+'</span><span>'+n.label+'</span></button>';
+      }).join('')
+      +'</div>';
+  });
+  html+='<a class="mobile-nav-item" href="https://havenkept.com/studio.html" target="_blank" rel="noopener"><span class="nav-icon">'+svgIcon('penTool')+'</span><span>Design Studio ↗</span></a>';
+  el.innerHTML=html;
+}
+function toggleMobileSection(secId){
+  if(!state.navOpen)state.navOpen={};
+  var open=state.navOpen[secId]!==false;
+  state.navOpen[secId]=!open;
+  saveState();
+  var body=document.querySelector('[data-msection-body="'+secId+'"]');
+  var head=document.querySelector('[data-msection="'+secId+'"]');
+  if(body)body.style.display=open?'none':'';
+  if(head)head.classList.toggle('open',!open);
+  // Keep the sidebar in step, so the two never disagree on a tablet that
+  // crosses the breakpoint when rotated.
+  var dBody=document.querySelector('[data-section-body="'+secId+'"]');
+  var dHead=document.querySelector('[data-section="'+secId+'"]');
+  if(dBody)dBody.style.display=open?'none':'';
+  if(dHead)dHead.classList.toggle('open',!open);
+}
+function openMobileNav(){document.getElementById('mobile-nav-sheet').classList.add('open');}
+function closeMobileNav(){document.getElementById('mobile-nav-sheet').classList.remove('open');}
+function showPageFromSheet(id){closeMobileNav();showPage(id,null);}
 function toggleNavSection(secId){
   if(!state.navOpen)state.navOpen={};
   var open=state.navOpen[secId]!==false;
@@ -4041,6 +4129,7 @@ function openPinStats(pinId){
 }
 function closePinStats(){document.getElementById('pin-stats-overlay').classList.remove('open');_pinStatsPinId=null;}
 async function savePinStats(){
+  if(!requireSignedIn())return;
   var p=(state.pins||[]).find(function(x){return x.id===_pinStatsPinId;});
   if(!p||!p.airtableId)return;
   var date=document.getElementById('pin-stats-date').value||todayLocalStr();
@@ -4059,7 +4148,8 @@ async function savePinStats(){
     Object.assign(existing,row);
   } else {
     var newId=await sbInsert(SB_TABLES.pinStats,row);
-    if(newId){row.id=newId;state.pinStats.push(row);}
+    if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
+    row.id=newId;state.pinStats.push(row);
   }
   saveState();closePinStats();renderPins();toast('Numbers saved ✓');
 }
@@ -4149,7 +4239,17 @@ function openCompetitor(id){
 }
 function closeCompetitor(){document.getElementById('competitor-overlay').classList.remove('open');}
 function numOrNull(id){var v=document.getElementById(id).value;return v===''?null:Number(v);}
+// Writes used to run whether or not you were signed in. Signed out, the remote
+// call quietly failed, the row was never added, the modal closed and it still
+// said "Saved ✓" - so typed numbers vanished with a success message. Every save
+// path now refuses up front instead.
+function requireSignedIn(){
+  if(airtableEnabled())return true;
+  toast('Not signed in — open Data Sync and sign in, or this won\'t save');
+  return false;
+}
 async function saveCompetitor(){
+  if(!requireSignedIn())return;
   var seller=document.getElementById('comp-seller').value.trim();
   if(!seller){toast('Enter a seller name');return;}
   var row={
@@ -4173,11 +4273,13 @@ async function saveCompetitor(){
     if(ex)Object.assign(ex,row);
   } else {
     var newId=await sbInsert(SB_TABLES.competitors,row);
-    if(newId){row.id=newId;state.competitors.push(row);}
+    if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
+    row.id=newId;state.competitors.push(row);
   }
   saveState();closeCompetitor();renderCompetitors();toast('Saved ✓');
 }
 async function deleteCompetitor(){
+  if(!requireSignedIn())return;
   var id=document.getElementById('comp-id').value;
   if(!id)return;
   if(!await styledConfirm('Delete Competitor','Remove this competitor? This can\'t be undone.'))return;
@@ -4303,6 +4405,7 @@ function openEtsyEntry(id){
 }
 function closeEtsyEntry(){document.getElementById('etsy-entry-overlay').classList.remove('open');}
 async function saveEtsyEntry(){
+  if(!requireSignedIn())return;
   var date=document.getElementById('etsy-entry-date').value;
   if(!date){toast('Pick a date');return;}
   var row={
@@ -4315,23 +4418,36 @@ async function saveEtsyEntry(){
   };
   if(!state.etsyStats)state.etsyStats=[];
   var id=document.getElementById('etsy-entry-id').value;
-  // One row per listing per date. Logging the same day twice edits the
-  // existing row instead of quietly creating a duplicate.
-  if(!id){
-    var dupe=state.etsyStats.find(function(x){return (x.product_id||null)===row.product_id&&x.stat_date===date;});
-    if(dupe)id=dupe.id;
+  // The database allows only one row per listing per date.
+  var clash=state.etsyStats.find(function(x){
+    return (x.product_id||null)===row.product_id&&x.stat_date===date&&x.id!==id;
+  });
+  if(clash){
+    if(!id){
+      // New entry for a day already logged: edit that day instead of failing.
+      id=clash.id;
+    } else {
+      // Editing an existing row onto a date that's taken. The database would
+      // reject this, so say so rather than looking like it worked.
+      toast('You already logged '+productName(row.product_id)+' on '+fmtDateShort(date));
+      return;
+    }
   }
-  if(id){
-    await sbUpdate(SB_TABLES.etsyStats,id,row);
-    var ex=state.etsyStats.find(function(x){return x.id===id;});
-    if(ex)Object.assign(ex,row);
-  } else {
-    var newId=await sbInsert(SB_TABLES.etsyStats,row);
-    if(newId){row.id=newId;state.etsyStats.push(row);}
-  }
+  try{
+    if(id){
+      await sbUpdate(SB_TABLES.etsyStats,id,row);
+      var ex=state.etsyStats.find(function(x){return x.id===id;});
+      if(ex)Object.assign(ex,row);
+    } else {
+      var newId=await sbInsert(SB_TABLES.etsyStats,row);
+      if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
+      row.id=newId;state.etsyStats.push(row);
+    }
+  }catch(e){toast('Couldn\'t save — '+(e&&e.message?e.message:'try again'));return;}
   saveState();closeEtsyEntry();renderEtsy();toast('Saved ✓');
 }
 async function deleteEtsyEntry(){
+  if(!requireSignedIn())return;
   var id=document.getElementById('etsy-entry-id').value;
   if(!id)return;
   if(!await styledConfirm('Delete Entry','Remove this reading?'))return;
@@ -4349,6 +4465,7 @@ function openRankEntry(){
 }
 function closeRankEntry(){document.getElementById('rank-entry-overlay').classList.remove('open');}
 async function saveRankEntry(){
+  if(!requireSignedIn())return;
   var kw=document.getElementById('rank-keyword').value.trim();
   if(!kw){toast('Enter a search term');return;}
   var row={
@@ -4358,8 +4475,9 @@ async function saveRankEntry(){
     page:numOrNull('rank-page'), rank:numOrNull('rank-rank')
   };
   var newId=await sbInsert(SB_TABLES.etsySearchRank,row);
+  if(!newId){toast('Couldn\'t save — check your connection on Data Sync');return;}
   if(!state.etsyRank)state.etsyRank=[];
-  if(newId){row.id=newId;state.etsyRank.push(row);}
+  row.id=newId;state.etsyRank.push(row);
   saveState();closeRankEntry();renderEtsy();toast('Saved ✓');
 }
 
