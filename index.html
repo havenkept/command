@@ -1138,6 +1138,74 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== ON-SCREEN ERROR CATCHER =====
+// Added 4 Aug 2026 so a JS error on a phone (no dev tools) is still
+// diagnosable from a screenshot. Two parts: (1) a global catch-all for any
+// uncaught error/rejection anywhere in the app, so nothing fails silently;
+// (2) renderProductDetail() below is additionally wrapped in its own
+// try/catch so a bad product/step record shows an error card in the exact
+// spot the missing content would have been, instead of leaving stale or
+// blank content on screen. Deliberately placed first in the script so it's
+// active before anything else below it can throw.
+function showFatalError(msg){
+  try{
+    var box=document.getElementById('fatal-error-banner');
+    if(!box){
+      box=document.createElement('div');
+      box.id='fatal-error-banner';
+      box.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;'
+        +'background:#b05a5a;color:#fff;font-family:monospace;font-size:12px;'
+        +'line-height:1.5;max-height:30vh;overflow:auto;padding:10px 34px 10px 10px;'
+        +'white-space:pre-wrap;word-break:break-word;box-shadow:0 2px 10px rgba(0,0,0,0.3);'
+        +'box-sizing:border-box;';
+      var closeBtn=document.createElement('button');
+      closeBtn.textContent='×';
+      closeBtn.setAttribute('aria-label','Dismiss error');
+      closeBtn.style.cssText='position:absolute;top:6px;right:8px;background:none;border:none;'
+        +'color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;';
+      // The banner is position:fixed so it sits on top of the page instead
+      // of pushing it down naturally -- without this it would silently
+      // cover (not just precede) whatever content is at the top of the
+      // page, including the very error card renderProductDetail puts up.
+      // So we push the page down by the banner's own rendered height, and
+      // undo that when the banner is dismissed.
+      closeBtn.onclick=function(){
+        box.style.display='none';
+        var pushEl=document.body||document.documentElement;
+        if(pushEl)pushEl.style.paddingTop='';
+      };
+      box.appendChild(closeBtn);
+      var log=document.createElement('div');
+      log.id='fatal-error-log';
+      box.appendChild(log);
+      (document.body||document.documentElement).appendChild(box);
+    }
+    box.style.display='block';
+    var logEl=document.getElementById('fatal-error-log');
+    var entry=document.createElement('div');
+    entry.style.cssText='border-top:1px solid rgba(255,255,255,0.3);padding-top:6px;margin-top:6px;';
+    entry.textContent='['+new Date().toLocaleTimeString()+'] '+msg;
+    logEl.insertBefore(entry,logEl.firstChild);
+    var pushEl=document.body||document.documentElement;
+    if(pushEl)pushEl.style.paddingTop=box.offsetHeight+'px';
+  }catch(bannerErr){
+    // If even the error banner fails, fall back to an alert so it's not
+    // completely silent -- this should be effectively unreachable.
+    try{alert('Error (and error banner failed): '+msg);}catch(e2){}
+  }
+}
+window.onerror=function(message,source,lineno,colno,error){
+  var loc=source?(' ('+source.split('/').pop()+':'+lineno+':'+colno+')'):'';
+  showFatalError('Uncaught error: '+message+loc+(error&&error.stack?'\n'+error.stack:''));
+  return false;
+};
+window.addEventListener('unhandledrejection',function(evt){
+  var reason=evt&&evt.reason;
+  var msg=reason&&reason.message?reason.message:String(reason);
+  var stack=reason&&reason.stack?'\n'+reason.stack:'';
+  showFatalError('Unhandled promise rejection: '+msg+stack);
+});
+
 // ===== CONSTANTS =====
 // This is only a bootstrap fallback for a device that has never reached
 // Supabase yet (e.g. first load, offline). Once sbPullWorkflowSteps() runs,
@@ -1202,7 +1270,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='18';
+var CC_BUILD='19';
 var CC_BUILD_DATE='4 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -3487,6 +3555,23 @@ function openProduct(id){
   renderProductDetail();
 }
 function renderProductDetail(){
+  try{
+    renderProductDetailImpl();
+  }catch(err){
+    var msg=(err&&err.message)?err.message:String(err);
+    var stack=(err&&err.stack)?'\n'+err.stack:'';
+    showFatalError('renderProductDetail failed: '+msg+stack);
+    var contentEl=document.getElementById('product-detail-content');
+    if(contentEl){
+      contentEl.innerHTML='<div class="card" style="border:2px solid #b05a5a;">'
+        +'<div class="card-title" style="color:#b05a5a;">Something broke rendering this product</div>'
+        +'<div style="font-size:12px;margin-top:6px;">'+esc(msg)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Screenshot this card plus the red banner at the top of the screen and send it back — that has the full detail.</div>'
+        +'</div>';
+    }
+  }
+}
+function renderProductDetailImpl(){
   var p=(state.products||[]).find(function(x){return x.id===currentProductId;});
   var contentEl=document.getElementById('product-detail-content');
   if(!p){contentEl.innerHTML='';return;}
