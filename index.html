@@ -1270,7 +1270,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='19';
+var CC_BUILD='20';
 var CC_BUILD_DATE='4 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -1604,7 +1604,7 @@ function runGlobalSearch(q){
   else{
     resultsEl.innerHTML=results.slice(0,15).map(function(r){
       return '<div style="padding:9px 14px;border-bottom:1px solid var(--border-light);cursor:pointer;font-size:12.5px;" onclick="'+r.action+';document.getElementById(\'global-search-results\').style.display=\'none\';document.getElementById(\'global-search-input\').value=\'\';">'
-        +'<span style="color:var(--rose-dark);font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;">'+r.type+'</span><br>'+r.label
+        +'<span style="color:var(--rose-dark);font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;">'+esc(r.type)+'</span><br>'+esc(r.label)
       +'</div>';
     }).join('');
   }
@@ -2051,7 +2051,7 @@ function renderDashboard(){
 
   var hpEl=document.getElementById('dash-high-priority');
   if(!highPriorityBugs.length){hpEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing flagged high priority right now.</div>';}
-  else{hpEl.innerHTML=highPriorityBugs.map(function(b){return '<div class="dash-clamp" style="padding:5px 0;font-size:12.5px;cursor:pointer;" onclick="openProduct(\''+b.productId+'\')"><span style="color:var(--rose-dark);font-weight:600;">'+b.product+':</span> '+b.text+'</div>';}).join('');}
+  else{hpEl.innerHTML=highPriorityBugs.map(function(b){return '<div class="dash-clamp" style="padding:5px 0;font-size:12.5px;cursor:pointer;" onclick="openProduct(\''+b.productId+'\')"><span style="color:var(--rose-dark);font-weight:600;">'+esc(b.product)+':</span> '+esc(b.text)+'</div>';}).join('');}
 
   var inProgEl=document.getElementById('dash-in-progress');
   if(!active.length){inProgEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing in development. Add a product to get started.</div>';}
@@ -2132,7 +2132,7 @@ function renderDashboardNextActions(highPriorityBugs){
   el.innerHTML=actions.map(function(a,i){
     return '<div style="display:flex;gap:10px;padding:8px 0;'+(i>0?'border-top:1px solid var(--border-light);':'')+'cursor:pointer;" onclick="'+a.onclick+'">'
       +'<div style="width:20px;height:20px;border-radius:50%;background:var(--plum);color:var(--ivory);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0;">'+(i+1)+'</div>'
-      +'<div><div style="font-size:12.5px;font-weight:500;">'+a.title+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+a.meta+'</div></div>'
+      +'<div><div style="font-size:12.5px;font-weight:500;">'+esc(a.title)+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">'+esc(a.meta)+'</div></div>'
     +'</div>';
   }).join('');
 }
@@ -3661,7 +3661,7 @@ function renderProductDetailImpl(){
   var bugsHtml=(p.bugs||[]).map(function(b){
     return '<div class="bug-item'+(b.done?' done':'')+'"><input type="checkbox" '+(b.done?'checked':'')+' onchange="toggleBug(\''+p.id+'\',\''+b.id+'\')" style="width:auto;"/>'
       +'<button onclick="toggleBugPriority(\''+p.id+'\',\''+b.id+'\')" data-tip="'+(b.priority?'Unflag high priority':'Flag as high priority')+'" style="background:none;border:none;cursor:pointer;color:'+(b.priority?'var(--rose-dark)':'var(--muted-light)')+';font-size:13px;">⚑</button>'
-      +'<span style="flex:1;">'+b.text+'</span><button onclick="removeBug(\''+p.id+'\',\''+b.id+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;">×</button></div>';
+      +'<span style="flex:1;">'+esc(b.text)+'</span><button onclick="removeBug(\''+p.id+'\',\''+b.id+'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;">×</button></div>';
   }).join('')||'<div style="font-size:12px;color:var(--muted);font-style:italic;">No bugs logged.</div>';
 
   var heroImg=p.heroImageUrl?'<img src="'+p.heroImageUrl+'" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:180px;object-fit:cover;"/>':'';
