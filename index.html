@@ -1139,11 +1139,29 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 
 <script>
 // ===== CONSTANTS =====
+// This is only a bootstrap fallback for a device that has never reached
+// Supabase yet (e.g. first load, offline). Once sbPullWorkflowSteps() runs,
+// the workflow_steps table is the real source of truth -- see BOOTSTRAP at
+// the bottom of this file. Ids are kept identical to the ones already baked
+// into every product's completed_steps (wf12 "Run Through ChatGPT" was
+// dropped 4 Aug 2026, so wf13-wf16 keep their original ids with a gap).
 var DEFAULT_WORKFLOW_STEPS=[
-  'Research & Brainstorm','Decide Features','Gather Quote & Hero Image','First Build',
-  'Input Info & Stock Images','Testing 1','Second Build','Testing 2',
-  'Deep Dive by Claude','Final Testing','Build Demo','Generate Hero & Listing Photos',
-  'Run Through ChatGPT','Claude: Etsy Listing Copy','Search Best Tags','Enter Listing','Publish'
+  {id:'wf0',label:'Research & Brainstorm'},
+  {id:'wf1',label:'Decide Features'},
+  {id:'wf2',label:'Gather Quote & Hero Image'},
+  {id:'wf3',label:'First Build'},
+  {id:'wf4',label:'Input Info & Stock Images'},
+  {id:'wf5',label:'Testing 1'},
+  {id:'wf6',label:'Second Build'},
+  {id:'wf7',label:'Testing 2'},
+  {id:'wf8',label:'Deep Dive by Claude'},
+  {id:'wf9',label:'Final Testing'},
+  {id:'wf10',label:'Build Demo'},
+  {id:'wf11',label:'Generate Hero & Listing Photos'},
+  {id:'wf13',label:'Claude: Etsy Listing Copy'},
+  {id:'wf14',label:'Search Best Tags'},
+  {id:'wf15',label:'Enter Listing'},
+  {id:'wf16',label:'Publish'}
 ];
 var ICONS={
   tool:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
@@ -1180,8 +1198,8 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='16';
-var CC_BUILD_DATE='3 Aug 2026';
+var CC_BUILD='17';
+var CC_BUILD_DATE='4 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
   if(el)el.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
@@ -1263,7 +1281,7 @@ function loadState(){
   if(!state.testingPrompts)state.testingPrompts=DEFAULT_TESTING.map(function(t){return {text:t,done:false};});
   if(!state.testingPasses)state.testingPasses=[];
   if(!state.features)state.features=DEFAULT_FEATURES.map(function(f){return {id:uid(),name:f,description:''};});
-  if(!state.workflowSteps)state.workflowSteps=DEFAULT_WORKFLOW_STEPS.map(function(label,i){return {id:'wf'+i,label:label};});
+  if(!state.workflowSteps)state.workflowSteps=DEFAULT_WORKFLOW_STEPS.map(function(s){return {id:s.id,label:s.label};});
   if(!state.colorPalettes){
     var grouped={},order=[];
     DEFAULT_COLOR_LIBRARY.forEach(function(c){
@@ -1290,6 +1308,7 @@ function loadState(){
       });
     }
     if(!p.featureIds)p.featureIds=[];
+    if(!p.grandfatherOverrides)p.grandfatherOverrides=[];
     if(p.bugs)p.bugs.forEach(function(b){if(!b.id)b.id=uid();});
   });
 }
@@ -2104,6 +2123,7 @@ function fmtDateShort(iso){
 // ===== AIRTABLE SYNC =====
 var AIRTABLE_FIELDS={
   name:'Name', brand:'Brand', listedUrl:'Listed URL', heroImage:'Hero Image', completedSteps:'Completed Steps',
+  launchedAt:'Launched At', grandfatherOverrides:'Grandfather Overrides',
   bugText:'Text', bugDone:'Done', bugProduct:'Product', bugPriority:'High Priority',
   featureName:'Feature Name', featureDesc:'Description', featureProducts:'Products',
   plannerFile:'Planner File', plannerFileTag:'Planner File Tag', plannerFileUploadedAt:'Planner File Uploaded At',
@@ -2155,13 +2175,15 @@ var SB_TABLES={
   pins:'pinterest_metrics', competitors:'competitors',
   pinStats:'pin_stats', etsyStats:'etsy_stats', etsySearchRank:'etsy_search_rank',
   colorPalettes:'color_palettes', paletteColors:'palette_colors',
-  decisions:'product_decisions', fileScans:'file_scans', ideas:'ideas'
+  decisions:'product_decisions', fileScans:'file_scans', ideas:'ideas',
+  workflowSteps:'workflow_steps'
 };
 
 // Airtable used display names ('Pin Title'); Supabase uses snake_case columns.
 var SB_FIELDS={
   name:'name', brand:'brand', listedUrl:'listed_url', heroImage:'hero_image_url',
   completedSteps:'completed_steps', currentStep:'current_step',
+  launchedAt:'launched_at', grandfatherOverrides:'grandfather_overrides',
   plannerFile:'planner_file_url', plannerFileTag:'planner_file_tag',
   plannerFileUploadedAt:'planner_file_uploaded_at', stageEnteredAt:'stage_entered_at',
   bugText:'text', bugDone:'done', bugProduct:'product_id', bugPriority:'high_priority',
@@ -2306,6 +2328,46 @@ async function sbListAll(table,select){
   return all;
 }
 
+// ---- workflow_steps: separate, deliberately simple sync path -------------
+// Added 4 Aug 2026. Unlike the other tables, this one doesn't go through the
+// Airtable-shaped reconcile() adapter -- there's no fuzzy name-matching to
+// do, just a small flat list keyed by stable ids. workflow_steps is the
+// source of truth; state.workflowSteps is a local cache of it. Auto-pulled
+// on every app load (see BOOTSTRAP) because it's one small table (~16-20
+// rows) and a stale local copy silently breaks grandfathering everywhere.
+// Everything else stays manual-only (Sync Now) per the 31 Jul decision.
+async function sbPullWorkflowSteps(){
+  if(!supabaseEnabled())return;
+  var rows=await sbListAll(SB_TABLES.workflowSteps,'id,label,position,created_at');
+  if(!rows||!rows.length)return; // don't blow away local steps on a failed/empty fetch
+  rows.sort(function(a,b){return a.position-b.position;});
+  state.workflowSteps=rows.map(function(r){return {id:r.id,label:r.label,createdAt:r.created_at||null};});
+  saveState();
+  renderProducts();
+  renderDashboard();
+  if(currentProductId)renderProductDetail();
+  if(typeof renderPipelineBoard==='function')renderPipelineBoard();
+}
+async function sbCreateWorkflowStep(step,position){
+  if(!supabaseEnabled())return null;
+  return await sbInsert(SB_TABLES.workflowSteps,{id:step.id,label:step.label,position:position,created_at:step.createdAt||null});
+}
+async function sbUpdateWorkflowStepRow(stepId,fields){
+  if(!supabaseEnabled())return null;
+  return await sbUpdate(SB_TABLES.workflowSteps,stepId,fields);
+}
+async function sbDeleteWorkflowStep(stepId){
+  if(!supabaseEnabled())return null;
+  return await sbDelete(SB_TABLES.workflowSteps,stepId);
+}
+async function sbSaveWorkflowStepPositions(){
+  if(!supabaseEnabled())return;
+  var steps=state.workflowSteps||[];
+  for(var i=0;i<steps.length;i++){
+    await sbUpdate(SB_TABLES.workflowSteps,steps[i].id,{position:i});
+  }
+}
+
 
 function renderSbAuthUI(){
   var outEl=document.getElementById('sb-signed-out');
@@ -2367,6 +2429,10 @@ function sbAsAirtable(table,row){
       f['Name']=row.name; f['Brand']=row.brand; f['Listed URL']=row.listed_url;
       // Airtable stored this as a comma string; Supabase uses a text[].
       f['Completed Steps']=(row.completed_steps||[]).join(',');
+      // Both new (4 Aug 2026, grandfathering). Not an Airtable-era field, so
+      // no comma-string translation -- passed through as-is (timestamp / array).
+      f['Launched At']=row.launched_at;
+      f['Grandfather Overrides']=row.grandfather_overrides||[];
       f['Hero Image']=_att(row.hero_image_url);
       f['Planner File']=_att(row.planner_file_url,row.planner_file_tag);
       f['Planner File Tag']=row.planner_file_tag;
@@ -2804,6 +2870,8 @@ async function reconcileWithAirtable(manual){
       if(rf2[AIRTABLE_FIELDS.completedSteps]!==undefined){
         p.completedSteps=String(rf2[AIRTABLE_FIELDS.completedSteps]||'').split(',').filter(function(s){return s!=='';});
       }
+      if(rf2[AIRTABLE_FIELDS.launchedAt]!==undefined)p.launchedAt=rf2[AIRTABLE_FIELDS.launchedAt]||p.launchedAt||null;
+      if(rf2[AIRTABLE_FIELDS.grandfatherOverrides]!==undefined)p.grandfatherOverrides=rf2[AIRTABLE_FIELDS.grandfatherOverrides]||[];
       var heroAtt=rf2[AIRTABLE_FIELDS.heroImage];
       if(heroAtt&&heroAtt[0])p.heroImageUrl=heroAtt[0].url;
       var plannerAtt2=rf2[AIRTABLE_FIELDS.plannerFile];
@@ -2891,6 +2959,8 @@ async function reconcileWithAirtable(manual){
       brand:rf[AIRTABLE_FIELDS.brand]||'HavenKept',
       completedSteps:String(rf[AIRTABLE_FIELDS.completedSteps]||'').split(',').filter(function(s){return s!=='';}),
       listedUrl:rf[AIRTABLE_FIELDS.listedUrl]||'',
+      launchedAt:rf[AIRTABLE_FIELDS.launchedAt]||null,
+      grandfatherOverrides:rf[AIRTABLE_FIELDS.grandfatherOverrides]||[],
       heroImageUrl:(heroAttPulled&&heroAttPulled[0])?heroAttPulled[0].url:'',
       plannerFileName:(plannerAttPulled&&plannerAttPulled[0])?plannerAttPulled[0].filename:'',
       plannerFilePath:(plannerAttPulled&&plannerAttPulled[0])?plannerAttPulled[0].url:'',
@@ -3238,7 +3308,7 @@ function openAddProductModal(){document.getElementById('add-product-modal').clas
 function saveNewProduct(){
   var name=document.getElementById('np-name').value.trim();
   if(!name){toast('Please enter a product name');return;}
-  var newProduct={id:'p'+Date.now(),name:name,brand:'HavenKept',completedSteps:[],quote:'',heroNote:'',heroImageUrl:'',bugs:[],features:{},etsy:{},listedUrl:'',stepNotes:{},airtableId:null,stageEnteredAt:new Date().toISOString()};
+  var newProduct={id:'p'+Date.now(),name:name,brand:'HavenKept',completedSteps:[],quote:'',heroNote:'',heroImageUrl:'',bugs:[],features:{},etsy:{},listedUrl:'',stepNotes:{},airtableId:null,stageEnteredAt:new Date().toISOString(),launchedAt:null,grandfatherOverrides:[]};
   state.products.push(newProduct);
   document.getElementById('np-name').value='';
   saveState();closeModal('add-product-modal');renderProducts();renderDashboard();toast('Product added ✓');
@@ -3254,17 +3324,42 @@ function progressColor(pct){
   var b=Math.round(from[2]+(to[2]-from[2])*t);
   return 'rgb('+r+','+g+','+b+')';
 }
+// ---- Grandfathering (added 4 Aug 2026) ------------------------------------
+// A step added to the workflow after a product already launched shouldn't
+// retroactively make that product incomplete or un-publish it. See the
+// migration comment on workflow_steps.created_at / products.launched_at for
+// the full rule. isStepGrandfathered is the one place that rule is decided;
+// pctComplete/isProductLive/currentStep* and the checklist UI all call
+// through it so the logic can't drift out of sync between them.
+function isStepGrandfathered(step,p){
+  if(!step.createdAt||!p.launchedAt)return false; // original step, or product never launched -- always required
+  if(new Date(step.createdAt)<=new Date(p.launchedAt))return false; // step existed before launch
+  if((p.grandfatherOverrides||[]).indexOf(step.id)!==-1)return false; // manually re-required
+  return true;
+}
+// Steps that actually count toward this product's completion: every step
+// minus whatever's grandfathered for it.
+function applicableWorkflowSteps(p){
+  return (state.workflowSteps||[]).filter(function(s){return !isStepGrandfathered(s,p);});
+}
 function pctComplete(p){
-  var steps=state.workflowSteps||[];
-  var done=(p.completedSteps||[]).length;
-  return steps.length?Math.round((done/steps.length)*100):0;
+  var steps=applicableWorkflowSteps(p);
+  if(!steps.length)return 0;
+  var doneSet=p.completedSteps||[];
+  // Counts only steps that still exist, not the raw length of completedSteps --
+  // a completedSteps array can carry stale ids for removed steps, which used
+  // to inflate this past 100%.
+  var done=steps.filter(function(s){return doneSet.indexOf(s.id)!==-1;}).length;
+  return Math.round((done/steps.length)*100);
 }
 function isProductLive(p){
-  var steps=state.workflowSteps||[];
-  return steps.length>0&&(p.completedSteps||[]).length>=steps.length;
+  var steps=applicableWorkflowSteps(p);
+  if(!steps.length)return false;
+  var doneSet=p.completedSteps||[];
+  return steps.every(function(s){return doneSet.indexOf(s.id)!==-1;});
 }
 function currentStepLabel(p){
-  var steps=state.workflowSteps||[];
+  var steps=applicableWorkflowSteps(p);
   var done=p.completedSteps||[];
   for(var i=0;i<steps.length;i++){
     if(done.indexOf(steps[i].id)===-1)return steps[i].label;
@@ -3272,7 +3367,7 @@ function currentStepLabel(p){
   return 'All steps complete';
 }
 function currentStepId(p){
-  var steps=state.workflowSteps||[];
+  var steps=applicableWorkflowSteps(p);
   var done=p.completedSteps||[];
   for(var i=0;i<steps.length;i++){
     if(done.indexOf(steps[i].id)===-1)return steps[i].id;
@@ -3396,16 +3491,31 @@ function renderProductDetail(){
     +'<div id="workflow-step-list">'
     +steps.map(function(s){
       var done=(p.completedSteps||[]).indexOf(s.id)!==-1;
-      return '<div class="workflow-step-row" draggable="true" data-step-id="'+s.id+'" ondragstart="stepDragStart(event,\''+s.id+'\')" ondragover="stepDragOver(event)" ondragleave="stepDragLeave(event)" ondrop="stepDrop(event,\''+s.id+'\')" ondragend="this.style.opacity=\'1\';" style="display:flex;align-items:flex-start;gap:6px;padding:6px 4px;font-size:12.5px;border-radius:6px;">'
+      var gf=isStepGrandfathered(s,p);
+      // Added after this product launched, but manually toggled back to required.
+      var overridden=!gf&&s.createdAt&&p.launchedAt&&new Date(s.createdAt)>new Date(p.launchedAt);
+      var rowStyle='display:flex;align-items:flex-start;gap:6px;padding:6px 4px;font-size:12.5px;border-radius:6px;'+(gf?'opacity:0.6;':'');
+      var checkboxHtml=gf
+        ? '<span style="width:16px;height:16px;margin-top:2px;flex:0 0 16px;border:1px dashed var(--muted-light);border-radius:4px;display:inline-block;" data-tip="N/A — does not count toward completion"></span>'
+        : '<input type="checkbox" style="width:auto;margin-top:2px;" '+(done?'checked':'')+' onchange="toggleWorkflowStep(\''+p.id+'\',\''+s.id+'\')"/>';
+      var labelHtml='<span style="flex:1;cursor:pointer;'+(gf?'color:var(--muted);':(done?'color:var(--muted);text-decoration:line-through;':''))+'" onclick="editWorkflowStep(\''+s.id+'\')">'+s.label+'</span>';
+      var badgeHtml=gf
+        ? ('<span style="font-size:10px;color:var(--muted);background:var(--ivory-dark);border-radius:20px;padding:2px 7px;white-space:nowrap;" data-tip="Added after this product launched — does not count against completion">N/A · added after launch</span>'
+          +'<span onclick="toggleGrandfatherOverride(\''+p.id+'\',\''+s.id+'\')" data-tip="Require this step for this product anyway" style="font-size:10.5px;color:var(--rose-dark);text-decoration:underline;cursor:pointer;white-space:nowrap;">still require</span>')
+        : (overridden
+          ? '<span onclick="toggleGrandfatherOverride(\''+p.id+'\',\''+s.id+'\')" data-tip="Added after launch — click to go back to N/A" style="font-size:10px;color:var(--rose-dark);background:var(--rose-light);border-radius:20px;padding:2px 7px;white-space:nowrap;cursor:pointer;">manually required</span>'
+          : '');
+      return '<div class="workflow-step-row" draggable="true" data-step-id="'+s.id+'" ondragstart="stepDragStart(event,\''+s.id+'\')" ondragover="stepDragOver(event)" ondragleave="stepDragLeave(event)" ondrop="stepDrop(event,\''+s.id+'\')" ondragend="this.style.opacity=\'1\';" style="'+rowStyle+'">'
         +'<span style="cursor:grab;color:var(--muted-light);font-size:13px;margin-top:1px;user-select:none;" data-tip="Drag to reorder">⠿</span>'
-        +'<input type="checkbox" style="width:auto;margin-top:2px;" '+(done?'checked':'')+' onchange="toggleWorkflowStep(\''+p.id+'\',\''+s.id+'\')"/>'
-        +'<span style="flex:1;cursor:pointer;'+(done?'color:var(--muted);text-decoration:line-through;':'')+'" onclick="editWorkflowStep(\''+s.id+'\')">'+s.label+'</span>'
+        +checkboxHtml
+        +labelHtml
+        +badgeHtml
         +'<span onclick="removeWorkflowStep(\''+s.id+'\')" data-tip="Remove step" style="cursor:pointer;color:var(--muted-light);font-size:13px;">×</span>'
       +'</div>';
     }).join('')
     +'</div>'
     +'<div style="display:flex;gap:6px;margin-top:10px;"><input type="text" id="new-workflow-step" placeholder="Add a step…" style="flex:1;font-size:12px;"/><button class="btn-ghost" onclick="addWorkflowStep()">+ Add</button></div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:8px;">'+pctComplete(p)+'% complete</div></div>';
+    +'<div style="font-size:11px;color:var(--muted);margin-top:8px;">'+pctComplete(p)+'% complete'+(p.launchedAt?' · launched '+fmtDateShort((p.launchedAt||'').slice(0,10)):'')+'</div></div>';
 
   var features=state.features||[];
   var featuresHtml=features.map(function(f){
@@ -3473,12 +3583,24 @@ function toggleWorkflowStep(id,stepId){
   if(!p.completedSteps)p.completedSteps=[];
   var prevStepLabel=currentStepLabel(p);
   var pos=p.completedSteps.indexOf(stepId);
-  if(pos===-1)p.completedSteps.push(stepId);else p.completedSteps.splice(pos,1);
+  var justCompleted=pos===-1;
+  if(justCompleted)p.completedSteps.push(stepId);else p.completedSteps.splice(pos,1);
   if(currentStepLabel(p)!==prevStepLabel)p.stageEnteredAt=new Date().toISOString();
+  // Stamp launched_at the first time Publish is ticked, and never again.
+  // Grandfathering measures every future step's created_at against this.
+  var justLaunched=false;
+  if(justCompleted&&!p.launchedAt){
+    var step=(state.workflowSteps||[]).find(function(s){return s.id===stepId;});
+    if(step&&(step.id==='wf16'||/^publish$/i.test(step.label||''))){
+      p.launchedAt=new Date().toISOString();
+      justLaunched=true;
+    }
+  }
   saveState();renderProductDetail();renderProducts();renderDashboard();
   if(typeof renderPipelineBoard==='function')renderPipelineBoard();
   if(airtableEnabled()&&p.airtableId){
     var f={};f[AIRTABLE_FIELDS.completedSteps]=p.completedSteps.join(',');
+    if(justLaunched)f[AIRTABLE_FIELDS.launchedAt]=p.launchedAt;
     airtableUpdateProduct(p.airtableId,f);
   }
 }
@@ -3507,13 +3629,19 @@ function stepDrop(e,targetStepId){
   steps.splice(toIdx,0,moved);
   _draggedStepId=null;
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();
+  sbSaveWorkflowStepPositions();
 }
 function addWorkflowStep(){
   var label=document.getElementById('new-workflow-step').value.trim();
   if(!label){toast('Enter a step name first');return;}
   if(!state.workflowSteps)state.workflowSteps=[];
-  state.workflowSteps.push({id:uid(),label:label});
+  // createdAt is what makes this step eligible for grandfathering -- any
+  // product whose launched_at already predates this moment will show it as
+  // N/A instead of a missing requirement.
+  var step={id:uid(),label:label,createdAt:new Date().toISOString()};
+  state.workflowSteps.push(step);
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();toast('Step added ✓');
+  sbCreateWorkflowStep(step,state.workflowSteps.length-1);
 }
 async function editWorkflowStep(stepId){
   var s=(state.workflowSteps||[]).find(function(x){return x.id===stepId;});if(!s)return;
@@ -3521,14 +3649,47 @@ async function editWorkflowStep(stepId){
   if(!newLabel||!newLabel.trim())return;
   s.label=newLabel.trim();
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();toast('Step renamed ✓');
+  sbUpdateWorkflowStepRow(stepId,{label:s.label});
 }
 async function removeWorkflowStep(stepId){
   if(!await styledConfirm('Remove Step','Remove this step from the workflow? Any product marked as having completed it will just lose that checkmark, nothing else is affected.'))return;
   state.workflowSteps=(state.workflowSteps||[]).filter(function(s){return s.id!==stepId;});
+  var affected=[];
   (state.products||[]).forEach(function(p){
-    if(p.completedSteps)p.completedSteps=p.completedSteps.filter(function(id){return id!==stepId;});
+    var changed=false;
+    if(p.completedSteps&&p.completedSteps.indexOf(stepId)!==-1){
+      p.completedSteps=p.completedSteps.filter(function(id){return id!==stepId;});
+      changed=true;
+    }
+    if(p.grandfatherOverrides&&p.grandfatherOverrides.indexOf(stepId)!==-1){
+      p.grandfatherOverrides=p.grandfatherOverrides.filter(function(id){return id!==stepId;});
+      changed=true;
+    }
+    if(changed)affected.push(p);
   });
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();toast('Step removed ✓');
+  sbDeleteWorkflowStep(stepId);
+  // Push each affected product's now-updated arrays back to Supabase too --
+  // previously this only ever updated local state, so a removed step's
+  // checkmark could reappear after the next full Sync Now pull.
+  affected.forEach(function(p){
+    if(!(airtableEnabled()&&p.airtableId))return;
+    var f={};
+    f[AIRTABLE_FIELDS.completedSteps]=p.completedSteps.join(',');
+    f[AIRTABLE_FIELDS.grandfatherOverrides]=p.grandfatherOverrides||[];
+    airtableUpdateProduct(p.airtableId,f);
+  });
+}
+function toggleGrandfatherOverride(productId,stepId){
+  var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
+  if(!p.grandfatherOverrides)p.grandfatherOverrides=[];
+  var pos=p.grandfatherOverrides.indexOf(stepId);
+  if(pos===-1)p.grandfatherOverrides.push(stepId);else p.grandfatherOverrides.splice(pos,1);
+  saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();
+  if(airtableEnabled()&&p.airtableId){
+    var f={};f[AIRTABLE_FIELDS.grandfatherOverrides]=p.grandfatherOverrides;
+    airtableUpdateProduct(p.airtableId,f);
+  }
 }
 function toggleProductFeature(productId,featureId){
   var p=(state.products||[]).find(function(x){return x.id===productId;});if(!p)return;
@@ -6276,7 +6437,8 @@ function psInit(){
 var SB_COLS={
   products:{'Name':'name','Brand':'brand','Listed URL':'listed_url',
             'Completed Steps':'completed_steps','Planner File Tag':'planner_file_tag',
-            'Planner File Uploaded At':'planner_file_uploaded_at'},
+            'Planner File Uploaded At':'planner_file_uploaded_at',
+            'Launched At':'launched_at','Grandfather Overrides':'grandfather_overrides'},
   bugs:{'Text':'text','Done':'done','High Priority':'high_priority','Product':'product_id'},
   features:{'Feature Name':'name','Description':'description'},
   custom_orders:{'Client/Project Name':'client_name','Tier':'tier','Stage':'stage',
@@ -6510,9 +6672,15 @@ if(state.ownerName){
 // Auto-sync on load removed 31 July 2026. It fired 11 Airtable list calls on
 // EVERY app open, which is what burned through the monthly allowance. Sync is
 // now manual only, via the Sync Now button on the Data Sync page.
+//
+// workflow_steps is a deliberate exception, added 4 Aug 2026: it's one small
+// table (~16-20 rows, one request), and a stale local copy silently breaks
+// grandfathering everywhere rather than just showing old data. Confirmed
+// with Bailey that the size difference makes it fine to auto-pull.
 renderSbAuthUI();
 if(supabaseEnabled()){
   sbTestConnection();
+  sbPullWorkflowSteps();
 }
 </script>
 </body></html>
