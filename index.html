@@ -1145,23 +1145,27 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 // the bottom of this file. Ids are kept identical to the ones already baked
 // into every product's completed_steps (wf12 "Run Through ChatGPT" was
 // dropped 4 Aug 2026, so wf13-wf16 keep their original ids with a gap).
+// Note: this fallback intentionally only has the original 16 -- the revision
+// 3 additions (4 Aug 2026) only exist in Supabase. A device that has never
+// synced won't see them until it does, same as it wouldn't have seen any
+// other workflow_steps edit made from a different device before this fix.
 var DEFAULT_WORKFLOW_STEPS=[
-  {id:'wf0',label:'Research & Brainstorm'},
-  {id:'wf1',label:'Decide Features'},
-  {id:'wf2',label:'Gather Quote & Hero Image'},
-  {id:'wf3',label:'First Build'},
-  {id:'wf4',label:'Input Info & Stock Images'},
-  {id:'wf5',label:'Testing 1'},
-  {id:'wf6',label:'Second Build'},
-  {id:'wf7',label:'Testing 2'},
-  {id:'wf8',label:'Deep Dive by Claude'},
-  {id:'wf9',label:'Final Testing'},
-  {id:'wf10',label:'Build Demo'},
-  {id:'wf11',label:'Generate Hero & Listing Photos'},
-  {id:'wf13',label:'Claude: Etsy Listing Copy'},
-  {id:'wf14',label:'Search Best Tags'},
-  {id:'wf15',label:'Enter Listing'},
-  {id:'wf16',label:'Publish'}
+  {id:'wf0',label:'Research & Brainstorm',phase:'Research'},
+  {id:'wf1',label:'Decide Features',phase:'Research'},
+  {id:'wf2',label:'Gather Quote & Hero Image',phase:'Research'},
+  {id:'wf3',label:'First Build',phase:'Build & Test Rounds'},
+  {id:'wf4',label:'Input Info & Stock Images',phase:'Build & Test Rounds'},
+  {id:'wf5',label:'Testing 1',phase:'Build & Test Rounds'},
+  {id:'wf6',label:'Second Build',phase:'Build & Test Rounds'},
+  {id:'wf7',label:'Testing 2',phase:'Build & Test Rounds'},
+  {id:'wf8',label:'Deep Dive by Claude',phase:'Review the File'},
+  {id:'wf9',label:'Final Testing',phase:'Ship & Verify Live'},
+  {id:'wf10',label:'Build Demo',phase:'Listing Prep'},
+  {id:'wf11',label:'Generate Hero & Listing Photos',phase:'Listing Prep'},
+  {id:'wf13',label:'Claude: Etsy Listing Copy',phase:'Listing Prep'},
+  {id:'wf14',label:'Search Best Tags',phase:'Listing Prep'},
+  {id:'wf15',label:'Enter Listing',phase:'Launch'},
+  {id:'wf16',label:'Publish',phase:'Launch'}
 ];
 var ICONS={
   tool:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
@@ -1198,7 +1202,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='17';
+var CC_BUILD='18';
 var CC_BUILD_DATE='4 Aug 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -1281,7 +1285,7 @@ function loadState(){
   if(!state.testingPrompts)state.testingPrompts=DEFAULT_TESTING.map(function(t){return {text:t,done:false};});
   if(!state.testingPasses)state.testingPasses=[];
   if(!state.features)state.features=DEFAULT_FEATURES.map(function(f){return {id:uid(),name:f,description:''};});
-  if(!state.workflowSteps)state.workflowSteps=DEFAULT_WORKFLOW_STEPS.map(function(s){return {id:s.id,label:s.label};});
+  if(!state.workflowSteps)state.workflowSteps=DEFAULT_WORKFLOW_STEPS.map(function(s){return {id:s.id,label:s.label,phase:s.phase};});
   if(!state.colorPalettes){
     var grouped={},order=[];
     DEFAULT_COLOR_LIBRARY.forEach(function(c){
@@ -2338,10 +2342,10 @@ async function sbListAll(table,select){
 // Everything else stays manual-only (Sync Now) per the 31 Jul decision.
 async function sbPullWorkflowSteps(){
   if(!supabaseEnabled())return;
-  var rows=await sbListAll(SB_TABLES.workflowSteps,'id,label,position,created_at');
+  var rows=await sbListAll(SB_TABLES.workflowSteps,'id,label,position,phase,created_at');
   if(!rows||!rows.length)return; // don't blow away local steps on a failed/empty fetch
   rows.sort(function(a,b){return a.position-b.position;});
-  state.workflowSteps=rows.map(function(r){return {id:r.id,label:r.label,createdAt:r.created_at||null};});
+  state.workflowSteps=rows.map(function(r){return {id:r.id,label:r.label,phase:r.phase||null,createdAt:r.created_at||null};});
   saveState();
   renderProducts();
   renderDashboard();
@@ -2350,7 +2354,7 @@ async function sbPullWorkflowSteps(){
 }
 async function sbCreateWorkflowStep(step,position){
   if(!supabaseEnabled())return null;
-  return await sbInsert(SB_TABLES.workflowSteps,{id:step.id,label:step.label,position:position,created_at:step.createdAt||null});
+  return await sbInsert(SB_TABLES.workflowSteps,{id:step.id,label:step.label,position:position,phase:step.phase||null,created_at:step.createdAt||null});
 }
 async function sbUpdateWorkflowStepRow(stepId,fields){
   if(!supabaseEnabled())return null;
@@ -3392,6 +3396,20 @@ function toggleProductsSection(section){
   _productsSectionCollapsed[section]=!_productsSectionCollapsed[section];
   renderProducts();
 }
+// ---- Workflow checklist, grouped into collapsible phases (4 Aug 2026) ----
+// Matches revision 3 of the planner workflow PDF. A step whose phase isn't
+// in this list (shouldn't happen, but e.g. a very old cached step before
+// this existed) falls into an 'Other' bucket appended at the end so nothing
+// silently disappears from the checklist.
+var WORKFLOW_PHASE_ORDER=['Research','Design','Build & Test Rounds','Review the File','Ship & Verify Live','Listing Prep','Launch'];
+var _workflowPhaseCollapsed={};
+function toggleWorkflowPhase(phase){
+  _workflowPhaseCollapsed[phase]=!_workflowPhaseCollapsed[phase];
+  renderProductDetail();
+}
+function workflowPhaseKey(phase){
+  return (phase||'other').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+}
 function productCardHtml(p){
   var pct=pctComplete(p);
   var isLive=isProductLive(p);
@@ -3487,34 +3505,60 @@ function renderProductDetail(){
     : '<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing recorded yet.</div>';
 
   var steps=state.workflowSteps||[];
+  function workflowStepRowHtml(s,pp){
+    var done=(pp.completedSteps||[]).indexOf(s.id)!==-1;
+    var gf=isStepGrandfathered(s,pp);
+    // Added after this product launched, but manually toggled back to required.
+    var overridden=!gf&&s.createdAt&&pp.launchedAt&&new Date(s.createdAt)>new Date(pp.launchedAt);
+    var rowStyle='display:flex;align-items:flex-start;gap:6px;padding:6px 4px;font-size:12.5px;border-radius:6px;'+(gf?'opacity:0.6;':'');
+    var checkboxHtml=gf
+      ? '<span style="width:16px;height:16px;margin-top:2px;flex:0 0 16px;border:1px dashed var(--muted-light);border-radius:4px;display:inline-block;" data-tip="N/A — does not count toward completion"></span>'
+      : '<input type="checkbox" style="width:auto;margin-top:2px;" '+(done?'checked':'')+' onchange="toggleWorkflowStep(\''+pp.id+'\',\''+s.id+'\')"/>';
+    var labelHtml='<span style="flex:1;cursor:pointer;'+(gf?'color:var(--muted);':(done?'color:var(--muted);text-decoration:line-through;':''))+'" onclick="editWorkflowStep(\''+s.id+'\')">'+s.label+'</span>';
+    var badgeHtml=gf
+      ? ('<span style="font-size:10px;color:var(--muted);background:var(--ivory-dark);border-radius:20px;padding:2px 7px;white-space:nowrap;" data-tip="Added after this product launched — does not count against completion">N/A · added after launch</span>'
+        +'<span onclick="toggleGrandfatherOverride(\''+pp.id+'\',\''+s.id+'\')" data-tip="Require this step for this product anyway" style="font-size:10.5px;color:var(--rose-dark);text-decoration:underline;cursor:pointer;white-space:nowrap;">still require</span>')
+      : (overridden
+        ? '<span onclick="toggleGrandfatherOverride(\''+pp.id+'\',\''+s.id+'\')" data-tip="Added after launch — click to go back to N/A" style="font-size:10px;color:var(--rose-dark);background:var(--rose-light);border-radius:20px;padding:2px 7px;white-space:nowrap;cursor:pointer;">manually required</span>'
+        : '');
+    return '<div class="workflow-step-row" draggable="true" data-step-id="'+s.id+'" ondragstart="stepDragStart(event,\''+s.id+'\')" ondragover="stepDragOver(event)" ondragleave="stepDragLeave(event)" ondrop="stepDrop(event,\''+s.id+'\')" ondragend="this.style.opacity=\'1\';" style="'+rowStyle+'">'
+      +'<span style="cursor:grab;color:var(--muted-light);font-size:13px;margin-top:1px;user-select:none;" data-tip="Drag to reorder">⠿</span>'
+      +checkboxHtml
+      +labelHtml
+      +badgeHtml
+      +'<span onclick="removeWorkflowStep(\''+s.id+'\')" data-tip="Remove step" style="cursor:pointer;color:var(--muted-light);font-size:13px;">×</span>'
+    +'</div>';
+  }
+  // Group by phase for the collapsible layout. Order follows
+  // WORKFLOW_PHASE_ORDER; any step with an unrecognized/missing phase still
+  // shows, just bucketed under 'Other' at the end rather than vanishing.
+  var stepsByPhase={};
+  steps.forEach(function(s){
+    var ph=s.phase||'Other';
+    if(!stepsByPhase[ph])stepsByPhase[ph]=[];
+    stepsByPhase[ph].push(s);
+  });
+  var phaseOrder=WORKFLOW_PHASE_ORDER.concat(Object.keys(stepsByPhase).filter(function(ph){return WORKFLOW_PHASE_ORDER.indexOf(ph)===-1;}));
   var stepChecklist='<div class="card"><div class="card-title" style="margin-bottom:10px;">Workflow</div>'
-    +'<div id="workflow-step-list">'
-    +steps.map(function(s){
-      var done=(p.completedSteps||[]).indexOf(s.id)!==-1;
-      var gf=isStepGrandfathered(s,p);
-      // Added after this product launched, but manually toggled back to required.
-      var overridden=!gf&&s.createdAt&&p.launchedAt&&new Date(s.createdAt)>new Date(p.launchedAt);
-      var rowStyle='display:flex;align-items:flex-start;gap:6px;padding:6px 4px;font-size:12.5px;border-radius:6px;'+(gf?'opacity:0.6;':'');
-      var checkboxHtml=gf
-        ? '<span style="width:16px;height:16px;margin-top:2px;flex:0 0 16px;border:1px dashed var(--muted-light);border-radius:4px;display:inline-block;" data-tip="N/A — does not count toward completion"></span>'
-        : '<input type="checkbox" style="width:auto;margin-top:2px;" '+(done?'checked':'')+' onchange="toggleWorkflowStep(\''+p.id+'\',\''+s.id+'\')"/>';
-      var labelHtml='<span style="flex:1;cursor:pointer;'+(gf?'color:var(--muted);':(done?'color:var(--muted);text-decoration:line-through;':''))+'" onclick="editWorkflowStep(\''+s.id+'\')">'+s.label+'</span>';
-      var badgeHtml=gf
-        ? ('<span style="font-size:10px;color:var(--muted);background:var(--ivory-dark);border-radius:20px;padding:2px 7px;white-space:nowrap;" data-tip="Added after this product launched — does not count against completion">N/A · added after launch</span>'
-          +'<span onclick="toggleGrandfatherOverride(\''+p.id+'\',\''+s.id+'\')" data-tip="Require this step for this product anyway" style="font-size:10.5px;color:var(--rose-dark);text-decoration:underline;cursor:pointer;white-space:nowrap;">still require</span>')
-        : (overridden
-          ? '<span onclick="toggleGrandfatherOverride(\''+p.id+'\',\''+s.id+'\')" data-tip="Added after launch — click to go back to N/A" style="font-size:10px;color:var(--rose-dark);background:var(--rose-light);border-radius:20px;padding:2px 7px;white-space:nowrap;cursor:pointer;">manually required</span>'
-          : '');
-      return '<div class="workflow-step-row" draggable="true" data-step-id="'+s.id+'" ondragstart="stepDragStart(event,\''+s.id+'\')" ondragover="stepDragOver(event)" ondragleave="stepDragLeave(event)" ondrop="stepDrop(event,\''+s.id+'\')" ondragend="this.style.opacity=\'1\';" style="'+rowStyle+'">'
-        +'<span style="cursor:grab;color:var(--muted-light);font-size:13px;margin-top:1px;user-select:none;" data-tip="Drag to reorder">⠿</span>'
-        +checkboxHtml
-        +labelHtml
-        +badgeHtml
-        +'<span onclick="removeWorkflowStep(\''+s.id+'\')" data-tip="Remove step" style="cursor:pointer;color:var(--muted-light);font-size:13px;">×</span>'
+    +phaseOrder.filter(function(ph){return stepsByPhase[ph]&&stepsByPhase[ph].length;}).map(function(ph){
+      var phSteps=stepsByPhase[ph];
+      var phApplicable=phSteps.filter(function(s){return !isStepGrandfathered(s,p);});
+      var phDone=phApplicable.filter(function(s){return (p.completedSteps||[]).indexOf(s.id)!==-1;}).length;
+      var phBadge=phApplicable.length?(phDone+'/'+phApplicable.length):'N/A';
+      var collapsed=!!_workflowPhaseCollapsed[ph];
+      var phaseKey=workflowPhaseKey(ph);
+      return '<div style="margin-bottom:10px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0;" onclick="toggleWorkflowPhase(\''+esc(ph)+'\')">'
+          +'<span style="transition:transform 0.15s;transform:rotate('+(collapsed?'-90deg':'0deg')+');display:inline-block;color:var(--muted);font-size:11px;">▾</span>'
+          +'<span style="font-size:12.5px;font-weight:600;flex:1;">'+esc(ph)+'</span>'
+          +'<span style="font-size:10.5px;color:var(--muted);background:var(--ivory-dark);padding:1px 8px;border-radius:20px;">'+phBadge+'</span>'
+        +'</div>'
+        +(collapsed?'':(
+          '<div>'+phSteps.map(function(s){return workflowStepRowHtml(s,p);}).join('')+'</div>'
+          +'<div style="display:flex;gap:6px;margin-top:6px;margin-left:20px;"><input type="text" id="new-workflow-step-'+phaseKey+'" placeholder="Add a step to '+esc(ph)+'…" style="flex:1;font-size:11.5px;"/><button class="btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="addWorkflowStep(\''+esc(ph)+'\',\'new-workflow-step-'+phaseKey+'\')">+ Add</button></div>'
+        ))
       +'</div>';
     }).join('')
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:10px;"><input type="text" id="new-workflow-step" placeholder="Add a step…" style="flex:1;font-size:12px;"/><button class="btn-ghost" onclick="addWorkflowStep()">+ Add</button></div>'
     +'<div style="font-size:11px;color:var(--muted);margin-top:8px;">'+pctComplete(p)+'% complete'+(p.launchedAt?' · launched '+fmtDateShort((p.launchedAt||'').slice(0,10)):'')+'</div></div>';
 
   var features=state.features||[];
@@ -3631,14 +3675,16 @@ function stepDrop(e,targetStepId){
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();
   sbSaveWorkflowStepPositions();
 }
-function addWorkflowStep(){
-  var label=document.getElementById('new-workflow-step').value.trim();
+function addWorkflowStep(phase,inputId){
+  var el=document.getElementById(inputId||'new-workflow-step');
+  var label=el?el.value.trim():'';
   if(!label){toast('Enter a step name first');return;}
   if(!state.workflowSteps)state.workflowSteps=[];
   // createdAt is what makes this step eligible for grandfathering -- any
   // product whose launched_at already predates this moment will show it as
-  // N/A instead of a missing requirement.
-  var step={id:uid(),label:label,createdAt:new Date().toISOString()};
+  // N/A instead of a missing requirement. phase just controls which
+  // collapsible section it displays under.
+  var step={id:uid(),label:label,phase:phase||null,createdAt:new Date().toISOString()};
   state.workflowSteps.push(step);
   saveState();renderProductDetail();renderProducts();renderDashboard();if(typeof renderPipelineBoard==='function')renderPipelineBoard();toast('Step added ✓');
   sbCreateWorkflowStep(step,state.workflowSteps.length-1);
