@@ -6308,7 +6308,7 @@ var psSel={layout:0,theme:0,font:'serif',motif:'rule',scale:1.0,imgFit:'cover',i
 // until one is uploaded, so she never gets handed a placeholder pin.
 function psEligible(){
   var out=[],i;
-  for(i=0;i<PS_LAYOUTS.length;i++){ if(!PS_LAYOUTS[i].needsImg||psHasImg())out.push(i); }
+  for(i=0;i<PS_LAYOUTS.length;i++){ if(PS_LAYOUTS[i].needsImg)out.push(i); }
   return out;
 }
 var psBatch=[];
@@ -6448,20 +6448,7 @@ function psBuildBatch(){
     return out;
   }
   var order=[];
-  if(psHasImg()&&imgIdx.length){
-    var wantImg=Math.min(imgIdx.length,Math.max(1,Math.round(n*0.6)));
-    var wantTxt=n-wantImg;
-    var pi=spread(imgIdx,wantImg,Math.max(0,imgIdx.indexOf(psSel.layout)));
-    var pt=spread(txtIdx,wantTxt,0);
-    // interleave so the board doesn't read as "3 screenshots then 2 text"
-    while(pi.length||pt.length){
-      if(pi.length)order.push(pi.shift());
-      if(pt.length)order.push(pt.shift());
-    }
-    order=order.slice(0,n);
-  } else {
-    order=spread(txtIdx,n,Math.max(0,txtIdx.indexOf(psSel.layout)));
-  }
+  order=spread(imgIdx,n,Math.max(0,imgIdx.indexOf(psSel.layout)));
   psBatch=heads.map(function(h,i){
     return {
       copy:{eyebrow:base.eyebrow,headline:h,subhead:base.subhead,footer:base.footer,features:base.features},
@@ -6521,7 +6508,7 @@ function psExportBatch(){
 function psInit(){
   var l=document.getElementById('ps-layout');
   if(!l)return;
-  l.innerHTML=PS_LAYOUTS.map(function(x,i){return '<option value="'+i+'">'+x.name+'</option>';}).join('');
+  l.innerHTML=PS_LAYOUTS.map(function(x,i){return {x:x,i:i};}).filter(function(o){return o.x.needsImg;}).map(function(o){return '<option value="'+o.i+'">'+o.x.name+'</option>';}).join('');
   document.getElementById('ps-theme').innerHTML=PS_THEMES.map(function(x,i){return '<option value="'+i+'">'+x.name+'</option>';}).join('');
   l.addEventListener('change',function(){psSel.layout=parseInt(this.value,10)||0;psRender();});
   document.getElementById('ps-theme').addEventListener('change',function(){psSel.theme=parseInt(this.value,10)||0;psSel.over={};psSyncControls();psRender();});
