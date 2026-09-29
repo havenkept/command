@@ -1271,7 +1271,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='21';
+var CC_BUILD='22';
 var CC_BUILD_DATE='28 Sep 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -4138,8 +4138,12 @@ function saveNewOrder(){
 // Rows come from public.lead_magnet_intakes, written by the public intake page
 // (anon INSERT only). Loaded live from Supabase and NOT saved to localStorage,
 // because they hold client emails. status walks new -> reviewed -> building ->
-// delivered, or refunded / closed.
-var INTAKE_STATUSES=['new','reviewed','building','delivered','refunded','closed'];
+// feedback -> delivered, or refunded / closed. Each row has a tracking_token;
+// the client's private tracker at /lead-magnets/track/?t=TOKEN reads status,
+// delivery_date and revision_round through the get_intake_tracking RPC.
+var INTAKE_STATUSES=['new','reviewed','building','feedback','delivered','refunded','closed'];
+var INTAKE_STATUS_LABELS={new:'New',reviewed:'Reviewed',building:'Building',feedback:'Ready for feedback',delivered:'Delivered',refunded:'Refunded',closed:'Closed'};
+function intakeTrackUrl(r){return r&&r.tracking_token?'https://havenkept.com/lead-magnets/track/?t='+r.tracking_token:'';}
 var INTAKE_TIERS={lead_magnet:'$400 · Lead Magnet',tool_logic:'$650 · Tool + Logic',planning_system:'$900 · Planning System',unsure:'Tier: not sure'};
 var intakeFilter='open';
 async function loadIntakes(announce){
@@ -4193,10 +4197,20 @@ function renderOrders(){
         +'</div>'
         +'<div style="display:flex;gap:8px;align-items:center;">'
           +'<select onchange="updateIntakeStatus(\''+r.id+'\',this.value)" style="font-size:12px;padding:6px 8px;border-radius:8px;">'
-            +INTAKE_STATUSES.map(function(st){return '<option value="'+st+'" '+(r.status===st?'selected':'')+'>'+st.charAt(0).toUpperCase()+st.slice(1)+'</option>';}).join('')
+            +INTAKE_STATUSES.map(function(st){return '<option value="'+st+'" '+(r.status===st?'selected':'')+'>'+INTAKE_STATUS_LABELS[st]+'</option>';}).join('')
           +'</select>'
           +'<a class="btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;white-space:nowrap;display:inline-block;" href="mailto:'+esc(r.email)+'?subject='+subj+'">Email</a>'
         +'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:12px;padding:10px 12px;background:var(--cream,#FAF8F3);border:1px solid var(--border,#EDE6DA);border-radius:10px;font-size:12px;">'
+        +'<span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Client tracker</span>'
+        +'<label style="display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap;margin:0;">Delivery date <input type="date" value="'+esc(r.delivery_date||'')+'" onchange="updateIntakeField(\''+r.id+'\',{delivery_date:this.value||null},\'Delivery date saved\')" style="font-size:12px;padding:4px 6px;border-radius:8px;"></label>'
+        +'<label style="display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap;margin:0;">Changes round <select onchange="updateIntakeField(\''+r.id+'\',{revision_round:+this.value},\'Round saved\')" style="font-size:12px;padding:4px 6px;border-radius:8px;">'
+          +[0,1,2].map(function(n){return '<option value="'+n+'" '+((+r.revision_round||0)===n?'selected':'')+'>'+(n?'Round '+n+' of 2':'None yet')+'</option>';}).join('')
+        +'</select></label>'
+        +(r.tracking_token?'<span style="display:flex;gap:6px;margin-left:auto;">'
+          +'<button class="btn-ghost" style="padding:5px 11px;font-size:12px;white-space:nowrap;" onclick="copyIntakeTracker(\''+r.id+'\')">Copy tracking link</button>'
+          +'<a class="btn-ghost" style="padding:5px 11px;font-size:12px;text-decoration:none;white-space:nowrap;display:inline-block;" href="'+esc(intakeTrackUrl(r))+'" target="_blank" rel="noopener">View</a></span>':'')
       +'</div>'
       +'<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:12px;font-size:12.5px;">'
         +'<span style="color:var(--muted);">Lead magnet</span><span>'+intakeLink(r.file_link)+'</span>'
@@ -4219,7 +4233,23 @@ async function updateIntakeStatus(id,val){
   if(r)r.status=val;
   var ok=await sbUpdate(SB_TABLES.intakes,id,{status:val});
   if(ok===null){ if(r)r.status=prev; renderOrders(); toast('Couldn\'t save. Check Data Sync.'); return; }
-  renderOrders();renderDashboard();toast('Marked '+val+' ✓');
+  renderOrders();renderDashboard();toast('Marked '+(INTAKE_STATUS_LABELS[val]||val)+' ✓');
+}
+async function updateIntakeField(id,patch,msg){
+  if(!requireSignedIn())return;
+  var r=(state.intakes||[]).find(function(x){return x.id===id;});
+  var prev={};
+  if(r)Object.keys(patch).forEach(function(k){prev[k]=r[k];r[k]=patch[k];});
+  var ok=await sbUpdate(SB_TABLES.intakes,id,patch);
+  if(ok===null){ if(r)Object.keys(prev).forEach(function(k){r[k]=prev[k];}); renderOrders(); toast('Couldn\'t save. Check Data Sync.'); return; }
+  toast((msg||'Saved')+' ✓');
+}
+function copyIntakeTracker(id){
+  var r=(state.intakes||[]).find(function(x){return x.id===id;});
+  var url=intakeTrackUrl(r);if(!url)return;
+  var done=function(){toast('Tracking link copied ✓');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,function(){prompt('Copy this link:',url);});}
+  else prompt('Copy this link:',url);
 }
 function updateOrderStage(i,val){state.customOrders[i].stage=val;saveState();renderDashboard();}
 function toggleGeneralize(i){state.customOrders[i].generalize=!state.customOrders[i].generalize;saveState();}
