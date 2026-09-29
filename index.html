@@ -462,7 +462,7 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
         <div id="dash-tag-locks"></div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title" style="margin-bottom:10px;">Custom Order Deadlines</div>
+        <div class="card-title" style="margin-bottom:10px;">New Intakes</div>
         <div id="dash-order-deadlines"></div>
       </div>
       <div class="card" style="margin-bottom:16px;">
@@ -515,12 +515,13 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
   <div class="card"><div id="matrix-table-wrap"></div></div>
 </div>
 
-<!-- CUSTOM ORDERS -->
+<!-- LEAD MAGNET INTAKES (replaced the unused Custom Orders page, Sep 2026) -->
 <div id="page-orders" class="page">
   <div class="page-header">
-    <div><div class="page-title">Custom Orders</div><div class="page-sub">Intake, stage, and payment tracking</div></div>
-    <button class="btn-add" style="margin-left:auto;" onclick="openAddOrderModal()">+ New Order</button>
+    <div><div class="page-title">Lead Magnet Intakes</div><div class="page-sub">Sent from the intake page after a client pays on Payhip. Review within 24 hours.</div></div>
+    <button class="btn-ghost" style="margin-left:auto;" onclick="loadIntakes(true)" data-tip="Check Supabase for new intakes">&#8635; Refresh</button>
   </div>
+  <div id="intake-filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
   <div id="orders-list"></div>
 </div>
 
@@ -1270,8 +1271,8 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='20';
-var CC_BUILD_DATE='4 Aug 2026';
+var CC_BUILD='21';
+var CC_BUILD_DATE='28 Sep 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
   if(el)el.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
@@ -1290,7 +1291,7 @@ var NAV_ITEMS=[
   {id:'products',icon:'box',label:'Products'},
   {id:'pipeline',icon:'kanban',label:'Pipeline Board'},
   {id:'matrix',icon:'layers',label:'Features'},
-  {id:'orders',icon:'clipboard',label:'Custom Orders'},
+  {id:'orders',icon:'clipboard',label:'Intakes'},
   {id:'calendar',icon:'calendar',label:'Calendar'},
   {id:'standing-rules',icon:'bookmark',label:'Start Here'},
   {id:'notes',icon:'edit',label:'Notes'},
@@ -1850,7 +1851,7 @@ function showPage(id,el){
   if(id==='products')renderProducts();
   if(id==='pipeline')renderPipelineBoard();
   if(id==='matrix')renderMatrix();
-  if(id==='orders')renderOrders();
+  if(id==='orders'){renderOrders();loadIntakes();}
   if(id==='calendar')renderCalendar();
   if(id==='notes')renderNotes();
   if(id==='standing-rules')renderStandingRules();
@@ -1868,6 +1869,7 @@ function showPage(id,el){
 }
 function initUI(){
   renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderBuildLog();renderBuildStamp();renderCompetitors();renderEtsy();renderIdeas();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
+  loadIntakes();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -2028,7 +2030,7 @@ function renderDashboard(){
       if(!b.done){openBugs++;if(b.priority)highPriorityBugs.push({product:p.name,productId:p.id,text:b.text,id:b.id});}
     });
   });
-  var openOrders=(state.customOrders||[]).filter(function(o){return o.stage!=='Delivered';}).length;
+  var newIntakes=(state.intakes||[]).filter(function(r){return r.status==='new';}).length;
 
   var listingTarget=20,listingTargetMax=30;
   var listingPct=Math.min(100,Math.round((live.length/listingTarget)*100));
@@ -2041,7 +2043,7 @@ function renderDashboard(){
     '<div class="stat-card"><div><div class="stat-label">In Development</div><div class="stat-value">'+active.length+'</div></div><div class="stat-icon">'+svgIcon('tool',22)+'</div></div>'+
     '<div class="stat-card" data-tip="80%+ of workflow steps complete, not yet published"><div><div class="stat-label">Near-Ship</div><div class="stat-value">'+nearShip.length+'</div></div><div class="stat-icon">'+svgIcon('checkCircle',22)+'</div></div>'+
     '<div class="stat-card"><div><div class="stat-label">Open Bugs</div><div class="stat-value">'+openBugs+'</div></div><div class="stat-icon">⚠</div></div>'+
-    '<div class="stat-card"><div><div class="stat-label">Open Custom Orders</div><div class="stat-value">'+openOrders+'</div></div><div class="stat-icon">'+svgIcon('clipboard',22)+'</div></div>';
+    '<div class="stat-card" style="cursor:pointer;" onclick="showPage(\'orders\',null)" data-tip="Intakes waiting for your review"><div><div class="stat-label">New Intakes</div><div class="stat-value">'+newIntakes+'</div></div><div class="stat-icon">'+svgIcon('clipboard',22)+'</div></div>';
 
   document.getElementById('dash-quick-actions').innerHTML=
     '<button class="quick-action-pill" onclick="openAddProductModal()" data-tip="Add a new product">'+svgIcon('box')+'<span>New Product</span></button>'
@@ -2089,11 +2091,10 @@ function renderDashboard(){
 
   var ordersEl=document.getElementById('dash-order-deadlines');
   var today=todayLocalStr();
-  var withDeadlines=(state.customOrders||[]).filter(function(o){return o.deadline&&o.stage!=='Delivered';}).sort(function(a,b){return a.deadline.localeCompare(b.deadline);});
-  if(!withDeadlines.length){ordersEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No upcoming order deadlines.</div>';}
-  else{ordersEl.innerHTML=withDeadlines.slice(0,5).map(function(o){
-    var overdue=o.deadline<today;
-    return '<div style="padding:5px 0;font-size:12.5px;display:flex;justify-content:space-between;"><span>'+o.name+'</span><span style="color:'+(overdue?'var(--rose-dark)':'var(--muted)')+';font-weight:'+(overdue?'600':'400')+';">'+fmtDateShort(o.deadline)+(overdue?' (overdue)':'')+'</span></div>';
+  var waiting=(state.intakes||[]).filter(function(r){return r.status==='new';});
+  if(!waiting.length){ordersEl.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">No new intakes.</div>';}
+  else{ordersEl.innerHTML=waiting.slice(0,5).map(function(r){
+    return '<div style="padding:5px 0;font-size:12.5px;display:flex;justify-content:space-between;cursor:pointer;" onclick="showPage(\'orders\',null)"><span>'+esc(r.business_name||r.name)+'</span><span style="color:var(--rose-dark);font-weight:600;">'+(r.created_at?fmtDateShort(r.created_at.slice(0,10)):'')+'</span></div>';
   }).join('');}
 
   var notesEl=document.getElementById('dash-recent-notes');
@@ -2124,8 +2125,8 @@ function renderDashboardNextActions(highPriorityBugs){
     }
   });
   var today=todayLocalStr();
-  (state.customOrders||[]).filter(function(o){return o.deadline&&o.stage!=='Delivered';}).sort(function(a,b){return a.deadline.localeCompare(b.deadline);}).forEach(function(o){
-    actions.push({title:'Custom order deadline — '+o.name,meta:fmtDateShort(o.deadline)+(o.deadline<today?' (overdue)':''),onclick:"showPage('orders',null)"});
+  (state.intakes||[]).filter(function(r){return r.status==='new';}).forEach(function(r){
+    actions.unshift({title:'Review new intake: '+(r.business_name||r.name),meta:'Lead magnet intake · reply within 24 hours',onclick:"showPage('orders',null)"});
   });
   actions=actions.slice(0,3);
   if(!actions.length){el.innerHTML='<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Nothing urgent right now.</div>';return;}
@@ -2248,7 +2249,8 @@ var SB_TABLES={
   pinStats:'pin_stats', etsyStats:'etsy_stats', etsySearchRank:'etsy_search_rank',
   colorPalettes:'color_palettes', paletteColors:'palette_colors',
   decisions:'product_decisions', fileScans:'file_scans', ideas:'ideas',
-  workflowSteps:'workflow_steps'
+  workflowSteps:'workflow_steps',
+  intakes:'lead_magnet_intakes'
 };
 
 // Airtable used display names ('Pin Title'); Supabase uses snake_case columns.
@@ -4132,28 +4134,92 @@ function saveNewOrder(){
   saveState();closeModal('add-order-modal');renderOrders();renderDashboard();toast('Order added ✓');
   if(airtableEnabled())airtableCreateOrder(o);
 }
+// ===== LEAD MAGNET INTAKES =====
+// Rows come from public.lead_magnet_intakes, written by the public intake page
+// (anon INSERT only). Loaded live from Supabase and NOT saved to localStorage,
+// because they hold client emails. status walks new -> reviewed -> building ->
+// delivered, or refunded / closed.
+var INTAKE_STATUSES=['new','reviewed','building','delivered','refunded','closed'];
+var INTAKE_TIERS={lead_magnet:'$400 · Lead Magnet',tool_logic:'$650 · Tool + Logic',planning_system:'$900 · Planning System',unsure:'Tier: not sure'};
+var intakeFilter='open';
+async function loadIntakes(announce){
+  if(!airtableEnabled())return;
+  var rows=await sbListAll(SB_TABLES.intakes,'*');
+  if(rows===null||rows===undefined){ if(announce)toast('Couldn\'t load intakes. Check Data Sync.'); return; }
+  state.intakes=rows.sort(function(a,b){return (b.created_at||'').localeCompare(a.created_at||'');});
+  renderOrders();renderDashboard();
+  if(announce)toast(rows.length+' intake'+(rows.length===1?'':'s')+' loaded ✓');
+}
+function intakeLink(v){
+  v=String(v||'').trim();
+  if(!v)return '<span style="color:var(--muted-light);">(none)</span>';
+  if(/^https?:\/\//i.test(v))return '<a href="'+esc(v)+'" target="_blank" rel="noopener noreferrer" style="color:var(--rose-dark);word-break:break-all;">'+esc(v)+'</a>';
+  return esc(v);
+}
+function intakeBlock(label,v){
+  if(!v)return '';
+  return '<div style="margin-top:10px;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">'+label+'</div>'
+    +'<div style="font-size:12.5px;line-height:1.55;white-space:pre-wrap;margin-top:3px;">'+esc(v)+'</div></div>';
+}
+function setIntakeFilter(f){intakeFilter=f;renderOrders();}
 function renderOrders(){
   var list=document.getElementById('orders-list');
-  var orders=state.customOrders||[];
-  if(!orders.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">No custom orders yet.</div>';return;}
-  var stages=['inquiry','deposit paid','building','delivered'];
-  list.innerHTML=orders.map(function(o,i){
-    var intakeHtml=Object.keys(o.intake||{}).map(function(k){
-      var labels={problem:'Problem',who:'Who',info:'Info Tracked',pages:'Pages',features:'Features',devices:'Devices',examples:'Examples'};
-      return o.intake[k]?'<div style="font-size:11.5px;margin-top:4px;"><strong>'+(labels[k]||k)+':</strong> '+o.intake[k]+'</div>':'';
+  var filters=document.getElementById('intake-filters');
+  if(!list)return;
+  var all=state.intakes||[];
+  var openCount=all.filter(function(r){return r.status!=='delivered'&&r.status!=='refunded'&&r.status!=='closed';}).length;
+  if(filters){
+    filters.innerHTML=[['open','Open ('+openCount+')'],['all','All ('+all.length+')']].map(function(f){
+      var on=intakeFilter===f[0];
+      return '<button class="'+(on?'btn-add':'btn-ghost')+'" style="padding:6px 14px;font-size:12px;" onclick="setIntakeFilter(\''+f[0]+'\')">'+f[1]+'</button>';
     }).join('');
-    return '<div class="order-card">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
-        '<div><strong style="font-family:var(--font-serif);font-size:17px;">'+o.name+'</strong> <span class="tier-chip">$'+o.tier+'</span></div>'+
-        '<button onclick="removeOrder('+i+')" style="background:none;border:none;color:var(--muted);cursor:pointer;">×</button>'+
-      '</div>'+
-      '<div class="form-field" style="margin-top:10px;"><label>Stage</label><select onchange="updateOrderStage('+i+',this.value)">'+
-        stages.map(function(s){return '<option value="'+s+'" '+(o.stage===s?'selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';}).join('')+
-      '</select></div>'+
-      '<label class="etsy-check"><input type="checkbox" '+(o.generalize?'checked':'')+' onchange="toggleGeneralize('+i+')"/> Flag to generalize into future HavenKept product</label>'+
-      '<div style="margin-top:8px;">'+intakeHtml+'</div>'+
-    '</div>';
+  }
+  var rows=intakeFilter==='open'?all.filter(function(r){return r.status!=='delivered'&&r.status!=='refunded'&&r.status!=='closed';}):all;
+  if(!airtableEnabled()){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">Sign in on Data Sync to see intakes.</div>';return;}
+  if(!rows.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-style:italic;padding:32px;">'+(all.length?'No open intakes. Nice.':'No intakes yet. They\'ll show up here after a client pays and fills in the intake page.')+'</div>';return;}
+  list.innerHTML=rows.map(function(r){
+    var isNew=r.status==='new';
+    var when=r.created_at?new Date(r.created_at):null;
+    var whenTxt=when?when.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+', '+when.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):'';
+    var title=esc(r.business_name||r.name||'Unnamed');
+    var subj=encodeURIComponent('Your HavenKept lead magnet'+(r.business_name?' for '+r.business_name:''));
+    return '<div class="order-card" style="'+(isNew?'border-left:4px solid var(--rose-dark);':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'
+        +'<div><strong style="font-family:var(--font-serif);font-size:17px;">'+title+'</strong>'
+          +(isNew?' <span class="tier-chip" style="background:var(--rose-dark);color:#fff;">NEW</span>':'')
+          +'<div style="font-size:12px;color:var(--muted);margin-top:3px;">'+esc(r.name||'')+' · <a href="mailto:'+esc(r.email)+'?subject='+subj+'" style="color:var(--rose-dark);">'+esc(r.email)+'</a> · '+esc(whenTxt)+'</div>'
+          +'<div style="margin-top:6px;"><span class="tier-chip">'+esc(INTAKE_TIERS[r.tier]||'Tier not given')+'</span>'
+          +(r.payhip_order?' <span style="font-size:11.5px;color:var(--muted);">Payhip order '+esc(r.payhip_order)+'</span>':'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center;">'
+          +'<select onchange="updateIntakeStatus(\''+r.id+'\',this.value)" style="font-size:12px;padding:6px 8px;border-radius:8px;">'
+            +INTAKE_STATUSES.map(function(st){return '<option value="'+st+'" '+(r.status===st?'selected':'')+'>'+st.charAt(0).toUpperCase()+st.slice(1)+'</option>';}).join('')
+          +'</select>'
+          +'<a class="btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;white-space:nowrap;display:inline-block;" href="mailto:'+esc(r.email)+'?subject='+subj+'">Email</a>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:12px;font-size:12.5px;">'
+        +'<span style="color:var(--muted);">Lead magnet</span><span>'+intakeLink(r.file_link)+'</span>'
+        +'<span style="color:var(--muted);">Logo / brand kit</span><span>'+intakeLink(r.brand_link)+'</span>'
+        +'<span style="color:var(--muted);">Offer link</span><span>'+intakeLink(r.offer_link)+'</span>'
+        +'<span style="color:var(--muted);">Colors</span><span>'+(esc(r.colors)||'<span style="color:var(--muted-light);">(none)</span>')+'</span>'
+        +'<span style="color:var(--muted);">Fonts</span><span>'+(esc(r.fonts)||'<span style="color:var(--muted-light);">(none)</span>')+'</span>'
+      +'</div>'
+      +intakeBlock('What they sell',r.sells)
+      +intakeBlock('Who it is for',r.audience)
+      +intakeBlock('What they want it to do',r.wants)
+      +intakeBlock('Anything else',r.notes)
+    +'</div>';
   }).join('');
+}
+async function updateIntakeStatus(id,val){
+  if(!requireSignedIn())return;
+  var r=(state.intakes||[]).find(function(x){return x.id===id;});
+  var prev=r?r.status:null;
+  if(r)r.status=val;
+  var ok=await sbUpdate(SB_TABLES.intakes,id,{status:val});
+  if(ok===null){ if(r)r.status=prev; renderOrders(); toast('Couldn\'t save. Check Data Sync.'); return; }
+  renderOrders();renderDashboard();toast('Marked '+val+' ✓');
 }
 function updateOrderStage(i,val){state.customOrders[i].stage=val;saveState();renderDashboard();}
 function toggleGeneralize(i){state.customOrders[i].generalize=!state.customOrders[i].generalize;saveState();}
