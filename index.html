@@ -1272,7 +1272,7 @@ var ICONS={
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='24';
+var CC_BUILD='25';
 var CC_BUILD_DATE='28 Sep 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
@@ -5416,9 +5416,14 @@ function saveWebsiteForm(){
 // websites table (signed-in only), never in this public file.
 function openMyLeads(e){
   if(e)e.preventDefault();
-  var w=(state.websites||[]).find(function(x){return (x.label||'').trim().toLowerCase()==='my leads';});
-  if(w&&w.url){window.open(w.url,'_blank','noopener');}
-  else{showPage('websites',null);}
+  // Ask Supabase fresh (websites only refresh on Sync Now). Open the tab first
+  // so the browser doesn't treat it as a pop-up, then point it at the link.
+  var win=window.open('about:blank','_blank');
+  function go(url){ if(url){ if(win){win.location.href=url;} else {window.location.href=url;} } else { if(win)win.close(); showPage('websites',null); toast&&toast('Add a link named "My Leads" on the Websites page.'); } }
+  var local=(state.websites||[]).find(function(x){return (x.label||'').trim().toLowerCase()==='my leads';});
+  sbRequest('GET','websites?select=url&label=ilike.my%20leads&limit=1',null).then(function(rows){
+    go(rows&&rows[0]&&rows[0].url ? rows[0].url : (local&&local.url));
+  }).catch(function(){ go(local&&local.url); });
   return false;
 }
 function renderWebsites(){
