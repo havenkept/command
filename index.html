@@ -319,6 +319,73 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
   .split-2,.split-side{grid-template-columns:minmax(0,1fr);}
   .field-grid-3{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+/* ===== EMAILS (Build 26, 25 Oct 2026) ===== */
+.em-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+.em-stat{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.em-stat b{display:block;font-family:var(--font-serif);font-size:30px;font-weight:600;color:var(--plum);line-height:1.1;}
+.em-stat span{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
+.em-stat small{display:block;font-size:12px;color:var(--sage-dark);margin-top:4px;min-height:15px;}
+.em-tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto;}
+.em-tab{background:none;border:none;font:500 13px var(--font-sans);color:var(--muted);padding:10px 14px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;}
+.em-tab.on{color:var(--plum);border-color:var(--rose);}
+.em-tab i{font-style:normal;background:var(--plum-light);color:var(--plum);border-radius:10px;padding:1px 7px;font-size:11px;margin-left:5px;}
+.em-grid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start;}
+.em-list{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:8px;}
+.em-grp{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-light);padding:10px 10px 4px;font-weight:600;}
+.em-seq{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;width:100%;background:none;border:none;font-family:var(--font-sans);color:var(--charcoal);text-align:left;}
+.em-seq:hover{background:var(--rose-light);}
+.em-seq.on{background:var(--plum-light);color:var(--plum);font-weight:500;}
+.em-seq small{font-size:11px;color:var(--muted);white-space:nowrap;}
+.em-card{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.em-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.em-head h2{font-family:var(--font-serif);font-size:24px;font-weight:600;color:var(--plum);}
+.em-head p{font-size:12.5px;color:var(--muted);margin-top:2px;}
+.em-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;border-radius:20px;padding:3px 10px;font-weight:500;white-space:nowrap;}
+.em-p-warm{background:var(--amber-light);color:var(--amber);}
+.em-p-hot{background:var(--rose-light);color:var(--rose-dark);}
+.em-p-brow{background:var(--heather-light);color:var(--plum);}
+.em-p-buy{background:var(--sage-light);color:var(--sage-dark);}
+.em-p-off{background:var(--ivory-dark);color:var(--muted);}
+.em-tl{position:relative;padding-left:26px;}
+.em-tl:before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--border);}
+.em-step{position:relative;border:1px solid var(--border);border-radius:10px;background:var(--warm-white);margin-bottom:10px;}
+.em-step:before{content:"";position:absolute;left:-22px;top:17px;width:12px;height:12px;border-radius:50%;background:var(--warm-white);border:2px solid var(--rose);}
+.em-step.sent:before{background:var(--rose);}
+.em-step.off{opacity:.6;}
+.em-srow{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;width:100%;background:none;border:none;font-family:var(--font-sans);color:var(--charcoal);text-align:left;font-size:14px;}
+.em-day{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--rose-dark);background:var(--rose-light);border-radius:6px;padding:3px 8px;white-space:nowrap;}
+.em-subj{flex:1;font-weight:500;min-width:0;}
+.em-meta{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.em-edit{border-top:1px solid var(--border-light);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;}
+.em-edit textarea{min-height:280px;line-height:1.55;}
+.em-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.em-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;}
+.em-chip{font:11.5px var(--font-sans);border:1px dashed var(--heather);color:var(--plum);border-radius:14px;padding:2px 9px;cursor:pointer;background:var(--plum-light);}
+.em-frame{width:100%;height:520px;border:1px solid var(--border-light);border-radius:10px;background:#FAF8F3;}
+.em-actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
+.em-actions .em-hint{margin-right:auto;font-size:12px;color:var(--muted);}
+.em-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--charcoal);}
+.em-toggle input{width:auto;}
+.em-table{width:100%;border-collapse:collapse;background:var(--warm-white);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.em-table th{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:11px 14px;background:var(--ivory-dark);}
+.em-table td{padding:12px 14px;border-top:1px solid var(--border-light);font-size:13px;vertical-align:middle;}
+.em-table tr.em-click{cursor:pointer;}
+.em-table tr.em-click:hover td{background:var(--rose-light);}
+.em-sub2{color:var(--muted);font-size:12px;}
+.em-bar{display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--border);vertical-align:middle;margin-right:8px;overflow:hidden;}
+.em-bar i{display:block;height:100%;background:var(--rose);}
+.em-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.em-toolbar input[type=text]{max-width:260px;}
+.em-toolbar select{max-width:200px;}
+.em-empty{text-align:center;padding:30px 18px;color:var(--muted);}
+.em-empty h3{font-family:var(--font-serif);font-size:22px;color:var(--plum);font-weight:600;margin-bottom:4px;}
+.em-alert{background:var(--sage-light);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--sage-dark);}
+.em-detail td{background:var(--ivory);}
+.em-detail ol{margin:0;padding-left:18px;font-size:12.5px;line-height:1.8;}
+.em-note{font-size:12px;color:var(--muted);margin-top:10px;}
+.em-wrapx{overflow-x:auto;}
+@media(max-width:900px){.em-stats{grid-template-columns:repeat(2,minmax(0,1fr));}.em-grid{grid-template-columns:1fr;}.em-edit{grid-template-columns:1fr;}.em-meta{display:none;}.em-frame{height:440px;}}
 </style>
 </head><body>
 
@@ -1004,6 +1071,13 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
   </div>
 </div>
 
+<div id="page-emails" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Emails</div><div class="page-sub">Every automated email, who's getting them, and who left</div></div>
+  </div>
+  <div id="em-body"></div>
+</div>
+
 <div id="page-sync" class="page">
   <div class="page-header">
     <div><div class="page-title">Data Sync</div><div class="page-sub">Your data lives in Supabase. Sign in once per device and it stays signed in.</div></div>
@@ -1266,14 +1340,15 @@ var ICONS={
   trendUp:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
   eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
   chevron:'<polyline points="9 18 15 12 9 6"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
   sparkle:'<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/>'
 };
 // ---- BUILD STAMP ------------------------------------------------------
 // Bump these two on every delivered file. They show under the sidebar logo
 // and on the Data Sync page, so "is this the file I actually uploaded?"
 // is answerable at a glance instead of by reading a note that may be wrong.
-var CC_BUILD='25';
-var CC_BUILD_DATE='28 Sep 2026';
+var CC_BUILD='26';
+var CC_BUILD_DATE='25 Oct 2026';
 function renderBuildStamp(){
   var el=document.getElementById('sidebar-build');
   if(el)el.textContent='Build '+CC_BUILD+' · '+CC_BUILD_DATE;
@@ -1306,6 +1381,7 @@ var NAV_ITEMS=[
   {id:'pinstudio',icon:'penTool',label:'Pin Studio'},
   {id:'colors',icon:'droplet',label:'Colors'},
   {id:'etsy',icon:'trendUp',label:'Etsy Metrics'},
+  {id:'emails',icon:'mail',label:'Emails'},
   {id:'competitors',icon:'eye',label:'Competitors'},
   {id:'ideas',icon:'sparkle',label:'Ideas'},
   {id:'sync',icon:'refresh',label:'Data Sync'}
@@ -1317,7 +1393,7 @@ var MOBILE_PRIMARY=['dashboard','products','testing','notes'];
 var NAV_SECTIONS=[
   {id:'build',    label:'Build',     items:['products','pipeline','matrix','orders','calendar']},
   {id:'quality',  label:'Quality',   items:['testing','knownissues','handoffs']},
-  {id:'growth',   label:'Growth',    items:['etsy','pins','pinstudio','competitors']},
+  {id:'growth',   label:'Growth',    items:['etsy','emails','pins','pinstudio','competitors']},
   {id:'plan',     label:'Planning',  items:['ideas']},
   {id:'reference',label:'Reference', items:['standing-rules','notes','buildlog','websites','colors']},
   {id:'system',   label:'System',    items:['upload','sync']}
@@ -1869,6 +1945,7 @@ function showPage(id,el){
   if(id==='knownissues')renderKnownIssues();
   if(id==='pins')renderPins();
   if(id==='pinstudio')psRender();
+  if(id==='emails')emLoad();
 }
 function initUI(){
   renderDashboard();renderProducts();renderPipelineBoard();renderMatrix();renderOrders();renderCalendar();renderNotes();renderStandingRules();renderBuildLog();renderBuildStamp();renderCompetitors();renderEtsy();renderIdeas();renderWebsites();renderTesting();renderColorReference();runColorCheck();renderUploadZone();renderHandoffs();renderKnownIssues();renderPins();psInit();applyDarkMode();
@@ -6968,6 +7045,277 @@ renderSbAuthUI();
 if(supabaseEnabled()){
   sbTestConnection();
   sbPullWorkflowSteps();
+}
+
+// ===== EMAILS (Build 26, 25 Oct 2026) =====================================
+// Every automated email (email_sequence_steps), who is getting them (email_queue)
+// and who left (email_unsubscribes + email_events). Editing writes straight to
+// email_sequence_steps, which the email-sequences sender reads at send time, so
+// a saved change reaches every email that has not gone out yet.
+var EM={tab:'seq',seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
+var EM_SEQ={
+  'lab-warm':{name:'Warm: $7 Fix Kit',grp:'Scorecard',lab:'warm',start:'Starts when someone labeled warm gives their email on the Scorecard'},
+  'lab-hot':{name:'Hot: $497 rebuild',grp:'Scorecard',lab:'hot',start:'Starts when someone labeled hot gives their email on the Scorecard'},
+  'lab-browsing':{name:'Browsing: tips',grp:'Scorecard',lab:'browsing',start:'Starts when someone labeled browsing gives their email on the Scorecard'},
+  'fixkit-link':{name:'Fix Kit link',grp:'After a purchase',lab:'buyer',start:'Sent right after someone buys the $7 Fix Kit'},
+  'planner-link':{name:'Rebuild Planner link',grp:'After a purchase',lab:'buyer',start:'Sent right after someone buys the $47 Rebuild Planner'},
+  'f100-link':{name:'First 100 Leads link',grp:'After a purchase',lab:'buyer',start:'Sent right after someone buys First 100 Leads'},
+  'dashboard-new':{name:'Dashboard welcome',grp:'After a purchase',lab:'buyer',start:'Sent the first time a buyer gets their Lead Magnet Dashboard'},
+  'dashboard-added':{name:'Added to dashboard',grp:'After a purchase',lab:'buyer',start:'Sent when a buyer adds another product to their dashboard'},
+  'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'}
+};
+var EM_LAB={warm:['Warm','em-p-warm'],hot:['Hot','em-p-hot'],browsing:['Browsing','em-p-brow'],buyer:['Buyer','em-p-buy'],other:['Lead','em-p-off']};
+var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are'};
+var EM_SAMPLE={first_name:'Sam',lead_magnet_name:'6 Things Before You Book a Cruise',score:'41',result_type:'The One-Time Read',gap1:'Personalized results',fix1:'Add a short "which one are you?" section at the start.',gap2:'Reason to come back',fix2:'End with one question they answer about themselves.',gap3:'Leads to your offer',fix3:'Put the next step right where they finish.',draft_questions:'1. Where are you right now?  (Have not started / Started / Nearly there)\n2. What has gotten in the way most?  (Time / Not sure where to start)',session_key:'sample',kit_url:'#',f100_url:'#',planner_url:'#',dashboard_url:'#',items:'Your Fix Kit and Rebuild Planner',items_verb:'are',unsubscribe_url:'#',email:'sam@example.com'};
+function emName(s){return (EM_SEQ[s]&&EM_SEQ[s].name)||s;}
+function emIsTest(r){var e=String(r.email||'').toLowerCase();return /@havenkept\.com$|^havenkept@gmail\.com$|baileyschmidt|\+test|test@|\.test$|@example\.com$/.test(e)||!!(r.meta&&r.meta.is_test);}
+function emDays(min){var d=Math.round((min||0)/1440);return d===0?'Right away':'Day '+d;}
+function emDate(v){if(!v)return '';var d=new Date(v);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function emSteps(seq){return EM.steps.filter(function(s){return s.sequence===seq;}).sort(function(a,b){return a.step-b.step;});}
+function emReal(){return EM.queue.filter(function(r){return EM.showTests||!emIsTest(r);});}
+
+async function emLoad(force){
+  var box=document.getElementById('em-body');if(!box)return;
+  if(!EM.loaded||force){
+    box.innerHTML='<div class="em-empty">Loading your emails…</div>';
+    var r=await Promise.all([
+      sbRequest('GET','email_sequence_steps?select=*&order=sequence.asc,step.asc'),
+      sbRequest('GET','email_queue?select=id,email,name,sequence,step,send_at,status,sent_at,created_at,error,meta&order=created_at.desc&limit=5000'),
+      sbRequest('GET','email_unsubscribes?select=*&order=at.desc'),
+      sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc')
+    ]);
+    if(!r[0]){box.innerHTML='<div class="em-empty"><h3>Couldn\'t load emails</h3><p>'+esc(_sbLastError||'Sign in on the Data Sync page first.')+'</p></div>';return;}
+    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.loaded=true;
+    if(!EM_SEQ[EM.seq]&&EM.steps[0])EM.seq=EM.steps[0].sequence;
+  }
+  emRender();
+}
+function emRender(){
+  var box=document.getElementById('em-body');if(!box)return;
+  var real=emReal(),now=Date.now();
+  var people={},active={},sent30=0,week=0;
+  real.forEach(function(r){
+    var e=String(r.email).toLowerCase();
+    if(!people[e]||people[e]>new Date(r.created_at).getTime())people[e]=new Date(r.created_at).getTime();
+    if(r.status==='pending')active[e]=1;
+    if(r.status==='sent'&&r.sent_at&&now-new Date(r.sent_at).getTime()<30*864e5)sent30++;
+  });
+  Object.keys(people).forEach(function(e){if(now-people[e]<7*864e5)week++;});
+  var unsubs=EM.unsubs.filter(function(u){return EM.showTests||!emIsTest(u);});
+  var h='<div class="em-stats">'
+    +'<div class="em-stat"><span>Subscribers</span><b>'+Object.keys(people).length+'</b><small>'+(week?'+'+week+' this week':'')+'</small></div>'
+    +'<div class="em-stat"><span>In a sequence now</span><b>'+Object.keys(active).length+'</b><small></small></div>'
+    +'<div class="em-stat"><span>Emails sent, 30 days</span><b>'+sent30+'</b><small></small></div>'
+    +'<div class="em-stat"><span>Unsubscribed</span><b>'+unsubs.length+'</b><small></small></div></div>';
+  var seqs={};EM.steps.forEach(function(s){seqs[s.sequence]=1;});
+  var subRows=emSubRows();
+  h+='<div class="em-tabs">'
+    +['seq','sub','uns'].map(function(t){var lab={seq:'Sequences',sub:'Subscribers',uns:'Unsubscribes'}[t];var n={seq:Object.keys(seqs).length,sub:Object.keys(people).length,uns:unsubs.length}[t];return '<button class="em-tab'+(EM.tab===t?' on':'')+'" onclick="EM.tab=\''+t+'\';emRender()">'+lab+' <i>'+n+'</i></button>';}).join('')
+    +'</div>';
+  if(EM.tab==='seq')h+=emSeqPane(seqs);
+  if(EM.tab==='sub')h+=emSubPane(subRows);
+  if(EM.tab==='uns')h+=emUnsPane(unsubs);
+  h+='<div class="em-toolbar" style="margin-top:16px"><label class="em-toggle"><input type="checkbox" '+(EM.showTests?'checked':'')+' onchange="EM.showTests=this.checked;emRender()"> Show my test signups</label><button class="btn-ghost" onclick="emLoad(true)">Refresh</button></div>';
+  box.innerHTML=h;
+  if(EM.open!=null)emPreview();
+}
+function emSeqPane(seqs){
+  var real=emReal();
+  var groups={'Scorecard':[],'After a purchase':[],'Other':[]};
+  Object.keys(seqs).forEach(function(s){var g=(EM_SEQ[s]&&EM_SEQ[s].grp)||'Other';(groups[g]=groups[g]||[]).push(s);});
+  var order=Object.keys(EM_SEQ);
+  var h='<div class="em-grid"><div class="em-list">';
+  Object.keys(groups).forEach(function(g){
+    if(!groups[g].length)return;
+    h+='<div class="em-grp">'+esc(g)+'</div>';
+    groups[g].sort(function(a,b){return order.indexOf(a)-order.indexOf(b);}).forEach(function(s){
+      var n=emSteps(s).length;
+      h+='<button class="em-seq'+(EM.seq===s?' on':'')+'" onclick="EM.seq=\''+s+'\';EM.open=null;emRender()">'+esc(emName(s))+'<small>'+n+(n===1?' email':' emails')+'</small></button>';
+    });
+  });
+  h+='</div>';
+  var steps=emSteps(EM.seq),info=EM_SEQ[EM.seq]||{start:''};
+  var inNow={};real.forEach(function(r){if(r.sequence===EM.seq&&r.status==='pending')inNow[String(r.email).toLowerCase()]=1;});
+  var n=Object.keys(inNow).length;
+  h+='<div class="em-card"><div class="em-head"><div><h2>'+esc(emName(EM.seq))+'</h2><p>'+esc(info.start)+'</p></div>'
+    +'<span class="em-pill '+(n?'em-p-warm':'em-p-off')+'">'+n+(n===1?' person':' people')+' in it now</span></div><div class="em-tl">';
+  steps.forEach(function(s){
+    var rows=real.filter(function(r){return r.sequence===s.sequence&&r.step===s.step;});
+    var sent=rows.filter(function(r){return r.status==='sent';}).length;
+    var pend=rows.filter(function(r){return r.status==='pending';}).sort(function(a,b){return new Date(a.send_at)-new Date(b.send_at);});
+    var uns=EM.events.filter(function(e){return e.sequence===s.sequence&&e.step===s.step&&(EM.showTests||!emIsTest(e));}).length;
+    var meta=!s.active?'Off':(EM.open===s.step?'Editing':(sent?'Sent '+sent:'')+(pend.length?(sent?' · ':'')+'Next: '+emDate(pend[0].send_at):'')+(uns?' · '+uns+' left here':''));
+    h+='<div class="em-step'+(sent?' sent':'')+(s.active?'':' off')+'"><button class="em-srow" onclick="emToggle('+s.step+')"><span class="em-day">'+emDays(s.delay_minutes)+'</span><span class="em-subj">'+esc(s.subject)+'</span><span class="em-meta">'+esc(meta)+'</span></button>';
+    if(EM.open===s.step)h+=emEditor(s);
+    h+='</div>';
+  });
+  h+='</div><button class="btn-ghost" style="margin-top:6px" onclick="emAddStep()">+ Add an email</button></div></div>';
+  return h;
+}
+function emSplit(text){
+  text=String(text||'');var i=text.lastIndexOf('\nBailey\nHavenKept');
+  if(i<0)return {main:text.trim(),foot:'\n\nBailey\nHavenKept'};
+  return {main:text.slice(0,i).replace(/\s+$/,''),foot:text.slice(i)};
+}
+function emChips(seq){
+  var found={};
+  emSteps(seq).forEach(function(s){String((s.subject||'')+(s.text_body||'')).replace(/\{\{\s*(\w+)\s*\}\}/g,function(m,k){found[k]=1;});});
+  if(/^lab-/.test(seq))['first_name','lead_magnet_name','score','result_type','gap1','fix1'].forEach(function(k){found[k]=1;});
+  found.first_name=1;delete found.unsubscribe_url;delete found.email;
+  return Object.keys(found).filter(function(k){return EM_PH[k];});
+}
+function emEditor(s){
+  var p=emSplit(s.text_body);
+  return '<div class="em-edit"><div>'
+    +'<div class="form-field"><label>Subject</label><input type="text" id="em-f-subj" value="'+esc(s.subject)+'" oninput="emDirty()" onfocus="EM.focus=this"></div>'
+    +'<div class="em-row2 form-field"><div><label>Send on day</label><input type="number" min="0" step="1" id="em-f-days" value="'+Math.round((s.delay_minutes||0)/1440)+'" oninput="emDirty()"></div>'
+    +'<div><label>Status</label><label class="em-toggle" style="margin-top:8px"><input type="checkbox" id="em-f-on" '+(s.active?'checked':'')+' onchange="emDirty()"> On</label></div></div>'
+    +'<div class="form-field"><label>Email</label><textarea id="em-f-body" oninput="emDirty()" onfocus="EM.focus=this">'+esc(p.main)+'</textarea>'
+    +'<div class="em-chips"><span style="font-size:11.5px;color:var(--muted)">Tap to insert:</span>'+emChips(s.sequence).map(function(k){return '<button type="button" class="em-chip" onclick="emInsert(\''+k+'\')">'+esc(EM_PH[k])+'</button>';}).join('')+'</div>'
+    +'<p class="em-note">A line like <b>Get the Fix Kit: link</b> on its own becomes a button. Lines starting with "- " become a list. Your sign-off, the unsubscribe link and the address are added for you.</p></div>'
+    +'</div><div><label>Preview, with sample answers</label><iframe class="em-frame" id="em-frame" title="Email preview"></iframe></div>'
+    +'<div class="em-actions"><span class="em-hint" id="em-hint">Saved changes reach every email that hasn\'t gone out yet. New timing applies to people who start after you save.</span>'
+    +'<button class="btn-ghost" id="em-test" onclick="emTest()">Send me a test</button><button class="btn-ghost" onclick="EM.open=null;emRender()">Close</button><button class="btn-add" id="em-save" onclick="emSave()" disabled style="opacity:.5">Save</button></div></div>';
+}
+function emToggle(step){
+  if(EM.open===step){EM.open=null;}else{if(EM.dirty&&!confirm('Close without saving your changes?'))return;EM.open=step;}
+  EM.dirty=false;emRender();
+}
+function emCur(){return EM.steps.find(function(s){return s.sequence===EM.seq&&s.step===EM.open;});}
+function emDirty(){
+  var s=emCur();if(!s)return;var p=emSplit(s.text_body);
+  var d=document.getElementById('em-f-subj').value!==s.subject||document.getElementById('em-f-body').value!==p.main||Math.round(+document.getElementById('em-f-days').value*1440)!==(s.delay_minutes||0)||document.getElementById('em-f-on').checked!==!!s.active;
+  EM.dirty=d;var b=document.getElementById('em-save');b.disabled=!d;b.style.opacity=d?1:.5;
+  var t=document.getElementById('em-test');t.textContent=d?'Save first to test':'Send me a test';t.disabled=d;
+  clearTimeout(EM._pv);EM._pv=setTimeout(emPreview,250);
+}
+function emInsert(k){
+  var el=EM.focus&&document.body.contains(EM.focus)?EM.focus:document.getElementById('em-f-body');if(!el)return;
+  var tag='{{'+k+'}}',a=el.selectionStart||el.value.length,b=el.selectionEnd||a;
+  el.value=el.value.slice(0,a)+tag+el.value.slice(b);el.focus();el.selectionStart=el.selectionEnd=a+tag.length;emDirty();
+}
+function emH(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function emLinkify(t){return t.replace(/(https?:\/\/[^\s<]+)/g,function(u){return '<a href="'+u+'" style="color:#3D2A4A;font-weight:bold">'+u+'</a>';});}
+var EM_BTN='display:inline-block;background:#3D2A4A;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px';
+function emBuildHtml(subject,main,foot){
+  var url=/^(https?:\/\/\S+|\{\{\w+_url\}\})$/;
+  var body=String(main||'').split(/\n\s*\n/).map(function(b){
+    b=b.trim();if(!b)return '';
+    if(b==='{{draft_questions}}')return '<pre style="white-space:pre-wrap;font-family:inherit;margin:0 0 16px;padding:12px 14px;background:#F6F2F7;border-radius:10px">{{draft_questions}}</pre>';
+    var L=b.split('\n'),m;
+    if(L.length===1&&(m=L[0].match(/^(.+?):\s*(https?:\/\/\S+|\{\{\w+_url\}\})$/)))return '<p style="margin:22px 0"><a href="'+m[2]+'" style="'+EM_BTN+'">'+emH(m[1])+' &rarr;</a></p>';
+    if(L.length===2&&/:\s*$/.test(L[0])&&url.test(L[1].trim()))return '<p style="margin:22px 0"><a href="'+L[1].trim()+'" style="'+EM_BTN+'">'+emH(L[0].replace(/:\s*$/,''))+' &rarr;</a></p>';
+    var first=L.findIndex(function(x){return /^\s*-\s+/.test(x);});
+    if(first>=0){
+      var intro=L.slice(0,first),items=L.slice(first).filter(function(x){return x.trim();});
+      return (intro.length?'<p>'+intro.map(function(x){return emLinkify(emH(x));}).join('<br>')+'</p>':'')
+        +'<ul style="padding-left:20px">'+items.map(function(x){return '<li>'+emLinkify(emH(x.replace(/^\s*-\s+/,'')))+'</li>';}).join('')+'</ul>';
+    }
+    return '<p>'+L.map(function(x){return emLinkify(emH(x));}).join('<br>')+'</p>';
+  }).join('');
+  var fl=String(foot||'').replace(/^\s*Bailey\s*\nHavenKept\s*/,'').trim().split('\n').filter(function(x){return x.trim();}).map(function(x){
+    if(/^Unsubscribe:/i.test(x.trim()))return '<a href="{{unsubscribe_url}}" style="color:#6E655A">Unsubscribe</a>';
+    return emH(x.trim());
+  }).join('<br>');
+  return '<!doctype html><html><body style="margin:0;padding:0;background:#FAF8F3;font-family:Helvetica,Arial,sans-serif;color:#2A241D"><table width="100%" cellpadding="0" cellspacing="0" style="background:#FAF8F3"><tr><td align="center" style="padding:28px 14px"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #EDE6DA;border-radius:16px"><tr><td style="padding:30px 30px 8px;font-family:Georgia,serif;font-size:24px;line-height:1.25;color:#3D2A4A;font-weight:bold">'+emH(subject)+'</td></tr><tr><td style="padding:8px 30px 0;font-size:16px;line-height:1.6">'+body+'<p style="margin-top:22px">Bailey<br>HavenKept</p></td></tr><tr><td style="padding:14px 30px 26px;font-size:12px;line-height:1.5;color:#6E655A">'+fl+'</td></tr></table></td></tr></table></body></html>';
+}
+function emFill(html){return String(html).replace(/\{\{\s*(\w+)\s*\}\}/g,function(m,k){var v=EM_SAMPLE[k];if(v==null)return m;return /_url$/.test(k)?v:emH(v);});}
+function emPreview(){
+  var s=emCur(),f=document.getElementById('em-frame');if(!s||!f)return;
+  var html;
+  if(EM.dirty){var p=emSplit(s.text_body);html=emBuildHtml(document.getElementById('em-f-subj').value,document.getElementById('em-f-body').value,p.foot);}
+  else html=s.html||emBuildHtml(s.subject,emSplit(s.text_body).main,emSplit(s.text_body).foot);
+  f.srcdoc=emFill(html).replace('<body ','<body onclick="event.preventDefault()" ');
+}
+async function emSave(){
+  var s=emCur();if(!s)return;
+  var subj=document.getElementById('em-f-subj').value.trim(),main=document.getElementById('em-f-body').value.replace(/\s+$/,'');
+  if(!subj){toast('Add a subject first');return;}
+  var p=emSplit(s.text_body);
+  var patch={subject:subj,delay_minutes:Math.max(0,Math.round(+document.getElementById('em-f-days').value||0))*1440,active:document.getElementById('em-f-on').checked};
+  if(main!==p.main){patch.text_body=main+p.foot;patch.html=emBuildHtml(subj,main,p.foot);}
+  else if(subj!==s.subject){patch.html=String(s.html||'').split('>'+emH(s.subject)+'</td>').join('>'+emH(subj)+'</td>');if(patch.html===s.html)patch.html=emBuildHtml(subj,main,p.foot);}
+  var b=document.getElementById('em-save');b.disabled=true;b.textContent='Saving…';
+  var r=await sbRequest('PATCH','email_sequence_steps?sequence=eq.'+encodeURIComponent(s.sequence)+'&step=eq.'+s.step,patch,{'Prefer':'return=representation'});
+  if(!r||!r.length){toast('Could not save: '+(_sbLastError||'unknown error'));b.disabled=false;b.textContent='Save';return;}
+  Object.assign(s,r[0]);EM.dirty=false;toast('Saved');emRender();
+}
+async function emTest(){
+  var s=emCur();if(!s||EM.dirty)return;
+  var b=document.getElementById('em-test');b.disabled=true;b.textContent='Sending…';
+  var r=await sbRequest('POST','rpc/hk_send_test_email',{p_sequence:s.sequence,p_step:s.step});
+  b.disabled=false;b.textContent='Send me a test';
+  toast(r==='queued'?'Test sent to hello@havenkept.com':'Could not send: '+(_sbLastError||r||'unknown error'));
+}
+async function emAddStep(){
+  var steps=emSteps(EM.seq);var last=steps[steps.length-1];
+  var foot=last?emSplit(last.text_body).foot:'\n\nBailey\nHavenKept\n\nYou received this email because you signed up on our website or made a purchase from us.\nHavenKept, Lexington Park, MD 20653\nUnsubscribe: {{unsubscribe_url}}';
+  var main='Hi {{first_name}},\n\n';
+  var row={sequence:EM.seq,step:last?last.step+1:0,delay_minutes:(last?last.delay_minutes:0)+3*1440,subject:'New email',text_body:main+foot,html:emBuildHtml('New email',main,foot),active:false};
+  var r=await sbRequest('POST','email_sequence_steps',row,{'Prefer':'return=representation'});
+  if(!r||!r.length){toast('Could not add: '+(_sbLastError||'unknown error'));return;}
+  EM.steps.push(r[0]);EM.open=r[0].step;EM.dirty=false;emRender();
+  toast('Added. It stays off until you write it and switch it on.');
+}
+function emSubRows(){
+  var g={};
+  emReal().forEach(function(r){
+    var k=String(r.email).toLowerCase()+'|'+r.sequence;
+    if(!g[k])g[k]={email:r.email,seq:r.sequence,rows:[],meta:r.meta||{},joined:r.created_at};
+    g[k].rows.push(r);if(new Date(r.created_at)<new Date(g[k].joined))g[k].joined=r.created_at;
+    if(r.meta&&Object.keys(r.meta).length>Object.keys(g[k].meta).length)g[k].meta=r.meta;
+  });
+  return Object.keys(g).map(function(k){
+    var x=g[k];x.sent=x.rows.filter(function(r){return r.status==='sent';}).length;x.total=x.rows.length;
+    var p=x.rows.filter(function(r){return r.status==='pending';}).sort(function(a,b){return new Date(a.send_at)-new Date(b.send_at);});
+    x.next=p[0]?p[0].send_at:null;x.stopped=x.rows.some(function(r){return r.error==='unsubscribed';});
+    x.lab=(EM_SEQ[x.seq]&&EM_SEQ[x.seq].lab)||'other';
+    return x;
+  }).sort(function(a,b){return new Date(b.joined)-new Date(a.joined);});
+}
+function emOpenSub(i){var k=EM._keys&&EM._keys[i];EM.openSub=EM.openSub===k?null:k;emRender();}
+function emSubPane(rows){
+  EM._keys=[];
+  var q=EM.q.toLowerCase();
+  var shown=rows.filter(function(x){return (!q||(x.email+' '+(x.meta.lead_magnet_name||'')).toLowerCase().indexOf(q)>=0)&&(!EM.fSeq||x.seq===EM.fSeq)&&(!EM.fLab||x.lab===EM.fLab);});
+  var seqOpts=Object.keys(EM_SEQ).map(function(s){return '<option value="'+s+'"'+(EM.fSeq===s?' selected':'')+'>'+esc(emName(s))+'</option>';}).join('');
+  var labOpts=['warm','hot','browsing','buyer','other'].map(function(l){return '<option value="'+l+'"'+(EM.fLab===l?' selected':'')+'>'+EM_LAB[l][0]+'</option>';}).join('');
+  var h='<div class="em-toolbar"><input type="text" placeholder="Search email or lead magnet" value="'+esc(EM.q)+'" oninput="EM.q=this.value;clearTimeout(EM._q);EM._q=setTimeout(function(){emRender();var i=document.querySelector(\'#em-body .em-toolbar input[type=text]\');if(i){i.focus();i.selectionStart=i.selectionEnd=i.value.length;}},300)">'
+    +'<select onchange="EM.fSeq=this.value;emRender()"><option value="">All sequences</option>'+seqOpts+'</select>'
+    +'<select onchange="EM.fLab=this.value;emRender()"><option value="">All labels</option>'+labOpts+'</select></div>';
+  if(!shown.length)return h+'<div class="em-card em-empty"><h3>No one here yet</h3><p>'+(rows.length?'Nothing matches those filters.':'When someone joins a sequence, they show up here.')+'</p></div>';
+  h+='<div class="em-wrapx"><table class="em-table"><thead><tr><th>Subscriber</th><th>Label</th><th>Sequence</th><th>Progress</th><th>Next email</th><th>Joined</th></tr></thead><tbody>';
+  shown.forEach(function(x,i){
+    var k=x.email+'|'+x.seq,lab=EM_LAB[x.lab],m=x.meta||{};
+    var sub=[m.lead_magnet_name,m.score?'score '+m.score:'',m.business_name].filter(Boolean).join(' · ');
+    EM._keys=EM._keys||[];EM._keys[i]=k;
+    h+='<tr class="em-click" onclick="emOpenSub('+i+')"><td><b>'+esc(x.email)+'</b>'+(sub?'<br><span class="em-sub2">'+esc(sub)+'</span>':'')+'</td>'
+      +'<td><span class="em-pill '+lab[1]+'">'+lab[0]+'</span></td><td>'+esc(emName(x.seq))+'</td>'
+      +'<td>'+(x.stopped?'<span class="em-pill em-p-off">Unsubscribed</span>':'<span class="em-bar"><i style="width:'+Math.round(x.sent/x.total*100)+'%"></i></span>'+(x.sent>=x.total?'Done':x.sent+' of '+x.total))+'</td>'
+      +'<td>'+(x.next?emDate(x.next):'None')+'</td><td>'+emDate(x.joined)+'</td></tr>';
+    if(EM.openSub===k){
+      var steps=emSteps(x.seq);
+      h+='<tr class="em-detail"><td colspan="6"><ol>'+x.rows.slice().sort(function(a,b){return a.step-b.step;}).map(function(r){
+        var st=steps.find(function(s){return s.step===r.step;});
+        var when=r.status==='sent'?'Sent '+emDate(r.sent_at):r.status==='pending'?'Goes out '+emDate(r.send_at):r.error==='unsubscribed'?'Stopped (unsubscribed)':(r.status+(r.error?' ('+r.error+')':''));
+        var sj=String(st?st.subject:'Email '+r.step).replace(/\{\{\s*(\w+)\s*\}\}/g,function(mm,kk){return (x.meta&&x.meta[kk])||mm;});
+        return '<li><b>'+esc(sj)+'</b> &middot; '+esc(when)+'</li>';
+      }).join('')+'</ol></td></tr>';
+    }
+  });
+  return h+'</tbody></table></div><p class="em-note">Tap anyone to see each email they got and when.</p>';
+}
+function emUnsPane(unsubs){
+  var h='<div class="em-alert">&#128276; <b>You get an email at hello@havenkept.com</b> whenever someone unsubscribes, with who it was and which email they left on.</div>';
+  if(!unsubs.length)return h+'<div class="em-card em-empty"><h3>No unsubscribes yet</h3><p>When someone leaves, they show up here.</p></div>';
+  h+='<div class="em-wrapx"><table class="em-table"><thead><tr><th>Who</th><th>When</th><th>Left on</th><th>How</th></tr></thead><tbody>';
+  unsubs.forEach(function(u){
+    var ev=EM.events.find(function(e){return String(e.email).toLowerCase()===String(u.email).toLowerCase();});
+    var st=ev?EM.steps.find(function(s){return s.sequence===ev.sequence&&s.step===ev.step;}):null;
+    var left=ev?emName(ev.sequence)+(st?' · '+emDays(st.delay_minutes)+' · "'+st.subject+'"':''):'Unknown';
+    h+='<tr><td><b>'+esc(u.email)+'</b></td><td>'+emDate(u.at)+'</td><td>'+esc(left)+'</td><td>'+esc(u.reason==='one-click'?'One-click button':u.reason==='link'?'Unsubscribe link':(u.reason||''))+'</td></tr>';
+  });
+  return h+'</tbody></table></div>';
 }
 </script>
 </body></html>
