@@ -7065,7 +7065,7 @@ var EM_SEQ={
   'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'}
 };
 var EM_LAB={warm:['Warm','em-p-warm'],hot:['Hot','em-p-hot'],browsing:['Browsing','em-p-brow'],buyer:['Buyer','em-p-buy'],other:['Lead','em-p-off']};
-var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are'};
+var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'their Fix Kit',fixkit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are'};
 var EM_SAMPLE={first_name:'Sam',lead_magnet_name:'6 Things Before You Book a Cruise',score:'41',result_type:'The One-Time Read',gap1:'Personalized results',fix1:'Add a short "which one are you?" section at the start.',gap2:'Reason to come back',fix2:'End with one question they answer about themselves.',gap3:'Leads to your offer',fix3:'Put the next step right where they finish.',draft_questions:'1. Where are you right now?  (Have not started / Started / Nearly there)\n2. What has gotten in the way most?  (Time / Not sure where to start)',session_key:'sample',kit_url:'#',f100_url:'#',planner_url:'#',dashboard_url:'#',items:'Your Fix Kit and Rebuild Planner',items_verb:'are',unsubscribe_url:'#',email:'sam@example.com'};
 function emName(s){return (EM_SEQ[s]&&EM_SEQ[s].name)||s;}
 function emIsTest(r){var e=String(r.email||'').toLowerCase();return /@havenkept\.com$|^havenkept@gmail\.com$|baileyschmidt|\+test|test@|\.test$|@example\.com$/.test(e)||!!(r.meta&&r.meta.is_test);}
@@ -7160,7 +7160,7 @@ function emSplit(text){
 function emChips(seq){
   var found={};
   emSteps(seq).forEach(function(s){String((s.subject||'')+(s.text_body||'')).replace(/\{\{\s*(\w+)\s*\}\}/g,function(m,k){found[k]=1;});});
-  if(/^lab-/.test(seq))['first_name','lead_magnet_name','score','result_type','gap1','fix1'].forEach(function(k){found[k]=1;});
+  if(/^(lab-|draft-)/.test(seq))['first_name','lead_magnet_name','score','result_type','gap1','fix1','fixkit_url'].forEach(function(k){found[k]=1;});
   found.first_name=1;delete found.unsubscribe_url;delete found.email;
   return Object.keys(found).filter(function(k){return EM_PH[k];});
 }
