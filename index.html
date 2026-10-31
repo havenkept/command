@@ -7195,7 +7195,11 @@ function emInsert(k){
   el.value=el.value.slice(0,a)+tag+el.value.slice(b);el.focus();el.selectionStart=el.selectionEnd=a+tag.length;emDirty();
 }
 function emH(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function emLinkify(t){return t.replace(/(https?:\/\/[^\s<]+)/g,function(u){return '<a href="'+u+'" style="color:#3D2A4A;font-weight:bold">'+u+'</a>';});}
+var EM_LINKTXT={fixkit_url:'Fix Kit',kit_url:'Fix Kit',planner_url:'Rebuild Planner',f100_url:'First 100 Leads',dashboard_url:'dashboard'};
+function emLinkify(t){var A=' style="color:#3D2A4A;font-weight:bold"';
+  t=t.replace(/(https?:\/\/[^\s<]+)/g,function(u){return '<a href="'+u+'"'+A+'>'+u+'</a>';});
+  t=t.replace(/\[([^\]<]+)\]\((\{\{\w*url\}\})\)/g,function(m,w,u){return '<a href="'+u+'"'+A+'>'+w+'</a>';});
+  return t.replace(/([^:"(\s])(\s+)\{\{(\w+_url)\}\}/g,function(m,c,sp,k){return EM_LINKTXT[k]?c+sp+'<a href="{{'+k+'}}"'+A+'>'+EM_LINKTXT[k]+'</a>':m;});}
 var EM_BTN='display:inline-block;background:#3D2A4A;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px';
 function emBuildHtml(subject,main,foot){
   var url=/^(https?:\/\/\S+|\{\{\w+_url\}\})$/;
