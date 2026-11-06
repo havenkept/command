@@ -7266,6 +7266,7 @@ async function emAddStep(){
 function emSubRows(){
   var g={};
   emReal().forEach(function(r){
+    if(/^(swap|weekly|broadcast)-/.test(r.sequence))return; // one-off list emails, not a series someone is in
     var k=String(r.email).toLowerCase()+'|'+r.sequence;
     if(!g[k])g[k]={email:r.email,seq:r.sequence,rows:[],meta:r.meta||{},joined:r.created_at};
     g[k].rows.push(r);if(new Date(r.created_at)<new Date(g[k].joined))g[k].joined=r.created_at;
