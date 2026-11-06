@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Unsubscribe · HavenKept</title>
+<style>
+body{margin:0;background:#FAF8F3;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#2A241D}
+.card{max-width:460px;margin:10vh auto;padding:34px 28px;background:#fff;border:1px solid #EDE6DA;border-radius:18px;text-align:center;box-sizing:border-box}
+@media(max-width:520px){.card{margin:6vh 16px}}
+.brand{font:600 18px Georgia,serif;color:#3D2A4A;margin-bottom:18px}
+h1{font:600 26px/1.2 Georgia,serif;margin:0 0 12px}
+p{font-size:16px;line-height:1.6;color:#4A423A;margin:0 0 18px}
+form{text-align:left}.ask{font-size:14px;color:#6E655A;margin:0 0 10px}
+label{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid #EDE6DA;border-radius:10px;margin:0 0 8px;cursor:pointer;font-size:15px}
+input[type=radio]{accent-color:#3D2A4A}
+textarea{width:100%;box-sizing:border-box;margin:4px 0 16px;padding:10px 12px;border:1px solid #EDE6DA;border-radius:10px;font:inherit;font-size:15px}
+button{display:block;width:100%;background:#3D2A4A;color:#fff;border:0;border-radius:999px;padding:13px 20px;font-weight:bold;font-size:16px;cursor:pointer}
+</style></head><body><div class="card"><div class="brand">HavenKept</div><div id="c"></div></div>
+<script>
+(function(){
+  var FN='https://ktekniuqywcvmpdmufhr.supabase.co/functions/v1/email-unsubscribe';
+  var q=new URLSearchParams(location.search),c=document.getElementById('c');
+  function esc(s){return String(s||'').replace(/[&<>"]/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x];});}
+  if(q.get('done')){var lm=q.get('lm');c.innerHTML='<h1>You\'re unsubscribed</h1><p>You won\'t get any more emails from me. Thanks for spending some time with HavenKept, and good luck with '+(lm?esc(lm):'your lead magnet')+'!</p>';return;}
+  var t=q.get('t')||'';
+  if(!/^[0-9a-f-]{36}$/i.test(t)||q.get('err')){c.innerHTML='<h1>Link not recognized</h1><p>This unsubscribe link looks incomplete. Reply to any of my emails and I\'ll take you off the list by hand.</p>';return;}
+  var R=['Too many emails','Not relevant to me right now','I already got what I needed','I don\'t remember signing up','Something else'];
+  c.innerHTML='<h1>Unsubscribe?</h1><p>Press the button below and you won\'t get any more emails from me.</p>'
+   +'<form method="post" action="'+FN+'"><input type="hidden" name="t" value="'+esc(t)+'"><input type="hidden" name="confirm" value="1">'
+   +'<p class="ask">If you have a second, do you mind sharing why you\'re leaving? (Optional)</p>'
+   +R.map(function(r,i){return '<label><input type="radio" name="reason" value="'+i+'"> '+esc(r)+'</label>';}).join('')
+   +'<textarea name="note" maxlength="300" rows="2" placeholder="Anything else? (optional)"></textarea>'
+   +'<button type="submit">Yes, unsubscribe me</button></form>';
+})();
+</script></body></html>
