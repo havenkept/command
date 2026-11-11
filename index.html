@@ -302,7 +302,9 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .lm-chip{background:var(--warm-white);border:1px solid var(--border);border-radius:99px;padding:6px 14px;font-family:var(--font-sans);font-size:12.5px;cursor:pointer;color:var(--charcoal);}
 .lm-chip.on{background:var(--plum);border-color:var(--plum);color:var(--ivory);}
 .lm-tablewrap{overflow-x:auto;}
-.lm-table{width:100%;border-collapse:collapse;font-size:13px;}
+.lm-table{width:100%;min-width:560px;border-collapse:collapse;font-size:13px;}
+.lm-table th,.lm-table td span{white-space:nowrap;}
+.lm-table td:first-child{min-width:150px;}
 .lm-table th{text-align:left;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);}
 .lm-table td{padding:10px 8px;border-bottom:1px solid var(--border-light);vertical-align:top;cursor:pointer;}
 .lm-table td span,.lm-sub{color:var(--muted);font-size:11.5px;}
@@ -327,6 +329,7 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .lm-note{font-size:11.5px;color:var(--muted);margin-top:6px;}
 .lm-add summary{cursor:pointer;font-size:13px;color:var(--plum);font-weight:500;}
 .lm-addgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;margin:12px 0;}
+.lm-edit{border-top:1px solid var(--border,#eee);padding-top:12px;margin-bottom:14px;}
 @media(max-width:700px){.lm-addgrid{grid-template-columns:1fr;}.lm-frow{grid-template-columns:110px 1fr 60px;}}
 
 
@@ -7530,7 +7533,8 @@ function lmDetail(c){
   var s=lmStats(c);
   var h='<div class="card" style="margin-bottom:14px;">';
   h+='<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;"><div><div class="page-title" style="font-size:22px;">'+esc(c.client_name)+'</div><div class="page-sub">'+esc(c.business||'')+(c.page_url?' · <a href="'+esc(c.page_url)+'" target="_blank" rel="noopener">'+esc(c.page_url.replace(/^https?:\/\//,''))+'</a>':'')+'</div></div>';
-  h+='<button class="btn-add" style="margin-left:auto;" onclick="lmMakeReport(\''+c.slug+'\')">Create client report</button></div>';
+  h+='<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-ghost" onclick="lmToggleEdit()">Edit client</button><button class="btn-add" onclick="lmMakeReport(\''+c.slug+'\')">Create client report</button></div></div>';
+  h+=lmEditForm(c);
   h+='<div class="lm-countfrom">Count visits from <input type="date" value="'+esc(c.count_from||'')+'" onchange="lmSaveCountFrom(\''+c.slug+'\',this.value)"/> <span>Earlier visits are your own tests. Leave blank to count everything.</span></div>';
   h+='<div class="lm-period">Showing '+lmPrettyDate(s.from)+' to '+lmPrettyDate(s.to)+'</div>';
   h+='<div class="lm-grid">';
@@ -7576,6 +7580,23 @@ async function lmSaveCountFrom(slug,val){
   toast('Saved');lmRender();
 }
 
+function lmEditForm(c){
+  var f=function(id,label,val,ph){return '<div class="form-field"><label>'+label+'</label><input id="lm-ed-'+id+'" value="'+esc(val||'')+'"'+(ph?' placeholder="'+ph+'"':'')+'/></div>';};
+  return '<div id="lm-edit" class="lm-edit" style="display:none;"><div class="lm-addgrid">'
+    +f('name','Client name',c.client_name)+f('biz','Business',c.business)+f('title','Page title',c.page_title)
+    +f('url','Page link',c.page_url,'https://')+f('cta','Main button name (as clients would say it)',c.cta_label,'e.g. Book a call')
+    +'</div><div style="display:flex;gap:8px;"><button class="btn-add" onclick="lmSaveEdit(\''+c.slug+'\')">Save changes</button><button class="btn-ghost" onclick="lmToggleEdit()">Cancel</button></div></div>';
+}
+function lmToggleEdit(){var e=document.getElementById('lm-edit');if(e)e.style.display=e.style.display==='none'?'block':'none';}
+async function lmSaveEdit(slug){
+  var v=function(id){return document.getElementById('lm-ed-'+id).value.trim();};
+  var row={client_name:v('name'),business:v('biz')||null,page_title:v('title')||null,page_url:v('url')||null,cta_label:v('cta')||null};
+  if(!row.client_name){toast('Client name is needed');return;}
+  var ok=await sbRequest('PATCH','lead_magnet_clients?slug=eq.'+encodeURIComponent(slug),row,{'Prefer':'return=minimal'});
+  if(ok===null){toast('Couldn\'t save. '+(_sbLastError||''));return;}
+  var c=LM.clients.find(function(x){return x.slug===slug;}); if(c)Object.assign(c,row);
+  toast('Saved');lmRender();
+}
 function lmAddForm(){
   return '<details class="card lm-add"><summary>+ Add a client page</summary><div class="lm-addgrid">'
     +'<div class="form-field"><label>Slug (from the page\'s tracking, e.g. catherine)</label><input id="lm-new-slug"/></div>'
