@@ -302,9 +302,30 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .lm-chip{background:var(--warm-white);border:1px solid var(--border);border-radius:99px;padding:6px 14px;font-family:var(--font-sans);font-size:12.5px;cursor:pointer;color:var(--charcoal);}
 .lm-chip.on{background:var(--plum);border-color:var(--plum);color:var(--ivory);}
 .lm-tablewrap{overflow-x:auto;}
-.lm-table{width:100%;min-width:560px;border-collapse:collapse;font-size:13px;}
+.lm-table{width:100%;border-collapse:collapse;font-size:13px;}
 .lm-table th,.lm-table td span{white-space:nowrap;}
-.lm-table td:first-child{min-width:150px;}
+/* Phone: wide tables become stacked cards (labels come from the header row) */
+@media(max-width:700px){
+  table.mcards,table.mcards tbody,table.mcards tr,table.mcards td{display:block;width:100%;}
+  table.mcards thead,table.mcards tr:has(>th){display:none;}
+  table.mcards{border:none!important;background:none!important;}
+  table.mcards tr{background:var(--warm-white);border:1px solid var(--border)!important;border-radius:12px;padding:6px 0;margin-bottom:10px;}
+  table.mcards td{display:flex;justify-content:flex-end;flex-wrap:wrap;column-gap:6px;row-gap:2px;align-items:baseline;gap:14px;padding:5px 14px!important;border:none!important;text-align:right;font-size:13px;min-width:0!important;}
+  table.mcards td::before{content:attr(data-label);flex:0 0 auto;margin-right:auto;padding-right:10px;text-align:left;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:500;}
+  table.mcards td:first-child{display:block;text-align:left;font-size:14px;padding-top:8px!important;padding-bottom:8px!important;word-break:break-word;}
+  table.mcards td:first-child::before,table.mcards td[colspan]::before,table.mcards td[data-label=""]::before{display:none;}
+  table.mcards td[colspan]{display:block;text-align:left;}
+  table.mcards td:empty{display:none;}
+  table.mcards td.lm-go{display:none;}
+  table.mcards tr.on{background:var(--plum-light);}
+  .em-tabs .em-tab{padding:10px 4px;font-size:12px;flex:1 1 auto;}
+  #page-emails .em-tabs{overflow:visible;gap:2px;}
+  .em-tabs .em-tab i{margin-left:3px;padding:1px 5px;}
+  .lm-frow{grid-template-columns:minmax(0,1.3fr) 1fr 58px!important;}
+  .em-tabs{gap:2px;}
+}
+
+@media(min-width:701px){.lm-table td:first-child{min-width:150px;}}
 .lm-table th{text-align:left;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);}
 .lm-table td{padding:10px 8px;border-bottom:1px solid var(--border-light);vertical-align:top;cursor:pointer;}
 .lm-table td span,.lm-sub{color:var(--muted);font-size:11.5px;}
@@ -5353,7 +5374,7 @@ function renderEtsy(){
     });
     if(!latest.length){sum.innerHTML='<div style="color:var(--muted);font-style:italic;font-size:12.5px;">Nothing logged yet. Hit “Log Numbers”.</div>';}
     else{
-      sum.innerHTML='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+      sum.innerHTML='<div style="overflow-x:auto;"><table class="mcards" style="width:100%;border-collapse:collapse;font-size:12.5px;">'
         +'<tr style="text-align:left;color:var(--muted);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;">'
         +'<th style="padding:5px 8px 5px 0;">Listing</th><th>As of</th><th>Ad views</th><th>Clicks</th><th>Click rate</th><th>Spend</th><th>Visits</th><th>Orders</th><th>Conv.</th><th>Revenue</th></tr>'
         +latest.map(function(r){
@@ -7339,7 +7360,7 @@ function emSubPane(rows){
     +'<select onchange="EM.fSeq=this.value;emRender()"><option value="">All sequences</option>'+seqOpts+'</select>'
     +'<select onchange="EM.fLab=this.value;emRender()"><option value="">All labels</option>'+labOpts+'</select></div>';
   if(!shown.length)return h+'<div class="em-card em-empty"><h3>No one here yet</h3><p>'+(rows.length?'Nothing matches those filters.':'When someone joins a sequence, they show up here.')+'</p></div>';
-  h+='<div class="em-wrapx"><table class="em-table"><thead><tr><th>Subscriber</th><th>Label</th><th>Sequence</th><th>Progress</th><th>Next email</th><th>Joined</th></tr></thead><tbody>';
+  h+='<div class="em-wrapx"><table class="em-table mcards"><thead><tr><th>Subscriber</th><th>Label</th><th>Sequence</th><th>Progress</th><th>Next email</th><th>Joined</th></tr></thead><tbody>';
   shown.forEach(function(x,i){
     var k=x.email+'|'+x.seq,lab=EM_LAB[x.lab],m=x.meta||{};
     var sub=[m.lead_magnet_name,m.score?'score '+m.score:'',m.business_name].filter(Boolean).join(' · ');
@@ -7363,7 +7384,7 @@ function emSubPane(rows){
 function emUnsPane(unsubs){
   var h='<div class="em-alert">&#128276; <b>You get an email at hello@havenkept.com</b> whenever someone unsubscribes, with who it was and which email they left on.</div>';
   if(!unsubs.length)return h+'<div class="em-card em-empty"><h3>No unsubscribes yet</h3><p>When someone leaves, they show up here.</p></div>';
-  h+='<div class="em-wrapx"><table class="em-table"><thead><tr><th>Who</th><th>When</th><th>Left on</th><th>How</th></tr></thead><tbody>';
+  h+='<div class="em-wrapx"><table class="em-table mcards"><thead><tr><th>Who</th><th>When</th><th>Left on</th><th>How</th></tr></thead><tbody>';
   unsubs.forEach(function(u){
     var ev=EM.events.find(function(e){return String(e.email).toLowerCase()===String(u.email).toLowerCase();});
     var st=ev?EM.steps.find(function(s){return s.sequence===ev.sequence&&s.step===ev.step;}):null;
@@ -7515,7 +7536,7 @@ function lmRender(){
   h+='</div>';
   if(!LM.clients.length){box.innerHTML=h+'<div class="lm-empty">No client pages yet. Add one below.</div>'+lmAddForm();return;}
   // overview table
-  h+='<div class="card" style="margin-bottom:14px;"><div class="card-title" style="margin-bottom:10px;">All clients, '+lmPrettyDate(r.from)+' to '+lmPrettyDate(r.to)+'</div><div class="lm-tablewrap"><table class="lm-table"><thead><tr><th>Client</th><th>Visits</th><th>Used tool</th><th>Reached offer</th><th>Clicked</th><th>Time</th><th></th></tr></thead><tbody>';
+  h+='<div class="card" style="margin-bottom:14px;"><div class="card-title" style="margin-bottom:10px;">All clients, '+lmPrettyDate(r.from)+' to '+lmPrettyDate(r.to)+'</div><div class="lm-tablewrap"><table class="lm-table mcards"><thead><tr><th>Client</th><th>Visits</th><th>Used tool</th><th>Reached offer</th><th>Clicked</th><th>Time</th><th></th></tr></thead><tbody>';
   LM.clients.forEach(function(c){
     var s=lmStats(c);
     h+='<tr class="'+(LM.open===c.slug?'on':'')+'" onclick="lmOpen(\''+c.slug+'\')"><td><b>'+esc(c.client_name)+'</b><div class="lm-sub">'+esc(c.page_title||c.slug)+'</div></td><td>'+s.visits+'</td><td>'+s.usedTool+' <span>'+lmPct(s.usedTool,s.visits)+'%</span></td><td>'+s.offer+' <span>'+lmPct(s.offer,s.visits)+'%</span></td><td>'+s.cta+' <span>'+lmPct(s.cta,s.visits)+'%</span></td><td>'+lmDur(s.medianTime)+'</td><td class="lm-go">›</td></tr>';
@@ -7669,5 +7690,19 @@ function lmMakeReport(slug){
   toast('Report created: '+name);
 }
 
+
+// Label each cell of a .mcards table with its column name so phones can show rows as cards.
+function mcardsLabel(){
+  document.querySelectorAll('table.mcards').forEach(function(t){
+    var hr=t.querySelector('thead tr')||t.querySelector('tr');
+    if(!hr||!hr.querySelector('th'))return;
+    var heads=[].map.call(hr.children,function(th){return th.textContent.trim();});
+    t.querySelectorAll('tr').forEach(function(tr){
+      if(tr===hr)return;
+      [].forEach.call(tr.children,function(td,i){if(td.tagName==='TD'&&!td.hasAttribute('data-label')&&!td.hasAttribute('colspan'))td.setAttribute('data-label',heads[i]||'');});
+    });
+  });
+}
+(function(){var tm;new MutationObserver(function(){clearTimeout(tm);tm=setTimeout(mcardsLabel,30);}).observe(document.documentElement,{childList:true,subtree:true});})();
 </script>
 </body></html>
