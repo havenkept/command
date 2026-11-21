@@ -415,6 +415,7 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .em-day{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--rose-dark);background:var(--rose-light);border-radius:6px;padding:3px 8px;white-space:nowrap;}
 .em-subj{flex:1;font-weight:500;min-width:0;}
 .em-meta{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.em-rate{display:block;font-weight:500;color:var(--accent,#7a4a6e);font-size:11.5px;margin-top:2px;white-space:normal;}
 .em-edit{border-top:1px solid var(--border-light);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;}
 .em-edit textarea{min-height:280px;line-height:1.55;}
 .em-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -7123,7 +7124,7 @@ if(supabaseEnabled()){
 // and who left (email_unsubscribes + email_events). Editing writes straight to
 // email_sequence_steps, which the email-sequences sender reads at send time, so
 // a saved change reaches every email that has not gone out yet.
-var EM={tab:'seq',seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
+var EM={tab:'seq',seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],opens:{},clicks:{},loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
 var EM_SEQ={
   'audit':{name:'Lead Magnet Audit',grp:'Lead Magnet Audit',lab:'other',start:'Starts when someone finishes the Lead Magnet Audit and gives their email'},
   'lab-warm':{name:'Warm: $7 Fix Kit',grp:'Scorecard',lab:'warm',start:'Starts when someone labeled warm gives their email on the Scorecard'},
@@ -7134,7 +7135,8 @@ var EM_SEQ={
   'f100-link':{name:'First 100 Leads link',grp:'After a purchase',lab:'buyer',start:'Sent right after someone buys First 100 Leads'},
   'dashboard-new':{name:'Dashboard welcome',grp:'After a purchase',lab:'buyer',start:'Sent the first time a buyer gets their Lead Magnet Dashboard'},
   'dashboard-added':{name:'Added to dashboard',grp:'After a purchase',lab:'buyer',start:'Sent when a buyer adds another product to their dashboard'},
-  'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'}
+  'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'},
+  'broadcast-training':{name:'Training invite (Nov 20)',grp:'Broadcasts',lab:'other',start:'One-time email to past Scorecard takers inviting them to the free training'}
 };
 var EM_LAB={warm:['Warm','em-p-warm'],hot:['Hot','em-p-hot'],browsing:['Browsing','em-p-brow'],buyer:['Buyer','em-p-buy'],other:['Lead','em-p-off']};
 var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'their Fix Kit',fixkit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are',temp_label:'their temperature',fix:'#1 fix',others:'other findings',goods:'what\'s working',training_url:'training link',checkout_url:'$497 checkout link',chapter_num:'chapter number',chapter_name:'chapter name',chapters_left:'chapters left'};
@@ -7153,12 +7155,13 @@ async function emLoad(force){
     box.innerHTML='<div class="em-empty">Loading your emails…</div>';
     var r=await Promise.all([
       sbRequest('GET','email_sequence_steps?select=*&order=sequence.asc,step.asc'),
-      sbRequest('GET','email_queue?select=id,email,name,sequence,step,send_at,status,sent_at,created_at,error,meta&order=created_at.desc&limit=5000'),
+      sbRequest('GET','email_queue?select=id,email,name,sequence,step,send_at,status,sent_at,created_at,error,meta,resend_id&order=created_at.desc&limit=5000'),
       sbRequest('GET','email_unsubscribes?select=*&order=at.desc'),
-      sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc')
+      sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc'),
+      sbRequest('GET','email_events?select=resend_id,type&type=in.(opened,clicked)&resend_id=not.is.null&limit=20000')
     ]);
     if(!r[0]){box.innerHTML='<div class="em-empty"><h3>Couldn\'t load emails</h3><p>'+esc(_sbLastError||'Sign in on the Data Sync page first.')+'</p></div>';return;}
-    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.loaded=true;
+    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.loaded=true;
     if(!EM_SEQ[EM.seq]&&EM.steps[0])EM.seq=EM.steps[0].sequence;
   }
   emRender();
@@ -7195,7 +7198,7 @@ function emRender(){
 }
 function emSeqPane(seqs){
   var real=emReal();
-  var groups={'Lead Magnet Audit':[],'Scorecard':[],'After a purchase':[],'Other':[]};
+  var groups={'Lead Magnet Audit':[],'Scorecard':[],'Broadcasts':[],'After a purchase':[],'Other':[]};
   Object.keys(seqs).forEach(function(s){var g=(EM_SEQ[s]&&EM_SEQ[s].grp)||'Other';(groups[g]=groups[g]||[]).push(s);});
   var order=Object.keys(EM_SEQ);
   var h='<div class="em-grid"><div class="em-list">';
@@ -7218,13 +7221,23 @@ function emSeqPane(seqs){
     var sent=rows.filter(function(r){return r.status==='sent';}).length;
     var pend=rows.filter(function(r){return r.status==='pending';}).sort(function(a,b){return new Date(a.send_at)-new Date(b.send_at);});
     var uns=EM.events.filter(function(e){return e.sequence===s.sequence&&e.step===s.step&&(EM.showTests||!emIsTest(e));}).length;
+    var st=emStepStats(s);
     var meta=!s.active?'Off':(EM.open===s.step?'Editing':(sent?'Sent '+sent:'')+(pend.length?(sent?' · ':'')+'Next: '+emDate(pend[0].send_at):'')+(uns?' · '+uns+' left here':''));
-    h+='<div class="em-step'+(sent?' sent':'')+(s.active?'':' off')+'"><button class="em-srow" onclick="emToggle('+s.step+')"><span class="em-day">'+emDays(s.delay_minutes)+'</span><span class="em-subj">'+esc(s.subject)+(s.send_if?'<small style="display:block;font-weight:500;color:var(--muted);font-size:11.5px">'+esc(EM_IF[s.send_if]||s.send_if)+'</small>':'')+'</span><span class="em-meta">'+esc(meta)+'</span></button>';
+    h+='<div class="em-step'+(sent?' sent':'')+(s.active?'':' off')+'"><button class="em-srow" onclick="emToggle('+s.step+')"><span class="em-day">'+emDays(s.delay_minutes)+'</span><span class="em-subj">'+esc(s.subject)+(s.send_if?'<small style="display:block;font-weight:500;color:var(--muted);font-size:11.5px">'+esc(EM_IF[s.send_if]||s.send_if)+'</small>':'')+(st?'<small class="em-rate">'+st+'</small>':'')+'</span><span class="em-meta">'+esc(meta)+'</span></button>';
     if(EM.open===s.step)h+=emEditor(s);
     h+='</div>';
   });
   h+='</div><button class="btn-ghost" style="margin-top:6px" onclick="emAddStep()">+ Add an email</button></div></div>';
   return h;
+}
+// Opens and clicks for one email, real subscribers only (test signups never count).
+// Opens come from Resend's tracking pixel, so they run a little high (Apple Mail) or low (blocked images).
+function emStepStats(s){
+  var rows=EM.queue.filter(function(r){return r.sequence===s.sequence&&r.step===s.step&&r.status==='sent'&&!emIsTest(r);});
+  if(!rows.length)return '';
+  var o=0,c=0;rows.forEach(function(r){if(r.resend_id&&EM.opens[r.resend_id])o++;if(r.resend_id&&EM.clicks[r.resend_id])c++;});
+  var pct=function(n){return Math.round(n*100/rows.length)+'%';};
+  return '📬 '+rows.length+' sent · 👀 '+o+' opened ('+pct(o)+') · 🔗 '+c+' clicked ('+pct(c)+')';
 }
 function emSplit(text){
   text=String(text||'');var i=text.lastIndexOf('\nBailey\nHavenKept');
