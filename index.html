@@ -7125,6 +7125,7 @@ if(supabaseEnabled()){
 // a saved change reaches every email that has not gone out yet.
 var EM={tab:'seq',seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
 var EM_SEQ={
+  'audit':{name:'Lead Magnet Audit',grp:'Lead Magnet Audit',lab:'other',start:'Starts when someone finishes the Lead Magnet Audit and gives their email'},
   'lab-warm':{name:'Warm: $7 Fix Kit',grp:'Scorecard',lab:'warm',start:'Starts when someone labeled warm gives their email on the Scorecard'},
   'lab-hot':{name:'Hot: $497 rebuild',grp:'Scorecard',lab:'hot',start:'Starts when someone labeled hot gives their email on the Scorecard'},
   'lab-browsing':{name:'Browsing: tips',grp:'Scorecard',lab:'browsing',start:'Starts when someone labeled browsing gives their email on the Scorecard'},
@@ -7136,8 +7137,9 @@ var EM_SEQ={
   'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'}
 };
 var EM_LAB={warm:['Warm','em-p-warm'],hot:['Hot','em-p-hot'],browsing:['Browsing','em-p-brow'],buyer:['Buyer','em-p-buy'],other:['Lead','em-p-off']};
-var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'their Fix Kit',fixkit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are'};
-var EM_SAMPLE={first_name:'Sam',lead_magnet_name:'6 Things Before You Book a Cruise',score:'41',result_type:'The One-Time Read',gap1:'Personalized results',fix1:'Add a short "which one are you?" section at the start.',gap2:'Reason to come back',fix2:'End with one question they answer about themselves.',gap3:'Leads to your offer',fix3:'Put the next step right where they finish.',draft_questions:'1. Where are you right now?  (Have not started / Started / Nearly there)\n2. What has gotten in the way most?  (Time / Not sure where to start)',session_key:'sample',kit_url:'#',fixkit_url:'#',f100_url:'#',planner_url:'#',dashboard_url:'#',items:'Your Fix Kit and Rebuild Planner',items_verb:'are',unsubscribe_url:'#',email:'sam@example.com'};
+var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'their Fix Kit',fixkit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are',temp_label:'their temperature',fix:'#1 fix',others:'other findings',goods:'what\'s working',training_url:'training link',checkout_url:'$497 checkout link',chapter_num:'chapter number',chapter_name:'chapter name',chapters_left:'chapters left'};
+var EM_SAMPLE={first_name:'Sam',lead_magnet_name:'6 Things Before You Book a Cruise',score:'41',result_type:'The One-Time Read',gap1:'Personalized results',fix1:'Add a short "which one are you?" section at the start.',gap2:'Reason to come back',fix2:'End with one question they answer about themselves.',gap3:'Leads to your offer',fix3:'Put the next step right where they finish.',draft_questions:'1. Where are you right now?  (Have not started / Started / Nearly there)\n2. What has gotten in the way most?  (Time / Not sure where to start)',session_key:'sample',kit_url:'#',fixkit_url:'#',f100_url:'#',planner_url:'#',dashboard_url:'#',items:'Your Fix Kit and Rebuild Planner',items_verb:'are',unsubscribe_url:'#',email:'sam@example.com',temp_label:'cool',fix:'It ends without a next step. Add one clear next step that points to your offer.',others:'It takes a while to get through.\nEveryone gets the same follow-up.',goods:'It is short enough to finish in one sitting.',training_url:'#',checkout_url:'#',chapter_num:'2',chapter_name:'The method',chapters_left:'- Chapter 3: See it\n- Chapter 4: What you get\n- Chapter 5: Ready?'};
+var EM_IF={'':'Everyone',not_bought:'Hasn\'t bought the $497',training_none:'Hasn\'t opened the training',training_started:'Started the training, didn\'t finish',training_finished:'Finished the training, no checkout click',checkout_no_buy:'Clicked checkout, didn\'t buy'};
 function emName(s){return (EM_SEQ[s]&&EM_SEQ[s].name)||s;}
 function emIsTest(r){var e=String(r.email||'').toLowerCase();return /@havenkept\.com$|^havenkept@gmail\.com$|baileyschmidt|\+test|test@|\.test$|@example\.com$/.test(e)||!!(r.meta&&r.meta.is_test);}
 function emDays(min){var d=Math.round((min||0)/1440);return d===0?'Right away':'Day '+d;}
@@ -7192,7 +7194,7 @@ function emRender(){
 }
 function emSeqPane(seqs){
   var real=emReal();
-  var groups={'Scorecard':[],'After a purchase':[],'Other':[]};
+  var groups={'Lead Magnet Audit':[],'Scorecard':[],'After a purchase':[],'Other':[]};
   Object.keys(seqs).forEach(function(s){var g=(EM_SEQ[s]&&EM_SEQ[s].grp)||'Other';(groups[g]=groups[g]||[]).push(s);});
   var order=Object.keys(EM_SEQ);
   var h='<div class="em-grid"><div class="em-list">';
@@ -7216,7 +7218,7 @@ function emSeqPane(seqs){
     var pend=rows.filter(function(r){return r.status==='pending';}).sort(function(a,b){return new Date(a.send_at)-new Date(b.send_at);});
     var uns=EM.events.filter(function(e){return e.sequence===s.sequence&&e.step===s.step&&(EM.showTests||!emIsTest(e));}).length;
     var meta=!s.active?'Off':(EM.open===s.step?'Editing':(sent?'Sent '+sent:'')+(pend.length?(sent?' · ':'')+'Next: '+emDate(pend[0].send_at):'')+(uns?' · '+uns+' left here':''));
-    h+='<div class="em-step'+(sent?' sent':'')+(s.active?'':' off')+'"><button class="em-srow" onclick="emToggle('+s.step+')"><span class="em-day">'+emDays(s.delay_minutes)+'</span><span class="em-subj">'+esc(s.subject)+'</span><span class="em-meta">'+esc(meta)+'</span></button>';
+    h+='<div class="em-step'+(sent?' sent':'')+(s.active?'':' off')+'"><button class="em-srow" onclick="emToggle('+s.step+')"><span class="em-day">'+emDays(s.delay_minutes)+'</span><span class="em-subj">'+esc(s.subject)+(s.send_if?'<small style="display:block;font-weight:500;color:var(--muted);font-size:11.5px">'+esc(EM_IF[s.send_if]||s.send_if)+'</small>':'')+'</span><span class="em-meta">'+esc(meta)+'</span></button>';
     if(EM.open===s.step)h+=emEditor(s);
     h+='</div>';
   });
@@ -7232,6 +7234,7 @@ function emChips(seq){
   var found={};
   emSteps(seq).forEach(function(s){String((s.subject||'')+(s.text_body||'')).replace(/\{\{\s*(\w+)\s*\}\}/g,function(m,k){found[k]=1;});});
   if(/^(lab-|draft-)/.test(seq))['first_name','lead_magnet_name','score','result_type','gap1','fix1','fixkit_url'].forEach(function(k){found[k]=1;});
+  if(seq==='audit')['score','temp_label','fix','others','goods','training_url','checkout_url','chapter_num','chapter_name','chapters_left'].forEach(function(k){found[k]=1;});
   found.first_name=1;delete found.unsubscribe_url;delete found.email;
   return Object.keys(found).filter(function(k){return EM_PH[k];});
 }
@@ -7241,6 +7244,7 @@ function emEditor(s){
     +'<div class="form-field"><label>Subject</label><input type="text" id="em-f-subj" value="'+esc(s.subject)+'" oninput="emDirty()" onfocus="EM.focus=this"></div>'
     +'<div class="em-row2 form-field"><div><label>Send on day</label><input type="number" min="0" step="1" id="em-f-days" value="'+Math.round((s.delay_minutes||0)/1440)+'" oninput="emDirty()"></div>'
     +'<div><label>Status</label><label class="em-toggle" style="margin-top:8px"><input type="checkbox" id="em-f-on" '+(s.active?'checked':'')+' onchange="emDirty()"> On</label></div></div>'
+    +'<div class="form-field"><label>Who gets it</label><select id="em-f-if" onchange="emDirty()">'+Object.keys(EM_IF).map(function(k){return '<option value="'+k+'"'+((s.send_if||'')===k?' selected':'')+'>'+esc(EM_IF[k])+'</option>';}).join('')+'</select><p class="em-note" style="margin-top:4px">Checked right before it sends. If it doesn\'t fit that person, they skip it. Anyone who has bought the $497 skips every email with a rule.</p></div>'
     +'<div class="form-field"><label>Email</label><textarea id="em-f-body" oninput="emDirty()" onfocus="EM.focus=this">'+esc(p.main)+'</textarea>'
     +'<div class="em-chips"><span style="font-size:11.5px;color:var(--muted)">Tap to insert:</span>'+emChips(s.sequence).map(function(k){return '<button type="button" class="em-chip" onclick="emInsert(\''+k+'\')">'+esc(EM_PH[k])+'</button>';}).join('')+'</div>'
     +'<p class="em-note">A line like <b>Get the Fix Kit: link</b> on its own becomes a button. Lines starting with "- " become a list. Your sign-off, the unsubscribe link and the address are added for you.</p></div>'
@@ -7255,7 +7259,7 @@ function emToggle(step){
 function emCur(){return EM.steps.find(function(s){return s.sequence===EM.seq&&s.step===EM.open;});}
 function emDirty(){
   var s=emCur();if(!s)return;var p=emSplit(s.text_body);
-  var d=document.getElementById('em-f-subj').value!==s.subject||document.getElementById('em-f-body').value!==p.main||Math.round(+document.getElementById('em-f-days').value*1440)!==(s.delay_minutes||0)||document.getElementById('em-f-on').checked!==!!s.active;
+  var d=document.getElementById('em-f-subj').value!==s.subject||document.getElementById('em-f-body').value!==p.main||Math.round(+document.getElementById('em-f-days').value*1440)!==(s.delay_minutes||0)||document.getElementById('em-f-on').checked!==!!s.active||(document.getElementById('em-f-if')?document.getElementById('em-f-if').value:'')!==(s.send_if||'');
   EM.dirty=d;var b=document.getElementById('em-save');b.disabled=!d;b.style.opacity=d?1:.5;
   var t=document.getElementById('em-test');t.textContent=d?'Save first to test':'Send me a test';t.disabled=d;
   clearTimeout(EM._pv);EM._pv=setTimeout(emPreview,250);
@@ -7266,7 +7270,7 @@ function emInsert(k){
   el.value=el.value.slice(0,a)+tag+el.value.slice(b);el.focus();el.selectionStart=el.selectionEnd=a+tag.length;emDirty();
 }
 function emH(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-var EM_LINKTXT={fixkit_url:'Fix Kit',kit_url:'Fix Kit',planner_url:'Rebuild Planner',f100_url:'First 100 Leads',dashboard_url:'dashboard'};
+var EM_LINKTXT={training_url:'free training',checkout_url:'Lead Magnet Rebuild',fixkit_url:'Fix Kit',kit_url:'Fix Kit',planner_url:'Rebuild Planner',f100_url:'First 100 Leads',dashboard_url:'dashboard'};
 function emLinkify(t){var A=' style="color:#3D2A4A;font-weight:bold"';
   var keep=[];
   t=t.replace(/\[([^\]<]+)\]\(((?:https?:\/\/|\{\{\s*\w*url\s*\}\})[^)\s<]*)\)/g,function(m,w,u){keep.push('<a href="'+u+'"'+A+'>'+w+'</a>');return '\u0000'+(keep.length-1)+'\u0000';});
@@ -7310,6 +7314,7 @@ async function emSave(){
   if(!subj){toast('Add a subject first');return;}
   var p=emSplit(s.text_body);
   var patch={subject:subj,delay_minutes:Math.max(0,Math.round(+document.getElementById('em-f-days').value||0))*1440,active:document.getElementById('em-f-on').checked};
+  var ifEl=document.getElementById('em-f-if');if(ifEl)patch.send_if=ifEl.value||null;
   if(main!==p.main){patch.text_body=main+p.foot;patch.html=emBuildHtml(subj,main,p.foot);}
   else if(subj!==s.subject){patch.html=String(s.html||'').split('>'+emH(s.subject)+'</td>').join('>'+emH(subj)+'</td>');if(patch.html===s.html)patch.html=emBuildHtml(subj,main,p.foot);}
   var b=document.getElementById('em-save');b.disabled=true;b.textContent='Saving…';
