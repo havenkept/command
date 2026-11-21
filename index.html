@@ -4293,7 +4293,8 @@ function saveNewOrder(){
 var INTAKE_STATUSES=['new','reviewed','building','feedback','delivered','refunded','closed'];
 var INTAKE_STATUS_LABELS={new:'New',reviewed:'Reviewed',building:'Building',feedback:'Ready for feedback',delivered:'Delivered',refunded:'Refunded',closed:'Closed'};
 function intakeTrackUrl(r){return r&&r.tracking_token?'https://havenkept.com/lead-magnets/track/?t='+r.tracking_token:'';}
-var INTAKE_TIERS={lead_magnet:'$397 · Starter',tool_logic:'$747 · Plus',planning_system:'$1,497 · Pro',unsure:'Tier: not sure'};
+var INTAKE_TIERS={rebuild:'$497 · Rebuild',lead_magnet:'$397 · Starter',tool_logic:'$747 · Plus',planning_system:'$1,497 · Pro',unsure:'Tier: not sure'};
+var INTAKE_PLATFORMS={kit:'Kit',mailerlite:'MailerLite',flodesk:'Flodesk',activecampaign:'ActiveCampaign',mailchimp:'Mailchimp',other:'Other',none:'None'};
 var intakeFilter='open';
 async function loadIntakes(announce){
   if(!airtableEnabled())return;
@@ -4365,6 +4366,7 @@ function renderOrders(){
         +'<span style="color:var(--muted);">Lead magnet</span><span>'+intakeLink(r.file_link)+'</span>'
         +'<span style="color:var(--muted);">Logo / brand kit</span><span>'+intakeLink(r.brand_link)+'</span>'
         +'<span style="color:var(--muted);">Offer link</span><span>'+intakeLink(r.offer_link)+'</span>'
+        +'<span style="color:var(--muted);">Email platform</span><span>'+(r.email_platform?esc(INTAKE_PLATFORMS[r.email_platform]||r.email_platform):'<span style="color:var(--muted-light);">(none)</span>')+'</span>'
         +'<span style="color:var(--muted);">Colors</span><span>'+(esc(r.colors)||'<span style="color:var(--muted-light);">(none)</span>')+'</span>'
         +'<span style="color:var(--muted);">Fonts</span><span>'+(esc(r.fonts)||'<span style="color:var(--muted-light);">(none)</span>')+'</span>'
       +'</div>'
