@@ -7169,6 +7169,7 @@ function emRender(){
   var people={},active={},sent30=0,week=0;
   real.forEach(function(r){
     var e=String(r.email).toLowerCase();
+    if(emIsUnsub(e))return;
     if(!people[e]||people[e]>new Date(r.created_at).getTime())people[e]=new Date(r.created_at).getTime();
     if(r.status==='pending')active[e]=1;
     if(r.status==='sent'&&r.sent_at&&now-new Date(r.sent_at).getTime()<30*864e5)sent30++;
@@ -7339,9 +7340,11 @@ async function emAddStep(){
   EM.steps.push(r[0]);EM.open=r[0].step;EM.dirty=false;emRender();
   toast('Added. It stays off until you write it and switch it on.');
 }
+function emIsUnsub(e){e=String(e||'').toLowerCase();return (EM.unsubs||[]).some(function(u){return String(u.email||'').toLowerCase()===e;});}
 function emSubRows(){
   var g={};
   emReal().forEach(function(r){
+    if(emIsUnsub(r.email))return; // unsubscribed people show under Unsubscribes only
     if(/^(swap|weekly|broadcast)-/.test(r.sequence))return; // one-off list emails, not a series someone is in
     var k=String(r.email).toLowerCase()+'|'+r.sequence;
     if(!g[k])g[k]={email:r.email,seq:r.sequence,rows:[],meta:r.meta||{},joined:r.created_at};
