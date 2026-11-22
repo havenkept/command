@@ -7195,6 +7195,7 @@ var EM_SEQ={
   'dashboard-new':{name:'Dashboard welcome',grp:'After a purchase',lab:'buyer',start:'Sent the first time a buyer gets their Lead Magnet Dashboard'},
   'dashboard-added':{name:'Added to dashboard',grp:'After a purchase',lab:'buyer',start:'Sent when a buyer adds another product to their dashboard'},
   'fixkit-start':{name:'Fix Kit is ready (no Scorecard)',grp:'After a purchase',lab:'buyer',start:'Sent right after someone buys the $7 Fix Kit without Scorecard answers'},
+  'fixkit-follow':{name:'After the $7 Fix Kit',grp:'After a purchase',lab:'buyer',start:'Follow-up for every Fix Kit buyer: check-in, then the $97 kit, then the $497 at the end'},
   'kit-link':{name:'Temperature Gauge Kit link',grp:'After a purchase',lab:'buyer',start:'Sent when a $97 kit buyer asks for their private kit link'},
   'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'},
   'broadcast-training':{name:'Training invite (Nov 20)',grp:'Broadcasts',lab:'other',start:'One-time email to past Scorecard takers inviting them to the free training'},
@@ -7319,7 +7320,7 @@ window.addEventListener('resize',function(){clearTimeout(window._emML);window._e
 function emMapGeneric(kind){
   var real=emReal(),all={};EM.steps.forEach(function(s){all[s.sequence]=1;});
   var pal=['#D8714A','#E2B94F','#4F86C9','#2F9E7B','#9A6FB0','#C9607A','#6F9E4F','#B8AFA3'];
-  var BUY=['fixkit-link','fixkit-start','kit-link','planner-link','f100-link','dashboard-new','dashboard-added'];
+  var BUY=['fixkit-link','fixkit-start','fixkit-follow','kit-link','planner-link','f100-link','dashboard-new','dashboard-added'];
   function mk(list){return list.map(function(s,i){return [s,emName(s),pal[i%pal.length]];});}
   var cfg={
     scorecard:{start:'Someone finishes the Scorecard and gives their email',cols:[['lab-hot','Hot','#D8714A'],['lab-warm','Warm','#E2B94F'],['lab-browsing','Browsing','#4F86C9']]},
