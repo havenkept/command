@@ -443,8 +443,37 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .em-detail td{background:var(--ivory);}
 .em-detail ol{margin:0;padding-left:18px;font-size:12.5px;line-height:1.8;}
 .em-note{font-size:12px;color:var(--muted);margin-top:10px;}
+.em-stats6{grid-template-columns:repeat(6,minmax(0,1fr));}
+.em-res th{text-align:right;white-space:nowrap}.em-res th:first-child{text-align:left}
+.em-res th,.em-res td{padding:9px 5px!important;font-size:12.5px}.em-res th{font-size:9.5px;letter-spacing:.8px}
+.em-res td{text-align:right;white-space:nowrap}.em-res td:first-child{text-align:left;white-space:normal;min-width:170px;padding-left:12px!important}
+.em-res tr.em-detail td{white-space:normal}
+.em-res tr.em-res-seq td{background:var(--plum-light);color:var(--plum);font-weight:700}
+.em-res .em-ctor{background:#FFF7E0}.em-res th.em-ctor{background:#FFF1C9;color:#8A6A00}
+.em-res td.good{color:#2F7D57;font-weight:700}.em-res td.low{color:#B5543C;font-weight:700}
+.em-res .em-pill{font-size:10px;padding:1px 7px;margin-left:4px}
+.em-day2{font-size:11px;color:var(--muted)}
+.em-chev{display:inline-block;transition:transform .2s;font-size:11px}.em-chev.shut{transform:rotate(-90deg)}
+.em-tbar{display:inline-flex;width:56px;height:8px;border-radius:99px;overflow:hidden;background:var(--ivory-dark);vertical-align:middle}.em-tbar i{display:block;height:100%}
+.em-pl{display:grid;gap:8px;padding:4px 0}.em-pl-empty{font-size:12.5px;color:var(--muted)}
+.em-p{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:9px 12px;font-size:12.5px;text-align:left;white-space:normal;animation:emUp .3s both}
+.em-p1{margin-bottom:5px}.em-p2{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.em-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:-1px}
+.em-chip{font-size:11px;border-radius:99px;padding:2px 8px;background:var(--ivory-dark)}.em-chip.y{background:var(--sage-light);color:var(--sage-dark)}.em-chip.n{background:#F7ECEC;color:#B5543C}
+.em-next{margin-left:auto;font-weight:700;color:var(--plum);font-size:12px;white-space:normal}
+.em-res tr.em-detail td{max-width:0}
+@media(max-width:700px){
+ table.em-res tr.em-res-row td:not(:first-child),table.em-res tr.em-res-seq td:not(:first-child){display:inline-flex!important;width:auto!important;padding:2px 0 2px 14px!important;font-size:12px;gap:4px}
+ table.em-res tr.em-res-row td:not(:first-child)::before,table.em-res tr.em-res-seq td:not(:first-child)::before{font-size:9.5px;margin:0;padding:0}
+ table.em-res td[data-label=""]{display:none!important}
+ table.em-res td.em-ctor{background:#FFF1C9;border-radius:6px;padding:2px 6px!important;margin-left:14px}
+ table.em-res tr{padding-bottom:8px}
+ table.em-res tr.em-detail td{max-width:none}
+}
+.em-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--muted);margin-top:10px}
+@keyframes emUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .em-wrapx{overflow-x:auto;}
-@media(max-width:900px){.em-stats{grid-template-columns:repeat(2,minmax(0,1fr));}.em-grid{grid-template-columns:1fr;}.em-edit{grid-template-columns:1fr;}.em-meta{display:none;}.em-frame{height:440px;}}
+@media(max-width:900px){.em-stats,.em-stats6{grid-template-columns:repeat(2,minmax(0,1fr));}.em-next{margin-left:0;width:100%}.em-grid{grid-template-columns:1fr;}.em-edit{grid-template-columns:1fr;}.em-meta{display:none;}.em-frame{height:440px;}}
 </style>
 </head><body>
 
@@ -7124,7 +7153,7 @@ if(supabaseEnabled()){
 // and who left (email_unsubscribes + email_events). Editing writes straight to
 // email_sequence_steps, which the email-sequences sender reads at send time, so
 // a saved change reaches every email that has not gone out yet.
-var EM={tab:'seq',seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],opens:{},clicks:{},loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
+var EM={tab:'res',status:{},sales:[],openRes:null,seq:'lab-warm',open:null,steps:[],queue:[],unsubs:[],events:[],opens:{},clicks:{},loaded:false,showTests:false,q:'',fSeq:'',fLab:'',openSub:null};
 var EM_SEQ={
   'audit':{name:'Lead Magnet Audit',grp:'Lead Magnet Audit',lab:'other',start:'Starts when someone finishes the Lead Magnet Audit and gives their email'},
   'lab-warm':{name:'Warm: $7 Fix Kit',grp:'Scorecard',lab:'warm',start:'Starts when someone labeled warm gives their email on the Scorecard'},
@@ -7136,7 +7165,8 @@ var EM_SEQ={
   'dashboard-new':{name:'Dashboard welcome',grp:'After a purchase',lab:'buyer',start:'Sent the first time a buyer gets their Lead Magnet Dashboard'},
   'dashboard-added':{name:'Added to dashboard',grp:'After a purchase',lab:'buyer',start:'Sent when a buyer adds another product to their dashboard'},
   'quiz-outline-maker':{name:'Quiz Outline Maker',grp:'Other',lab:'other',start:'Starts when someone uses the Quiz Outline Maker'},
-  'broadcast-training':{name:'Training invite (Nov 20)',grp:'Broadcasts',lab:'other',start:'One-time email to past Scorecard takers inviting them to the free training'}
+  'broadcast-training':{name:'Training invite (Nov 20)',grp:'Broadcasts',lab:'other',start:'One-time email to past Scorecard takers inviting them to the free training'},
+  'swap-business-growth-party':{name:'Freebie swap (Business Growth Party)',grp:'Broadcasts',lab:'other',start:'One-time email to people from the Business Growth Party freebie swap'}
 };
 var EM_LAB={warm:['Warm','em-p-warm'],hot:['Hot','em-p-hot'],browsing:['Browsing','em-p-brow'],buyer:['Buyer','em-p-buy'],other:['Lead','em-p-off']};
 var EM_PH={first_name:'first name',lead_magnet_name:'lead magnet name',score:'score',result_type:'result type',gap1:'biggest gap',fix1:'its fix',gap2:'2nd gap',fix2:'2nd fix',gap3:'3rd gap',fix3:'3rd fix',draft_questions:'draft questions',session_key:'Scorecard key',kit_url:'their Fix Kit',fixkit_url:'Fix Kit link',f100_url:'First 100 Leads link',planner_url:'Planner link',dashboard_url:'dashboard link',items:'items',items_verb:'is/are',temp_label:'their temperature',fix:'#1 fix',others:'other findings',goods:'what\'s working',training_url:'training link',checkout_url:'$497 checkout link',chapter_num:'chapter number',chapter_name:'chapter name',chapters_left:'chapters left'};
@@ -7158,10 +7188,12 @@ async function emLoad(force){
       sbRequest('GET','email_queue?select=id,email,name,sequence,step,send_at,status,sent_at,created_at,error,meta,resend_id&order=created_at.desc&limit=5000'),
       sbRequest('GET','email_unsubscribes?select=*&order=at.desc'),
       sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc'),
-      sbRequest('GET','email_events?select=resend_id,type&type=in.(opened,clicked)&resend_id=not.is.null&limit=20000')
+      sbRequest('GET','email_events?select=resend_id,type&type=in.(opened,clicked)&resend_id=not.is.null&limit=20000'),
+      sbRequest('POST','rpc/em_results_info',{}),
+      sbRequest('GET','lead_temps?select=email,temp,why,updated_at')
     ]);
     if(!r[0]){box.innerHTML='<div class="em-empty"><h3>Couldn\'t load emails</h3><p>'+esc(_sbLastError||'Sign in on the Data Sync page first.')+'</p></div>';return;}
-    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.loaded=true;
+    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.status={};EM.sales=[];if(r[5]){(r[5].status||[]).forEach(function(s){EM.status[String(s.email).toLowerCase()]=s.st||{};});EM.sales=(r[5].sales||[]).filter(function(s){return EM.showTests||!emIsTest(s);});}EM.live={};(r[6]||[]).forEach(function(x){EM.live[String(x.email).toLowerCase()]=x;});EM.loaded=true;
     if(!EM_SEQ[EM.seq]&&EM.steps[0])EM.seq=EM.steps[0].sequence;
   }
   emRender();
@@ -7179,22 +7211,100 @@ function emRender(){
   });
   Object.keys(people).forEach(function(e){if(now-people[e]<7*864e5)week++;});
   var unsubs=EM.unsubs.filter(function(u){return EM.showTests||!emIsTest(u);});
-  var h='<div class="em-stats">'
+  var tot=emTotals(real),sal=emSalesTotals();
+  var h='<div class="em-stats em-stats6">'
     +'<div class="em-stat"><span>Subscribers</span><b>'+Object.keys(people).length+'</b><small>'+(week?'+'+week+' this week':'')+'</small></div>'
     +'<div class="em-stat"><span>In a sequence now</span><b>'+Object.keys(active).length+'</b><small></small></div>'
-    +'<div class="em-stat"><span>Emails sent, 30 days</span><b>'+sent30+'</b><small></small></div>'
-    +'<div class="em-stat"><span>Unsubscribed</span><b>'+unsubs.length+'</b><small></small></div></div>';
+    +'<div class="em-stat"><span>Emails sent</span><b>'+tot.sent+'</b><small>'+sent30+' in 30 days</small></div>'
+    +'<div class="em-stat"><span>Opened</span><b>'+emPct(tot.opens,tot.sent)+'</b><small>'+tot.opens+' opens</small></div>'
+    +'<div class="em-stat"><span>Click-to-open</span><b>'+emPct(tot.clicks,tot.opens)+'</b><small>'+tot.clicks+' clicks</small></div>'
+    +'<div class="em-stat"><span>Sales</span><b>$'+emMoney(sal.total)+'</b><small>'+(sal.noEmail?sal.noEmail+' not from an email':'')+'</small></div></div>';
   var seqs={};EM.steps.forEach(function(s){seqs[s.sequence]=1;});
   var subRows=emSubRows();
   h+='<div class="em-tabs">'
-    +['seq','sub','uns'].map(function(t){var lab={seq:'Sequences',sub:'Subscribers',uns:'Unsubscribes'}[t];var n={seq:Object.keys(seqs).length,sub:Object.keys(people).length,uns:unsubs.length}[t];return '<button class="em-tab'+(EM.tab===t?' on':'')+'" onclick="EM.tab=\''+t+'\';emRender()">'+lab+' <i>'+n+'</i></button>';}).join('')
+    +['res','seq','sub','uns'].map(function(t){var lab={res:'Results',seq:'Sequences',sub:'Subscribers',uns:'Unsubscribes'}[t];var n={res:'',seq:Object.keys(seqs).length,sub:Object.keys(people).length,uns:unsubs.length}[t];return '<button class="em-tab'+(EM.tab===t?' on':'')+'" onclick="EM.tab=\''+t+'\';emRender()">'+lab+(n!==''?' <i>'+n+'</i>':'')+'</button>';}).join('')
     +'</div>';
+  if(EM.tab==='res')h+=emResPane(seqs);
   if(EM.tab==='seq')h+=emSeqPane(seqs);
   if(EM.tab==='sub')h+=emSubPane(subRows);
   if(EM.tab==='uns')h+=emUnsPane(unsubs);
   h+='<div class="em-toolbar" style="margin-top:16px"><label class="em-toggle"><input type="checkbox" '+(EM.showTests?'checked':'')+' onchange="EM.showTests=this.checked;emRender()"> Show my test signups</label><button class="btn-ghost" onclick="emLoad(true)">Refresh</button></div>';
   box.innerHTML=h;
   if(EM.open!=null)emPreview();
+}
+var EM_T=['Cold','Cool','Warm','Hot','Boiling'],EM_TC=['#7FA7D9','#8FBDB7','#E2B94F','#E58E5A','#C94A4A'];
+var EM_TRAIN={training_none:'Hasn\'t opened the training',training_started:'Started the training',training_finished:'Finished the training',checkout_no_buy:'Clicked checkout, didn\'t buy',bought:'Bought the $497'};
+function emPct(a,b){if(!b)return '—';var p=a*100/b;return (p>=10||p===0?Math.round(p):Math.round(p*10)/10)+'%';}
+function emMoney(v){v=Math.round((v||0)*100)/100;return v%1?v.toFixed(2):String(v);}
+function emTotals(rows){var o={sent:0,opens:0,clicks:0};rows.forEach(function(r){if(r.status!=='sent'||/-link$|^dashboard-/.test(r.sequence))return;o.sent++;if(r.resend_id&&EM.opens[r.resend_id])o.opens++;if(r.resend_id&&EM.clicks[r.resend_id])o.clicks++;});return o;}
+function emSalesTotals(){var o={total:0,noEmail:0};EM.sales.forEach(function(s){var v=parseFloat(s.value)||0;if(!v)return;o.total+=v;if(!s.click)o.noEmail++;});return o;}
+function emTemp(r){var lv=EM.live&&r.email&&EM.live[String(r.email).toLowerCase()];if(lv&&lv.temp){var li=EM_T.indexOf(lv.temp);if(li>=0)return li;}
+  var m=r.meta||{},i=EM_T.map(function(x){return x.toLowerCase();}).indexOf(String(m.temp||'').toLowerCase());
+  if(i<0){var lab=(EM_SEQ[r.sequence]||{}).lab;i={browsing:1,warm:2,hot:3}[lab];if(i==null)i=-1;}
+  return i;}
+function emAuditNext(st){var n={training_none:1,training_started:2,training_finished:3,checkout_no_buy:4}[st&&st.state];return n==null?null:n;}
+function emResFold(seq){var c=EM.folded||{};c[seq]=!c[seq];EM.folded=c;try{localStorage.setItem('hk_em_folded',JSON.stringify(c));}catch(e){}emRender();}
+function emResOpen(k){EM.openRes=EM.openRes===k?null:k;emRender();}
+function emResPeople(s,rows){
+  var steps=emSteps(s.sequence),real=emReal();
+  if(!rows.length)return '<div class="em-pl-empty">No one has gotten this email yet.</div>';
+  return '<div class="em-pl">'+rows.map(function(r){
+    var e=String(r.email).toLowerCase(),ti=emTemp(r),st=EM.status[e];
+    var op=r.resend_id&&EM.opens[r.resend_id],cl=r.resend_id&&EM.clicks[r.resend_id];
+    var pend=real.filter(function(x){return String(x.email).toLowerCase()===e&&x.sequence===s.sequence&&x.status==='pending';}).sort(function(a,b){return new Date(a.send_at)-new Date(b.send_at);})[0];
+    var next='';
+    if(r.status==='pending')next='Gets this on '+emDate(r.send_at);
+    else if(pend){var ps=steps.find(function(x){return x.step===pend.step;});next='Next: '+(ps?ps.subject:'Email '+pend.step)+' · '+emDate(pend.send_at);}
+    else if(s.sequence==='audit'&&st){var n=emAuditNext(st),ns=n!=null&&steps.find(function(x){return x.step===n;});if(ns)next=(ns.active?'Next: ':'Next once switched on: ')+ns.subject;}
+    if(!next)next=emIsUnsub(e)?'Unsubscribed':'Nothing else queued';
+    next=next.replace(/\{\{\s*(\w+)\s*\}\}/g,function(mm,kk){return (r.meta&&r.meta[kk])||(st&&st[kk])||mm;});
+    var m=r.meta||{},who=[m.source,m.score?'score '+m.score:'',m.lead_magnet_name].filter(Boolean).join(' · ');
+    return '<div class="em-p"><div class="em-p1">'+(ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span><b>'+EM_T[ti]+'</b> ':'')+'<span>'+esc(r.email)+'</span>'+(who?'<span class="em-sub2"> · '+esc(who)+'</span>':'')+'</div>'+(EM.live&&EM.live[e]&&EM.live[e].why?'<div class="em-sub2" style="margin:-2px 0 5px">💬 '+esc(EM.live[e].why)+'</div>':'')
+      +'<div class="em-p2">'+(st&&st.state?'<span class="em-chip">🎓 '+esc(EM_TRAIN[st.state]||st.state)+(st.state==='training_started'&&st.max_screen?' (screen '+st.max_screen+' of 24)':'')+'</span>':'')
+      +(r.status==='sent'?'<span class="em-chip '+(op?'y':'n')+'">👀 '+(op?'opened':'not opened')+'</span><span class="em-chip '+(cl?'y':'n')+'">🔗 '+(cl?'clicked':'no click')+'</span>':'')
+      +'<span class="em-next">➜ '+esc(next)+'</span></div></div>';
+  }).join('')+'</div>';
+}
+function emResPane(seqs){
+  var real=emReal();
+  var groups={'Lead Magnet Audit':[],'Scorecard':[],'Broadcasts':[],'After a purchase':[],'Other':[]};
+  Object.keys(seqs).forEach(function(s){var g=(EM_SEQ[s]&&EM_SEQ[s].grp)||'Other';(groups[g]=groups[g]||[]).push(s);});
+  var order=Object.keys(EM_SEQ);
+  var h='<div class="em-wrapx"><table class="em-table em-res mcards"><thead><tr><th>Sequence / email</th><th>In flight</th><th>Sent</th><th>Opens</th><th>Open %</th><th>Clicks</th><th>Click %</th><th class="em-ctor">Click-to-open</th><th>Unsubs</th><th>Customers</th><th>Revenue</th><th>Temps</th></tr></thead><tbody>';
+  var hidden=0;
+  if(!EM.folded){try{EM.folded=JSON.parse(localStorage.getItem('hk_em_folded')||'{}');}catch(e){EM.folded={};}}
+  var L=['In flight','Sent','Opens','Open %','Clicks','Click %','Click-to-open','Unsubs','Customers','Revenue'];
+  function cells(v,cls){return v.map(function(x,i){return '<td data-label="'+L[i]+'"'+(i===6?' class="em-ctor'+(cls||'')+'"':'')+'>'+x+'</td>';}).join('');}
+  Object.keys(groups).forEach(function(g){
+    groups[g].sort(function(a,b){return order.indexOf(a)-order.indexOf(b);}).forEach(function(seq){
+      var steps=emSteps(seq);if(!steps.length)return;
+      if(!EM.showUnused&&!real.some(function(r){return r.sequence===seq&&(r.status==='sent'||r.status==='pending');})){hidden++;return;}
+      var T={inf:0,sent:0,op:0,cl:0,un:0,cu:0,rev:0},temps=[0,0,0,0,0],seen={};
+      var body='';
+      steps.forEach(function(s,si){
+        var rows=real.filter(function(r){return r.sequence===seq&&r.step===s.step;});
+        var sent=rows.filter(function(r){return r.status==='sent';}),inf=rows.filter(function(r){return r.status==='pending';}).length;
+        var op=sent.filter(function(r){return r.resend_id&&EM.opens[r.resend_id];}).length,cl=sent.filter(function(r){return r.resend_id&&EM.clicks[r.resend_id];}).length;
+        var un=EM.events.filter(function(e){return e.sequence===seq&&e.step===s.step&&(EM.showTests||!emIsTest(e));}).length;
+        var sales=EM.sales.filter(function(x){return x.click&&x.click.sequence===seq&&x.click.step===s.step&&parseFloat(x.value)>0;});
+        var cu=sales.length,rev=sales.reduce(function(a,x){return a+(parseFloat(x.value)||0);},0);
+        T.inf+=inf;T.sent+=sent.length;T.op+=op;T.cl+=cl;T.un+=un;T.cu+=cu;T.rev+=rev;
+        rows.forEach(function(r){var e=String(r.email).toLowerCase();if(seen[e])return;seen[e]=1;var ti=emTemp(r);if(ti>=0)temps[ti]++;});
+        var k=seq+'|'+s.step,ctor=emPct(cl,op),cp=parseFloat(ctor);
+        var tag=(!s.active?'<span class="em-pill em-p-off">off</span>':'')+(s.send_if?'<span class="em-pill em-p-brow">'+esc(EM_IF[s.send_if]||s.send_if)+'</span>':'');
+        body+='<tr class="em-click em-res-row" onclick="emResOpen(\''+k+'\')"><td>'+(si+1)+'. <span class="em-day2">'+emDays(s.delay_minutes)+'</span> '+esc(s.subject)+' '+tag+'</td>'
+          +cells([inf||'—',sent.length,op,emPct(op,sent.length),cl,emPct(cl,sent.length),ctor,un,cu,'$'+emMoney(rev)],isNaN(cp)?'':cp>=12?' good':cp<5&&op?' low':'')+'<td data-label=""></td></tr>';
+        if(EM.openRes===k)body+='<tr class="em-detail"><td colspan="12">'+emResPeople(s,rows.filter(function(r){return r.status==='sent'||r.status==='pending';}))+'</td></tr>';
+      });
+      var ts=temps.reduce(function(a,b){return a+b;},0);
+      var bar=ts?'<span class="em-tbar" title="'+temps.map(function(n,i){return EM_T[i]+' '+n;}).join(', ')+'">'+temps.map(function(n,i){return n?'<i style="width:'+(n*100/ts)+'%;background:'+EM_TC[i]+'"></i>':'';}).join('')+'</span>':'';
+      var fold=!!EM.folded[seq];
+      h+='<tr class="em-res-seq em-click" onclick="emResFold(\''+seq+'\')"><td><span class="em-chev'+(fold?' shut':'')+'">▾</span> '+esc(emName(seq))+'</td>'+cells([T.inf||'—',T.sent,T.op,emPct(T.op,T.sent),T.cl,emPct(T.cl,T.sent),emPct(T.cl,T.op),T.un,T.cu,'$'+emMoney(T.rev)])+'<td data-label="Temps">'+bar+'</td></tr>'+(fold?'':body);
+    });
+  });
+  h+='</tbody></table></div><div class="em-legend"><span>🟨 <b>Click-to-open</b> = clicks ÷ opens: did the email itself work?</span><span><b>Click %</b> = clicks ÷ sent</span><span>💰 A sale counts for the <b>last email they clicked</b> before buying</span><span>🌡️ Temps update live as people use your Audit and training. Scorecard leads show the label they came in with.</span><span>Tap any email to see who got it and what\'s next for them.</span></div>'
+    +(hidden||EM.showUnused?'<label class="em-toggle" style="margin-top:10px"><input type="checkbox" '+(EM.showUnused?'checked':'')+' onchange="EM.showUnused=this.checked;emRender()"> Show sequences nobody has gotten yet'+(hidden?' ('+hidden+')':'')+'</label>':'');
+  return h;
 }
 function emSeqPane(seqs){
   var real=emReal();
@@ -7383,18 +7493,19 @@ function emSubPane(rows){
     +'<select onchange="EM.fSeq=this.value;emRender()"><option value="">All sequences</option>'+seqOpts+'</select>'
     +'<select onchange="EM.fLab=this.value;emRender()"><option value="">All labels</option>'+labOpts+'</select></div>';
   if(!shown.length)return h+'<div class="em-card em-empty"><h3>No one here yet</h3><p>'+(rows.length?'Nothing matches those filters.':'When someone joins a sequence, they show up here.')+'</p></div>';
-  h+='<div class="em-wrapx"><table class="em-table mcards"><thead><tr><th>Subscriber</th><th>Label</th><th>Sequence</th><th>Progress</th><th>Next email</th><th>Joined</th></tr></thead><tbody>';
+  h+='<div class="em-wrapx"><table class="em-table mcards"><thead><tr><th>Subscriber</th><th>Temp</th><th>Training</th><th>Sequence</th><th>Progress</th><th>Next email</th><th>Joined</th></tr></thead><tbody>';
   shown.forEach(function(x,i){
     var k=x.email+'|'+x.seq,lab=EM_LAB[x.lab],m=x.meta||{};
     var sub=[m.lead_magnet_name,m.score?'score '+m.score:'',m.business_name].filter(Boolean).join(' · ');
     EM._keys=EM._keys||[];EM._keys[i]=k;
     h+='<tr class="em-click" onclick="emOpenSub('+i+')"><td><b>'+esc(x.email)+'</b>'+(sub?'<br><span class="em-sub2">'+esc(sub)+'</span>':'')+'</td>'
-      +'<td><span class="em-pill '+lab[1]+'">'+lab[0]+'</span></td><td>'+esc(emName(x.seq))+'</td>'
+      +'<td data-label="Temp">'+(function(){var ti=emTemp({meta:m,sequence:x.seq,email:x.email});return ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span>'+EM_T[ti]:'<span class="em-pill '+lab[1]+'">'+lab[0]+'</span>';})()+'</td>'
+      +'<td data-label="Training">'+(function(){var st=EM.status[String(x.email).toLowerCase()];return st&&st.state?esc(EM_TRAIN[st.state]||st.state)+(st.state==='training_started'&&st.max_screen?' (screen '+st.max_screen+')':''):'<span class="em-sub2">—</span>';})()+'</td><td data-label="Sequence">'+esc(emName(x.seq))+'</td>'
       +'<td>'+(x.stopped?'<span class="em-pill em-p-off">Unsubscribed</span>':'<span class="em-bar"><i style="width:'+Math.round(x.sent/x.total*100)+'%"></i></span>'+(x.sent>=x.total?'Done':x.sent+' of '+x.total))+'</td>'
       +'<td>'+(x.next?emDate(x.next):'None')+'</td><td>'+emDate(x.joined)+'</td></tr>';
     if(EM.openSub===k){
       var steps=emSteps(x.seq);
-      h+='<tr class="em-detail"><td colspan="6"><ol>'+x.rows.slice().sort(function(a,b){return a.step-b.step;}).map(function(r){
+      h+='<tr class="em-detail"><td colspan="7"><ol>'+x.rows.slice().sort(function(a,b){return a.step-b.step;}).map(function(r){
         var st=steps.find(function(s){return s.step===r.step;});
         var when=r.status==='sent'?'Sent '+emDate(r.sent_at):r.status==='pending'?'Goes out '+emDate(r.send_at):r.error==='unsubscribed'?'Stopped (unsubscribed)':(r.status+(r.error?' ('+r.error+')':''));
         var sj=String(st?st.subject:'Email '+r.step).replace(/\{\{\s*(\w+)\s*\}\}/g,function(mm,kk){return (x.meta&&x.meta[kk])||mm;});
