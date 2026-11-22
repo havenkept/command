@@ -471,14 +471,14 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
  table.em-res tr.em-detail td{max-width:none}
 }
 .em-mode{display:flex;gap:6px;margin-bottom:12px}.em-mode button{border:1px solid var(--border);background:var(--warm-white);border-radius:99px;padding:6px 14px;font:500 12.5px var(--font-sans);color:var(--muted);cursor:pointer}.em-mode button.on{background:var(--plum);border-color:var(--plum);color:var(--ivory)}
-.em-map{display:grid;gap:26px;position:relative}.em-mlines{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}.em-map>*:not(svg){position:relative;z-index:1}
+.em-map{display:grid;gap:64px;position:relative}.em-mrow{text-align:center}.em-mrow>.em-mgrid,.em-mrow>.em-mcols{text-align:left}.em-mstart{display:flex;justify-content:center}.em-mstart .em-mbox{max-width:300px}.em-mlines{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}.em-map>*:not(svg){position:relative;z-index:1}
 .em-mgap{height:24px;position:relative}.em-mgap::before{content:'';position:absolute;left:50%;top:2px;bottom:6px;width:2.5px;margin-left:-1px;border-radius:2px}.em-mgap::after{content:'';position:absolute;left:50%;bottom:3px;width:8px;height:8px;margin-left:-4.5px;border-right:2.5px solid;border-bottom:2.5px solid;transform:rotate(45deg)}
 .em-mcol.c497 .em-mgap::before{background:#D8714A}.em-mcol.c497 .em-mgap::after{border-color:#D8714A}.em-mcol.c97 .em-mgap::before{background:#2F9E7B}.em-mcol.c97 .em-mgap::after{border-color:#2F9E7B}.em-mcol.c7 .em-mgap::before{background:#4F86C9}.em-mcol.c7 .em-mgap::after{border-color:#4F86C9}
 .em-mlabel{display:inline-block;background:var(--ivory,#FAF8F3);padding:2px 8px 2px 2px;border-radius:6px}
 .em-mgrid.em-mday1{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 @media(max-width:820px){.em-mgrid.em-mday1{grid-template-columns:1fr}}
 .em-mleg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--muted);background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:9px 12px;margin-bottom:14px}.em-mleg span{display:inline-flex;align-items:center;gap:5px}.em-mleg .sw{width:14px;height:14px;border-radius:4px;display:inline-block}.em-mleg .sw.cbase{background:#B8AFA3}.em-mleg .sw.c497{background:#D8714A}.em-mleg .sw.c97{background:#2F9E7B}.em-mleg .sw.c7{background:#4F86C9}.em-mleg .sep{width:1px;height:14px;background:var(--border)}
-@media(max-width:820px){.em-map{padding-left:18px}}.em-mlabel{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:0 0 8px 2px}
+@media(max-width:820px){.em-map{padding-left:18px;gap:34px}.em-mrow{text-align:left}.em-mstart{justify-content:flex-start}.em-mstart .em-mbox{max-width:none}}.em-mlabel{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:0 0 8px 2px}
 .em-mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 .em-mcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .em-mcol{border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px}
@@ -7295,7 +7295,7 @@ function emMapLines(){
   var side=cols.length>1&&Math.abs(bx(cols[0]).y-bx(cols[1]).y)<4;
   if(d1.length&&cols.length){
     var lowest=0;d1.forEach(function(el){lowest=Math.max(lowest,bx(el).b);});
-    var c0=bx(cols[0]),hub={x:R.width/2,y:lowest+Math.max(14,(c0.y-lowest)*0.3)};
+    var c0=bx(cols[0]),hub={x:R.width/2,y:lowest+Math.max(18,(c0.y-lowest)*0.42)};
     if(side&&!stacked){
       d1.forEach(function(el){var b=bx(el);out+=curve(b.cx,b.b,hub.x,hub.y,C.cbase,1.5);});
       cols.forEach(function(c){var b=bx(c),k=c.className.match(/c497|c97|c7/)[0];out+=curve(hub.x,hub.y,b.cx,b.y,C[k],2.5)+dot(b.cx,b.y,C[k]);});
@@ -7340,7 +7340,7 @@ function emMapPane(){
   var nDone=Object.keys(done).length;
   var leg='<div class="em-mleg"><span><i class="sw cbase"></i>Everyone (results and day 1)</span><span><i class="sw c497"></i>$497 path</span><span><i class="sw c97"></i>$97 kit path</span><span><i class="sw c7"></i>$7 Fix Kit path</span><span class="sep"></span>'+EM_T.map(function(n,i){return '<span><i class="em-mdot" style="background:'+EM_TC[i]+'"></i>'+n+'</span>';}).join('')+'<span class="sep"></span><span><span class="em-mlive">Live</span> on</span><span><span class="em-mdraft">Draft</span> off</span></div>';
   var h=leg+'<div class="em-map" id="em-map"><svg class="em-mlines" id="em-mlines" aria-hidden="true"></svg>'
-    +'<div class="em-mrow"><div class="em-mlabel">Right away · everyone</div><div class="em-mgrid">'+start.map(box).join('')+'</div></div>'
+    +'<div class="em-mrow"><div class="em-mlabel">Right away · everyone</div><div class="em-mstart">'+start.map(box).join('')+'</div></div>'
     +'<div class="em-mrow"><div class="em-mlabel">Day 1 · depends on the training</div><div class="em-mgrid em-mday1">'+day1.map(box).join('')+'</div></div>'
     +'<div class="em-mrow"><div class="em-mlabel">Day 2 onward · depends on their live temperature and offer</div><div class="em-mcols">'
     +col('c497','$497 path','Hot or Boiling, offer $100+')+col('c97','$97 kit path','Warm, or Hot under $100')+col('c7','$7 path','Cold or Cool')+'</div></div>'
