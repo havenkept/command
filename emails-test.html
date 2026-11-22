@@ -7188,10 +7188,11 @@ async function emLoad(force){
       sbRequest('GET','email_unsubscribes?select=*&order=at.desc'),
       sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc'),
       sbRequest('GET','email_events?select=resend_id,type&type=in.(opened,clicked)&resend_id=not.is.null&limit=20000'),
-      sbRequest('POST','rpc/em_results_info',{})
+      sbRequest('POST','rpc/em_results_info',{}),
+      sbRequest('GET','lead_temps?select=email,temp,why,updated_at')
     ]);
     if(!r[0]){box.innerHTML='<div class="em-empty"><h3>Couldn\'t load emails</h3><p>'+esc(_sbLastError||'Sign in on the Data Sync page first.')+'</p></div>';return;}
-    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.status={};EM.sales=[];if(r[5]){(r[5].status||[]).forEach(function(s){EM.status[String(s.email).toLowerCase()]=s.st||{};});EM.sales=(r[5].sales||[]).filter(function(s){return EM.showTests||!emIsTest(s);});}EM.loaded=true;
+    EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.status={};EM.sales=[];if(r[5]){(r[5].status||[]).forEach(function(s){EM.status[String(s.email).toLowerCase()]=s.st||{};});EM.sales=(r[5].sales||[]).filter(function(s){return EM.showTests||!emIsTest(s);});}EM.live={};(r[6]||[]).forEach(function(x){EM.live[String(x.email).toLowerCase()]=x;});EM.loaded=true;
     if(!EM_SEQ[EM.seq]&&EM.steps[0])EM.seq=EM.steps[0].sequence;
   }
   emRender();
@@ -7236,7 +7237,8 @@ function emPct(a,b){if(!b)return '—';var p=a*100/b;return (p>=10||p===0?Math.r
 function emMoney(v){v=Math.round((v||0)*100)/100;return v%1?v.toFixed(2):String(v);}
 function emTotals(rows){var o={sent:0,opens:0,clicks:0};rows.forEach(function(r){if(r.status!=='sent'||/-link$|^dashboard-/.test(r.sequence))return;o.sent++;if(r.resend_id&&EM.opens[r.resend_id])o.opens++;if(r.resend_id&&EM.clicks[r.resend_id])o.clicks++;});return o;}
 function emSalesTotals(){var o={total:0,noEmail:0};EM.sales.forEach(function(s){var v=parseFloat(s.value)||0;if(!v)return;o.total+=v;if(!s.click)o.noEmail++;});return o;}
-function emTemp(r){var m=r.meta||{},i=EM_T.map(function(x){return x.toLowerCase();}).indexOf(String(m.temp||'').toLowerCase());
+function emTemp(r){var lv=EM.live&&r.email&&EM.live[String(r.email).toLowerCase()];if(lv&&lv.temp){var li=EM_T.indexOf(lv.temp);if(li>=0)return li;}
+  var m=r.meta||{},i=EM_T.map(function(x){return x.toLowerCase();}).indexOf(String(m.temp||'').toLowerCase());
   if(i<0){var lab=(EM_SEQ[r.sequence]||{}).lab;i={browsing:1,warm:2,hot:3}[lab];if(i==null)i=-1;}
   return i;}
 function emAuditNext(st){var n={training_none:1,training_started:2,training_finished:3,checkout_no_buy:4}[st&&st.state];return n==null?null:n;}
@@ -7255,7 +7257,7 @@ function emResPeople(s,rows){
     if(!next)next=emIsUnsub(e)?'Unsubscribed':'Nothing else queued';
     next=next.replace(/\{\{\s*(\w+)\s*\}\}/g,function(mm,kk){return (r.meta&&r.meta[kk])||(st&&st[kk])||mm;});
     var m=r.meta||{},who=[m.source,m.score?'score '+m.score:'',m.lead_magnet_name].filter(Boolean).join(' · ');
-    return '<div class="em-p"><div class="em-p1">'+(ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span><b>'+EM_T[ti]+'</b> ':'')+'<span>'+esc(r.email)+'</span>'+(who?'<span class="em-sub2"> · '+esc(who)+'</span>':'')+'</div>'
+    return '<div class="em-p"><div class="em-p1">'+(ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span><b>'+EM_T[ti]+'</b> ':'')+'<span>'+esc(r.email)+'</span>'+(who?'<span class="em-sub2"> · '+esc(who)+'</span>':'')+'</div>'+(EM.live&&EM.live[e]&&EM.live[e].why?'<div class="em-sub2" style="margin:-2px 0 5px">💬 '+esc(EM.live[e].why)+'</div>':'')
       +'<div class="em-p2">'+(st&&st.state?'<span class="em-chip">🎓 '+esc(EM_TRAIN[st.state]||st.state)+(st.state==='training_started'&&st.max_screen?' (screen '+st.max_screen+' of 24)':'')+'</span>':'')
       +(r.status==='sent'?'<span class="em-chip '+(op?'y':'n')+'">👀 '+(op?'opened':'not opened')+'</span><span class="em-chip '+(cl?'y':'n')+'">🔗 '+(cl?'clicked':'no click')+'</span>':'')
       +'<span class="em-next">➜ '+esc(next)+'</span></div></div>';
@@ -7296,7 +7298,7 @@ function emResPane(seqs){
       h+='<tr class="em-res-seq"><td>'+esc(emName(seq))+'</td>'+cells([T.inf||'—',T.sent,T.op,emPct(T.op,T.sent),T.cl,emPct(T.cl,T.sent),emPct(T.cl,T.op),T.un,T.cu,'$'+emMoney(T.rev)])+'<td data-label="Temps">'+bar+'</td></tr>'+body;
     });
   });
-  h+='</tbody></table></div><div class="em-legend"><span>🟨 <b>Click-to-open</b> = clicks ÷ opens: did the email itself work?</span><span><b>Click %</b> = clicks ÷ sent</span><span>💰 A sale counts for the <b>last email they clicked</b> before buying</span><span>🌡️ Temps = the temperature they came in with (Audit result or Scorecard label)</span><span>Tap any email to see who got it and what\'s next for them.</span></div>'
+  h+='</tbody></table></div><div class="em-legend"><span>🟨 <b>Click-to-open</b> = clicks ÷ opens: did the email itself work?</span><span><b>Click %</b> = clicks ÷ sent</span><span>💰 A sale counts for the <b>last email they clicked</b> before buying</span><span>🌡️ Temps update live as people use your Audit and training. Scorecard leads show the label they came in with.</span><span>Tap any email to see who got it and what\'s next for them.</span></div>'
     +(hidden||EM.showUnused?'<label class="em-toggle" style="margin-top:10px"><input type="checkbox" '+(EM.showUnused?'checked':'')+' onchange="EM.showUnused=this.checked;emRender()"> Show sequences nobody has gotten yet'+(hidden?' ('+hidden+')':'')+'</label>':'');
   return h;
 }
@@ -7493,7 +7495,7 @@ function emSubPane(rows){
     var sub=[m.lead_magnet_name,m.score?'score '+m.score:'',m.business_name].filter(Boolean).join(' · ');
     EM._keys=EM._keys||[];EM._keys[i]=k;
     h+='<tr class="em-click" onclick="emOpenSub('+i+')"><td><b>'+esc(x.email)+'</b>'+(sub?'<br><span class="em-sub2">'+esc(sub)+'</span>':'')+'</td>'
-      +'<td data-label="Temp">'+(function(){var ti=emTemp({meta:m,sequence:x.seq});return ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span>'+EM_T[ti]:'<span class="em-pill '+lab[1]+'">'+lab[0]+'</span>';})()+'</td>'
+      +'<td data-label="Temp">'+(function(){var ti=emTemp({meta:m,sequence:x.seq,email:x.email});return ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span>'+EM_T[ti]:'<span class="em-pill '+lab[1]+'">'+lab[0]+'</span>';})()+'</td>'
       +'<td data-label="Training">'+(function(){var st=EM.status[String(x.email).toLowerCase()];return st&&st.state?esc(EM_TRAIN[st.state]||st.state)+(st.state==='training_started'&&st.max_screen?' (screen '+st.max_screen+')':''):'<span class="em-sub2">—</span>';})()+'</td><td data-label="Sequence">'+esc(emName(x.seq))+'</td>'
       +'<td>'+(x.stopped?'<span class="em-pill em-p-off">Unsubscribed</span>':'<span class="em-bar"><i style="width:'+Math.round(x.sent/x.total*100)+'%"></i></span>'+(x.sent>=x.total?'Done':x.sent+' of '+x.total))+'</td>'
       +'<td>'+(x.next?emDate(x.next):'None')+'</td><td>'+emDate(x.joined)+'</td></tr>';
