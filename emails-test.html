@@ -453,6 +453,7 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .em-res td.good{color:#2F7D57;font-weight:700}.em-res td.low{color:#B5543C;font-weight:700}
 .em-res .em-pill{font-size:10px;padding:1px 7px;margin-left:4px}
 .em-day2{font-size:11px;color:var(--muted)}
+.em-chev{display:inline-block;transition:transform .2s;font-size:11px}.em-chev.shut{transform:rotate(-90deg)}
 .em-tbar{display:inline-flex;width:56px;height:8px;border-radius:99px;overflow:hidden;background:var(--ivory-dark);vertical-align:middle}.em-tbar i{display:block;height:100%}
 .em-pl{display:grid;gap:8px;padding:4px 0}.em-pl-empty{font-size:12.5px;color:var(--muted)}
 .em-p{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:9px 12px;font-size:12.5px;text-align:left;white-space:normal;animation:emUp .3s both}
@@ -7242,6 +7243,7 @@ function emTemp(r){var lv=EM.live&&r.email&&EM.live[String(r.email).toLowerCase(
   if(i<0){var lab=(EM_SEQ[r.sequence]||{}).lab;i={browsing:1,warm:2,hot:3}[lab];if(i==null)i=-1;}
   return i;}
 function emAuditNext(st){var n={training_none:1,training_started:2,training_finished:3,checkout_no_buy:4}[st&&st.state];return n==null?null:n;}
+function emResFold(seq){var c=EM.folded||{};c[seq]=!c[seq];EM.folded=c;try{localStorage.setItem('hk_em_folded',JSON.stringify(c));}catch(e){}emRender();}
 function emResOpen(k){EM.openRes=EM.openRes===k?null:k;emRender();}
 function emResPeople(s,rows){
   var steps=emSteps(s.sequence),real=emReal();
@@ -7270,6 +7272,7 @@ function emResPane(seqs){
   var order=Object.keys(EM_SEQ);
   var h='<div class="em-wrapx"><table class="em-table em-res mcards"><thead><tr><th>Sequence / email</th><th>In flight</th><th>Sent</th><th>Opens</th><th>Open %</th><th>Clicks</th><th>Click %</th><th class="em-ctor">Click-to-open</th><th>Unsubs</th><th>Customers</th><th>Revenue</th><th>Temps</th></tr></thead><tbody>';
   var hidden=0;
+  if(!EM.folded){try{EM.folded=JSON.parse(localStorage.getItem('hk_em_folded')||'{}');}catch(e){EM.folded={};}}
   var L=['In flight','Sent','Opens','Open %','Clicks','Click %','Click-to-open','Unsubs','Customers','Revenue'];
   function cells(v,cls){return v.map(function(x,i){return '<td data-label="'+L[i]+'"'+(i===6?' class="em-ctor'+(cls||'')+'"':'')+'>'+x+'</td>';}).join('');}
   Object.keys(groups).forEach(function(g){
@@ -7295,7 +7298,8 @@ function emResPane(seqs){
       });
       var ts=temps.reduce(function(a,b){return a+b;},0);
       var bar=ts?'<span class="em-tbar" title="'+temps.map(function(n,i){return EM_T[i]+' '+n;}).join(', ')+'">'+temps.map(function(n,i){return n?'<i style="width:'+(n*100/ts)+'%;background:'+EM_TC[i]+'"></i>':'';}).join('')+'</span>':'';
-      h+='<tr class="em-res-seq"><td>'+esc(emName(seq))+'</td>'+cells([T.inf||'—',T.sent,T.op,emPct(T.op,T.sent),T.cl,emPct(T.cl,T.sent),emPct(T.cl,T.op),T.un,T.cu,'$'+emMoney(T.rev)])+'<td data-label="Temps">'+bar+'</td></tr>'+body;
+      var fold=!!EM.folded[seq];
+      h+='<tr class="em-res-seq em-click" onclick="emResFold(\''+seq+'\')"><td><span class="em-chev'+(fold?' shut':'')+'">▾</span> '+esc(emName(seq))+'</td>'+cells([T.inf||'—',T.sent,T.op,emPct(T.op,T.sent),T.cl,emPct(T.cl,T.sent),emPct(T.cl,T.op),T.un,T.cu,'$'+emMoney(T.rev)])+'<td data-label="Temps">'+bar+'</td></tr>'+(fold?'':body);
     });
   });
   h+='</tbody></table></div><div class="em-legend"><span>🟨 <b>Click-to-open</b> = clicks ÷ opens: did the email itself work?</span><span><b>Click %</b> = clicks ÷ sent</span><span>💰 A sale counts for the <b>last email they clicked</b> before buying</span><span>🌡️ Temps update live as people use your Audit and training. Scorecard leads show the label they came in with.</span><span>Tap any email to see who got it and what\'s next for them.</span></div>'
