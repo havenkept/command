@@ -459,6 +459,7 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 .em-p{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:9px 12px;font-size:12.5px;text-align:left;white-space:normal;animation:emUp .3s both}
 .em-p1{margin-bottom:5px}.em-p2{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .em-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:-1px}
+.em-pbtn{font:600 11.5px var(--font-sans);border:1px solid var(--heather);background:#fff;color:var(--plum);border-radius:99px;padding:4px 10px;cursor:pointer;min-height:28px}.em-pbtn:hover{background:var(--plum-light)}.em-pause.on{font-size:11.5px;font-weight:600;color:#8A5A08;background:#FBF1DC;border-radius:99px;padding:2px 9px}
 .em-chip{font-size:11px;border-radius:99px;padding:2px 8px;background:var(--ivory-dark)}.em-chip.y{background:var(--sage-light);color:var(--sage-dark)}.em-chip.n{background:#F7ECEC;color:#B5543C}
 .em-next{margin-left:auto;font-weight:700;color:var(--plum);font-size:12px;white-space:normal}
 .em-res tr.em-detail td{max-width:0}
@@ -7223,8 +7224,10 @@ async function emLoad(force){
       sbRequest('GET','email_events?select=email,sequence,step,type,at&type=eq.unsubscribed&order=at.desc'),
       sbRequest('GET','email_events?select=resend_id,type&type=in.(opened,clicked)&resend_id=not.is.null&limit=20000'),
       sbRequest('POST','rpc/em_results_info',{}),
-      sbRequest('GET','lead_temps?select=email,temp,why,updated_at')
+      sbRequest('GET','lead_temps?select=email,temp,why,updated_at'),
+      sbRequest('GET','email_pauses?select=email,until')
     ]);
+    EM.pauses={};(r[7]||[]).forEach(function(x){if(new Date(x.until)>new Date())EM.pauses[String(x.email).toLowerCase()]=x.until;});
     if(!r[0]){box.innerHTML='<div class="em-empty"><h3>Couldn\'t load emails</h3><p>'+esc(_sbLastError||'Sign in on the Data Sync page first.')+'</p></div>';return;}
     EM.steps=r[0]||[];EM.queue=r[1]||[];EM.unsubs=r[2]||[];EM.events=r[3]||[];EM.opens={};EM.clicks={};(r[4]||[]).forEach(function(e){(e.type==='opened'?EM.opens:EM.clicks)[e.resend_id]=1;});EM.status={};EM.sales=[];if(r[5]){(r[5].status||[]).forEach(function(s){EM.status[String(s.email).toLowerCase()]=s.st||{};});EM.sales=(r[5].sales||[]).filter(function(s){return EM.showTests||!emIsTest(s);});}EM.live={};(r[6]||[]).forEach(function(x){EM.live[String(x.email).toLowerCase()]=x;});EM.loaded=true;
     if(!EM_SEQ[EM.seq]&&EM.steps[0])EM.seq=EM.steps[0].sequence;
@@ -7396,6 +7399,22 @@ function emMapPane(){
 }
 function emResFold(seq){var c=EM.folded||{};c[seq]=!c[seq];EM.folded=c;try{localStorage.setItem('hk_em_folded',JSON.stringify(c));}catch(e){}emRender();}
 function emResOpen(k){EM.openRes=EM.openRes===k?null:k;emRender();}
+function emPauseBtn(e){
+  if(emIsUnsub(e))return '';
+  var u=EM.pauses&&EM.pauses[e],q="'"+e.replace(/'/g,"\\'")+"'";
+  if(u)return '<span class="em-pause on">⏸ Paused until '+esc(emDate(u))+'</span><button type="button" class="em-pbtn" onclick="event.stopPropagation();emUnpause('+q+')">Resume now</button>';
+  return '<button type="button" class="em-pbtn" title="Holds their automatic emails for 2 days. They still go out, just later." onclick="event.stopPropagation();emPause('+q+')">✉️ I emailed them</button>';
+}
+async function emPause(e){
+  var r=await sbRequest('POST','rpc/em_pause_lead',{p_email:e,p_days:2});
+  if(!r){alert('Could not pause: '+(_sbLastError||'unknown error'));return;}
+  EM.pauses=EM.pauses||{};EM.pauses[e]=r.until;await emLoad(true);
+}
+async function emUnpause(e){
+  var r=await sbRequest('POST','rpc/em_unpause_lead',{p_email:e});
+  if(r===null&&_sbLastError){alert('Could not resume: '+_sbLastError);return;}
+  if(EM.pauses)delete EM.pauses[e];await emLoad(true);
+}
 function emResPeople(s,rows){
   var steps=emSteps(s.sequence),real=emReal();
   if(!rows.length)return '<div class="em-pl-empty">No one has gotten this email yet.</div>';
@@ -7413,7 +7432,7 @@ function emResPeople(s,rows){
     return '<div class="em-p"><div class="em-p1">'+(ti>=0?'<span class="em-dot" style="background:'+EM_TC[ti]+'"></span><b>'+EM_T[ti]+'</b> ':'')+'<span>'+esc(r.email)+'</span>'+(who?'<span class="em-sub2"> · '+esc(who)+'</span>':'')+'</div>'+(EM.live&&EM.live[e]&&EM.live[e].why?'<div class="em-sub2" style="margin:-2px 0 5px">💬 '+esc(EM.live[e].why)+'</div>':'')
       +'<div class="em-p2">'+(st&&st.state?'<span class="em-chip">🎓 '+esc(EM_TRAIN[st.state]||st.state)+(st.state==='training_started'&&st.max_screen?' (screen '+st.max_screen+' of 24)':'')+'</span>':'')
       +(r.status==='sent'?'<span class="em-chip '+(op?'y':'n')+'">👀 '+(op?'opened':'not opened')+'</span><span class="em-chip '+(cl?'y':'n')+'">🔗 '+(cl?'clicked':'no click')+'</span>':'')
-      +'<span class="em-next">➜ '+esc(next)+'</span></div></div>';
+      +'<span class="em-next">➜ '+esc(next)+'</span>'+emPauseBtn(e)+'</div></div>';
   }).join('')+'</div>';
 }
 function emResPane(seqs){
