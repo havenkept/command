@@ -7790,7 +7790,7 @@ function emUnsPane(unsubs){
 // demo_visits / demo_events rows those pages write. Counts only: the pages
 // never send what visitors type.
 // ============================================================
-var LM={clients:[],visits:[],events:[],range:'30',from:'',to:'',open:null,loaded:false};
+var LM={clients:[],visits:[],events:[],lm:{},lmErr:'',range:'30',from:'',to:'',open:null,loaded:false};
 var LM_SECTION_LABELS=[
   ['calc','Reached the stock check'],
   ['deep','Read Step 1'],
@@ -7823,6 +7823,7 @@ async function lmLoad(force){
     var inList='in.('+clients.map(function(c){return c.slug;}).join(',')+')';
     LM.visits=await sbListAll('demo_visits','slug,session_id,visited_at,device,referrer_host&slug='+encodeURIComponent(inList))||[];
     LM.events=await sbListAll('demo_events','slug,session_id,event,detail&slug='+encodeURIComponent(inList))||[];
+    LM.lm=await lmLoadNew(clients.map(function(c){return c.slug;}));
   }
   LM.loaded=true;
   lmRender();
@@ -7830,8 +7831,93 @@ async function lmLoad(force){
 function lmSetRange(v){LM.range=v;if(v==='custom'){var r=lmRange();LM.from=LM.from||r.from;LM.to=LM.to||r.to;}lmRender();}
 function lmSetCustom(){LM.from=document.getElementById('lm-from').value;LM.to=document.getElementById('lm-to').value;lmRender();}
 
+// ---- Newer client pages (Temperature Gauge system, added 27 Nov 2026) ----
+// These pages (Adrian's Side Hustle Matcher onward) save to the separate
+// havenkept-clients Supabase project, not demo_visits/demo_events. The
+// lm-admin-stats edge function there checks Bailey's sign-in against this
+// project and returns each client's people. Coach tokens never reach here.
+var LM_NEW_FN='https://ywrqcetealvizgulvzbd.supabase.co/functions/v1/lm-admin-stats';
+var LM_TEMPS=[['Cold','#2F6EA8'],['Cool','#1F8A80'],['Warm','#B7790F'],['Hot','#D2601A'],['Boiling','#C8322B']];
+async function lmLoadNew(slugs){
+  LM.lmErr='';
+  var token=await sbEnsureToken(); if(!token){LM.lmErr='Not signed in';return {};}
+  try{
+    var res=await fetch(LM_NEW_FN,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({slugs:slugs})});
+    var d=await res.json().catch(function(){return null;});
+    if(!res.ok||!d){LM.lmErr=(d&&d.error)||('HTTP '+res.status);return {};}
+    return d.clients||{};
+  }catch(e){LM.lmErr='Network error: '+e.message;return {};}
+}
+function lmIsNew(c){var x=LM.lm[c.slug];return !!(x&&!x.error);}
+function lmSourceLabel(src){
+  src=(src||'').toLowerCase();
+  if(!src)return 'Direct or unknown';
+  if(/^email/.test(src))return 'Their own emails ('+src.replace(/^email-?/,'')+')';
+  var m={instagram:'Instagram',facebook:'Facebook',linkedin:'LinkedIn',pinterest:'Pinterest',skool:'Skool',threads:'Threads',tiktok:'TikTok',youtube:'YouTube',google:'Google'};
+  return m[src]||src;
+}
+function lmStatsNew(c){
+  var x=LM.lm[c.slug], r=lmRange();
+  var from=r.from; if(c.count_from&&c.count_from>from)from=c.count_from;
+  var to=r.to;
+  var ppl=(x.people||[]).filter(function(p){var d=lmDay(new Date(p.first_seen));return d>=from&&d<=to;});
+  var s={client:c,isNew:true,x:x,from:from,to:to,people:ppl,visits:ppl.length,finished:0,emails:0,offerSeen:0,cta:0,booked:0,checkins:0,
+         temps:{},picks:{},sources:{},weeks:{},medianTime:null};
+  ppl.forEach(function(p){
+    if(p.finished)s.finished++;
+    if(p.has_email)s.emails++;
+    if(p.offer)s.cta++;
+    if(p.client)s.booked++;
+    if(p.checkin)s.checkins++;
+    if(p.temp){s.temps[p.temp]=(s.temps[p.temp]||0)+1; if(p.temp==='Hot'||p.temp==='Boiling')s.offerSeen++;}
+    (p.trying&&p.trying.length?p.trying:p.picks||[]).forEach(function(k){s.picks[k]=(s.picks[k]||0)+1;});
+    var src=lmSourceLabel(p.source); s.sources[src]=(s.sources[src]||0)+1;
+    var d=new Date(p.first_seen), dow=d.getDay(), mon=new Date(d.getFullYear(),d.getMonth(),d.getDate()-(dow===0?6:dow-1));
+    var wk=lmDay(mon); s.weeks[wk]=(s.weeks[wk]||0)+1;
+  });
+  // the overview table reads these three
+  s.usedTool=s.finished; s.offer=s.offerSeen;
+  return s;
+}
+function lmDetailNew(c){
+  var s=lmStatsNew(c), x=s.x, h='<div class="card" style="margin-bottom:14px;">';
+  h+='<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;"><div><div class="page-title" style="font-size:22px;">'+esc(c.client_name)+'</div><div class="page-sub">'+esc(x.noun||'')+(c.page_url?' · <a href="'+esc(c.page_url)+'" target="_blank" rel="noopener">'+esc(c.page_url.replace(/^https?:\/\//,''))+'</a>':'')+'</div></div>';
+  h+='<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-ghost" onclick="lmToggleEdit()">Edit client</button>'+(x.dashboard_url?'<a class="btn-add" style="text-decoration:none" href="'+esc(x.dashboard_url)+'" target="_blank" rel="noopener">Open their dashboard</a>':'')+'</div></div>';
+  h+=lmEditForm(c);
+  h+='<div class="lm-countfrom">Count visits from <input type="date" value="'+esc(c.count_from||'')+'" onchange="lmSaveCountFrom(\''+c.slug+'\',this.value)"/> <span>Earlier visits are your own tests. Leave blank to count everything.</span></div>';
+  h+='<div class="lm-period">Showing '+lmPrettyDate(s.from)+' to '+lmPrettyDate(s.to)+' · Temperature Gauge page</div>';
+  var hl=[];
+  if(!s.visits)hl.push('No visits in this period yet.');
+  else{
+    hl.push(s.visits+(s.visits===1?' person':' people')+' opened the '+(x.noun||'page')+', and '+s.finished+' ('+lmPct(s.finished,s.visits)+'%) finished it.');
+    if(s.emails)hl.push(s.emails+' left their email.');
+    var hot=(s.temps.Hot||0)+(s.temps.Boiling||0);
+    if(hot)hl.push(hot+' sorted Hot or Boiling'+(s.cta?', and '+s.cta+' tapped the offer button':'')+'.');
+    else if(s.cta)hl.push(s.cta+' tapped the offer button.');
+    if(s.booked)hl.push(s.booked+' marked as booked'+(x.offer_price?' ($'+(s.booked*x.offer_price)+' at $'+x.offer_price+' each)':'')+'.');
+    var tp=lmTop(s.picks,1)[0]; if(tp&&tp[1]>1)hl.push('Most picked: '+tp[0]+' ('+tp[1]+').');
+    if(s.visits<10)hl.push('Early days: with '+s.visits+' visit'+(s.visits===1?'':'s')+', these percentages will move a lot.');
+  }
+  h+='<div class="lm-grid">';
+  h+='<div><div class="card-title" style="margin-bottom:8px;">Funnel</div>'+lmBar('Opened it',s.visits,s.visits)+lmBar(x.finish_label||'Finished',s.finished,s.visits)+lmBar('Left their email',s.emails,s.visits)+lmBar('Sorted Hot or Boiling (saw the offer)',s.offerSeen,s.visits)+lmBar('Tapped the offer',s.cta,s.visits,true)+lmBar('Booked',s.booked,s.visits,true)+'</div>';
+  h+='<div><div class="card-title" style="margin-bottom:8px;">Highlights</div><ul class="lm-hl">'+hl.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul></div>';
+  h+='</div><div class="lm-grid3">';
+  var tsum=LM_TEMPS.reduce(function(a,t){return a+(s.temps[t[0]]||0);},0);
+  h+='<div><div class="card-title" style="margin-bottom:8px;">🌡️ Temperature Gauge</div>'+LM_TEMPS.map(function(t){var n=s.temps[t[0]]||0,p=lmPct(n,tsum);return '<div class="lm-frow"><div class="lm-flabel">'+t[0]+'</div><div class="lm-ftrack"><div class="lm-ffill" style="background:'+t[1]+';width:'+Math.max(p,n?2:0)+'%"></div></div><div class="lm-fnum">'+n+' <span>'+p+'%</span></div></div>';}).join('')+'<div class="lm-note">Out of '+tsum+' who finished and got sorted</div></div>';
+  var tp=lmTop(s.picks,6);
+  h+='<div><div class="card-title" style="margin-bottom:8px;">Top picks</div>'+(tp.length?tp.map(function(y){return lmBar(y[0],y[1],s.finished||s.visits);}).join(''):'<div class="lm-note">No picks yet.</div>')+'</div>';
+  var src=lmTop(s.sources,6);
+  h+='<div><div class="card-title" style="margin-bottom:8px;">Where visitors came from</div>'+(src.length?src.map(function(y){return lmBar(y[0],y[1],s.visits);}).join(''):'<div class="lm-note">No visits yet.</div>')+'</div>';
+  h+='</div>';
+  h+='<div class="card-title" style="margin:14px 0 8px;">Visits by week</div>'+lmWeekChart(s,'var(--plum)','var(--muted)');
+  h+='<div class="lm-note" style="margin-top:10px;">Two-week check-ins done: '+s.checkins+'. Names, emails and answers are on their own dashboard.</div>';
+  h+='</div>';
+  return h;
+}
+
 // All the numbers for one client in the chosen range.
 function lmStats(c){
+  if(lmIsNew(c))return lmStatsNew(c);
   var r=lmRange();
   var from=r.from; if(c.count_from&&c.count_from>from)from=c.count_from;
   var to=r.to;
@@ -7927,7 +8013,7 @@ function lmRender(){
     var s=lmStats(c);
     h+='<tr class="'+(LM.open===c.slug?'on':'')+'" onclick="lmOpen(\''+c.slug+'\')"><td><b>'+esc(c.client_name)+'</b><div class="lm-sub">'+esc(c.page_title||c.slug)+'</div></td><td>'+s.visits+'</td><td>'+s.usedTool+' <span>'+lmPct(s.usedTool,s.visits)+'%</span></td><td>'+s.offer+' <span>'+lmPct(s.offer,s.visits)+'%</span></td><td>'+s.cta+' <span>'+lmPct(s.cta,s.visits)+'%</span></td><td>'+lmDur(s.medianTime)+'</td><td class="lm-go">›</td></tr>';
   });
-  h+='</tbody></table></div></div>';
+  h+='</tbody></table></div>'+(LM.clients.some(lmIsNew)?'<div class="lm-note" style="margin-top:8px;">Temperature Gauge pages: "Used tool" means finished it, "Reached offer" means sorted Hot or Boiling.</div>':'')+(LM.lmErr?'<div class="lm-note" style="margin-top:8px;color:var(--danger,#b3261e)">Couldn\'t load the newer client pages: '+esc(LM.lmErr)+'</div>':'')+'</div>';
   var c=LM.clients.find(function(x){return x.slug===LM.open;})||LM.clients[0];
   LM.open=c.slug;
   h+=lmDetail(c);
@@ -7937,6 +8023,7 @@ function lmRender(){
 function lmOpen(slug){LM.open=slug;lmRender();}
 
 function lmDetail(c){
+  if(lmIsNew(c))return lmDetailNew(c);
   var s=lmStats(c);
   var h='<div class="card" style="margin-bottom:14px;">';
   h+='<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;"><div><div class="page-title" style="font-size:22px;">'+esc(c.client_name)+'</div><div class="page-sub">'+esc(c.business||'')+(c.page_url?' · <a href="'+esc(c.page_url)+'" target="_blank" rel="noopener">'+esc(c.page_url.replace(/^https?:\/\//,''))+'</a>':'')+'</div></div>';
@@ -8027,6 +8114,7 @@ async function lmAddClient(){
 // ---------- client report (frozen snapshot, HavenKept branded) ----------
 function lmMakeReport(slug){
   var c=LM.clients.find(function(x){return x.slug===slug;}); if(!c)return;
+  if(lmIsNew(c)){var u=LM.lm[slug].dashboard_url;if(u)window.open(u,'_blank','noopener');return;}
   var s=lmStats(c);
   var made=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   var period=lmPrettyDate(s.from)+' to '+lmPrettyDate(s.to);
