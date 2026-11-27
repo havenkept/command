@@ -7899,7 +7899,7 @@ function lmDetailNew(c){
     if(s.visits<10)hl.push('Early days: with '+s.visits+' visit'+(s.visits===1?'':'s')+', these percentages will move a lot.');
   }
   h+='<div class="lm-grid">';
-  h+='<div><div class="card-title" style="margin-bottom:8px;">Funnel</div>'+lmBar('Opened it',s.visits,s.visits)+lmBar(x.finish_label||'Finished',s.finished,s.visits)+lmBar('Left their email',s.emails,s.visits)+lmBar('Sorted Hot or Boiling (saw the offer)',s.offerSeen,s.visits)+lmBar('Tapped the offer',s.cta,s.visits,true)+lmBar('Booked',s.booked,s.visits,true)+'</div>';
+  h+='<div><div class="card-title" style="margin-bottom:8px;">Funnel</div>'+lmBar('Opened it',s.visits,s.visits)+lmBar(x.finish_label||'Finished',s.finished,s.visits)+lmBar('Left their email',s.emails,s.visits)+lmBar('Hot or Boiling',s.offerSeen,s.visits)+lmBar('Tapped the offer',s.cta,s.visits,true)+lmBar('Booked',s.booked,s.visits,true)+'</div>';
   h+='<div><div class="card-title" style="margin-bottom:8px;">Highlights</div><ul class="lm-hl">'+hl.map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul></div>';
   h+='</div><div class="lm-grid3">';
   var tsum=LM_TEMPS.reduce(function(a,t){return a+(s.temps[t[0]]||0);},0);
