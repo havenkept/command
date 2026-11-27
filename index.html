@@ -505,6 +505,22 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
 @keyframes emUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .em-wrapx{overflow-x:auto;}
 @media(max-width:900px){.em-stats,.em-stats6{grid-template-columns:repeat(2,minmax(0,1fr));}.em-next{margin-left:0;width:100%}.em-grid{grid-template-columns:1fr;}.em-edit{grid-template-columns:1fr;}.em-meta{display:none;}.em-frame{height:440px;}}
+.fa-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--charcoal);margin-bottom:8px}
+.fa-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.fa-table th{text-align:right;font-weight:500;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)}
+.fa-table th:first-child,.fa-table td:first-child{text-align:left}
+.fa-table td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--border-light);font-variant-numeric:tabular-nums}
+.fa-table td.z{color:var(--muted-light)}
+.fa-feed{max-height:420px;overflow-y:auto;border:1px solid var(--border-light);border-radius:12px}
+.fa-day{position:sticky;top:0;background:var(--warm-white);font-size:10.5px;font-weight:600;letter-spacing:.1em;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border-light);z-index:1}
+.fa-row{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid var(--border-light);font-size:12.5px;line-height:1.45}
+.fa-ic{flex:none;width:22px;text-align:center}
+.fa-who{color:var(--rose-dark);font-weight:600;word-break:break-all}
+.fa-anon{color:var(--muted);font-weight:500}
+.fa-src{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:8px;background:var(--plum-light);color:var(--plum);margin-left:4px;white-space:nowrap}
+.fa-tm{flex:none;margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap;padding-left:8px}
+.fa-row.money{background:var(--sage-light)}
+.fa-row.win .fa-what{color:var(--charcoal);font-weight:500}
 </style>
 </head><body>
 
@@ -603,6 +619,16 @@ input[type=date],input[type=month],select{max-width:100%;min-width:0;}
   <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">Everything, at a glance</div></div></div>
   <div id="dash-digest" style="margin-bottom:14px;"></div>
   <div class="stat-grid" id="dash-stats" style="margin-bottom:14px;"></div>
+  <div class="card" id="dash-funnel-wrap" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap;">
+      <div class="card-title">Funnel Activity</div>
+      <span style="font-size:11px;color:var(--rose-dark);cursor:pointer;" onclick="loadFunnelActivity(true)">Refresh ↻</span>
+    </div>
+    <div class="fa-label">Where they came from <span style="font-weight:400;color:var(--muted);">· last 30 days</span></div>
+    <div id="dash-funnel-sources" style="margin-bottom:16px;"><div style="color:var(--muted);font-size:12.5px;">Loading…</div></div>
+    <div class="fa-label">What they did <span style="font-weight:400;color:var(--muted);">· last 14 days</span></div>
+    <div id="dash-funnel-feed" class="fa-feed"><div style="color:var(--muted);font-size:12.5px;">Loading…</div></div>
+  </div>
   <div class="card" style="margin-bottom:16px;">
     <div class="card-title" style="margin-bottom:10px;">Quick Actions</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;" id="dash-quick-actions"></div>
@@ -2230,6 +2256,7 @@ function removePin(id){
 
 // ===== DASHBOARD =====
 function renderDashboard(){
+  try{loadFunnelActivity();}catch(e){}
   var products=state.products||[];
   var active=products.filter(function(p){return !isProductLive(p);});
   var live=products.filter(function(p){return isProductLive(p);});
@@ -2373,6 +2400,60 @@ function renderDashboardTagLocks(){
     var days=Math.round((new Date(e.date)-new Date(today))/86400000);
     return '<div style="padding:6px 0;font-size:12.5px;display:flex;justify-content:space-between;"><span>'+e.title+'</span><span style="color:var(--muted);">'+fmtDateShort(e.date)+' · '+days+'d</span></div>';
   }).join('');
+}
+
+// FUNNEL ACTIVITY (Nov 27 2026): who did what on the Audit, training and kits, plus where they came from.
+// Reads two read-only Supabase functions: funnel_activity() and funnel_sources().
+var _faLoaded=0;
+function faEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function faSrc(s){
+  if(!s)return '';
+  var m=s.split('/').map(function(x){return x.trim();}).filter(Boolean),a=(m[0]||'').toLowerCase(),b=m[1]||'';
+  var names={fb:'Meta ad',facebook:'Meta ad',ig:'Instagram',instagram:'Instagram',pinterest:'Pinterest',email:'Email',direct:'Direct',scorecard:'Old Scorecard','retired-page':'Old page'};
+  var n=names[a]||m[0];
+  if(b){b=b.replace(/^pin(\d+)$/,'pin $1');n+=' · '+b;}
+  return n;
+}
+function faDay(d){
+  var t=new Date();t.setHours(0,0,0,0);var x=new Date(d);x.setHours(0,0,0,0);
+  var diff=Math.round((t-x)/864e5);
+  if(diff===0)return 'TODAY';if(diff===1)return 'YESTERDAY';
+  return x.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}).toUpperCase();
+}
+async function loadFunnelActivity(force){
+  var fe=document.getElementById('dash-funnel-feed'),se=document.getElementById('dash-funnel-sources');
+  if(!fe||!se)return;
+  if(!force&&Date.now()-_faLoaded<60000)return;
+  _faLoaded=Date.now();
+  var res=await Promise.all([
+    sbRequest('POST','rpc/funnel_sources',{p_days:30}),
+    sbRequest('POST','rpc/funnel_activity',{p_days:14,p_limit:200})
+  ]);
+  var src=res[0],feed=res[1];
+  if(!src){se.innerHTML='<div style="color:var(--rose-dark);font-size:12.5px;">Could not load: '+faEsc(_sbLastError||'')+'</div>';}
+  else if(!src.length){se.innerHTML='<div style="color:var(--muted);font-size:12.5px;">No visits yet.</div>';}
+  else{
+    var tot={visits:0,finished:0,emails:0,training:0,checkout:0};
+    var rows=src.map(function(r){
+      ['visits','finished','emails','training','checkout'].forEach(function(k){tot[k]+=+r[k]||0;});
+      function c(v){return '<td'+(+v?'':' class="z"')+'>'+(+v||0)+'</td>';}
+      return '<tr><td>'+faEsc(faSrc(r.source))+'</td>'+c(r.visits)+c(r.finished)+c(r.emails)+c(r.training)+c(r.checkout)+'</tr>';
+    }).join('');
+    se.innerHTML='<div style="overflow-x:auto;"><table class="fa-table"><thead><tr><th>Source</th><th>Visits</th><th>Finished Audit</th><th>Gave email</th><th>Training</th><th>Checkout</th></tr></thead><tbody>'+rows
+      +'<tr style="font-weight:600;"><td>Total</td><td>'+tot.visits+'</td><td>'+tot.finished+'</td><td>'+tot.emails+'</td><td>'+tot.training+'</td><td>'+tot.checkout+'</td></tr></tbody></table></div>';
+  }
+  if(!feed){fe.innerHTML='<div style="padding:12px;color:var(--rose-dark);font-size:12.5px;">Could not load: '+faEsc(_sbLastError||'')+'</div>';return;}
+  if(!feed.length){fe.innerHTML='<div style="padding:12px;color:var(--muted);font-size:12.5px;">Nothing in the last 14 days.</div>';return;}
+  var html='',last='',icons={view:'👁',win:'✅',money:'💰'};
+  feed.forEach(function(r){
+    var day=faDay(r.at);
+    if(day!==last){html+='<div class="fa-day">'+day+'</div>';last=day;}
+    var who=r.email?'<span class="fa-who">'+faEsc(r.email)+'</span>':'<span class="fa-anon">Visitor</span>';
+    var s=r.source?'<span class="fa-src">'+faEsc(faSrc(r.source))+'</span>':'';
+    var tm=new Date(r.at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    html+='<div class="fa-row '+faEsc(r.kind)+'"><span class="fa-ic">'+(icons[r.kind]||'•')+'</span><div>'+who+s+' <span class="fa-what">'+faEsc(r.label)+'</span></div><span class="fa-tm">'+tm+'</span></div>';
+  });
+  fe.innerHTML=html;
 }
 function renderDashboardDigest(){
   var products=state.products||[];
